@@ -60,6 +60,8 @@ button, input, select { font: inherit; color: inherit; }
   transform-origin: left;
 }
 
+.version { font-family: var(--cond); font-size: 0.8rem; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; vertical-align: middle; }
+.logo .version { font-size: 1rem; }
 .tagline { color: var(--muted); font-size: 1.15rem; max-width: 36rem; margin: 0 0 40px; }
 
 .create { display: grid; gap: 28px; max-width: 760px; }
@@ -84,6 +86,7 @@ button, input, select { font: inherit; color: inherit; }
 
 .row { display: flex; gap: 8px; }
 .names { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.names .wide { grid-column: 1 / -1; }
 .create .names-hint { margin-top: -18px; }
 .row .text { flex: 1; }
 

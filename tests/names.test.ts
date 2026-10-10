@@ -133,3 +133,19 @@ describe('world act names', () => {
     expect(nameKeys('Lüst Hartz')[0]).toBe(nameKeys('Lust Lyarz')[0]);
   });
 });
+
+describe('player gender', () => {
+  it('is stored on the player and steers stage-name suggestions', async () => {
+    const { newGame } = await import('../src/game/engine');
+    const s = newGame({ name: 'Joanne Whitaker', gender: 'female', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 3 });
+    const p = s.members.find((m) => m.isPlayer)!;
+    expect(p.gender).toBe('female');
+    expect(p.realName).toBe('Joanne Whitaker');
+    const masc = ['Johnny', 'Tommy', 'Jimmy', 'Rex', 'Spike'];
+    const fem = ['Roxy', 'Lola', 'Kitty', 'Ruby', 'Candy'];
+    for (let i = 0; i < 300; i++) {
+      expect(masc).not.toContain(stageName(new Rng(i), 'female').split(' ')[0]);
+      expect(fem).not.toContain(stageName(new Rng(i), 'male').split(' ')[0]);
+    }
+  });
+});

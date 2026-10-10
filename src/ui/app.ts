@@ -8,7 +8,7 @@ import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
 import type { TourPolicy } from '../game/types';
-import type { ActionType, Background, Beat, EffectChip, GameState, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, EffectChip, GameState, Gender, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
 import { nextGoal } from '../game/goals';
@@ -19,8 +19,11 @@ const DEBUG_KEY = 'glamstar.debug';
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 let state: GameState | null = load();
-let draft: NewGameInput = {
+let draft: NewGameInput & { firstName: string; lastName: string } = {
   name: '',
+  firstName: '',
+  lastName: '',
+  gender: 'male',
   stageName: '',
   instrument: 'none',
   bandName: bandName(new Rng(Date.now() % 100000)),
@@ -76,7 +79,8 @@ export function mount(root: HTMLElement): void {
   root.addEventListener('click', (e) => onClick(e, root));
   root.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement;
-    if (t.name === 'name') draft.name = t.value;
+    if (t.name === 'firstName') draft.firstName = t.value;
+    if (t.name === 'lastName') draft.lastName = t.value;
     if (t.name === 'stageName') draft.stageName = t.value;
     if (t.name === 'bandName') draft.bandName = t.value;
   });
@@ -103,10 +107,12 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'instrument': draft.instrument = arg as PlayerInstrument; break;
       case 'background': draft.background = arg as Background; break;
       case 'style': draft.style = arg as Genre; break;
-      case 'genStage': draft.stageName = stageName(new Rng(Math.floor(Math.random() * 1e9))); break;
+      case 'gender': draft.gender = arg as Gender; break;
+      case 'genStage': draft.stageName = stageName(new Rng(Math.floor(Math.random() * 1e9)), draft.gender); break;
       case 'genBand': draft.bandName = bandName(new Rng(Math.floor(Math.random() * 1e9))); break;
       case 'start':
-        if (!draft.name.trim()) { error = 'Enter your real name first. Your stage name is optional.'; break; }
+        if (!draft.firstName.trim() || !draft.lastName.trim()) { error = 'Enter your first and last name. Your stage name is optional.'; break; }
+        draft.name = `${draft.firstName.trim()} ${draft.lastName.trim()}`;
         state = newGame(draft);
         break;
       case 'open':
@@ -215,23 +221,33 @@ function playback(root: HTMLElement): void {
 function renderCreate(): string {
   const pressed = (b: boolean) => `aria-pressed="${b}"`;
   return `
-    <h1 class="logo">GLAMSTAR</h1>
+    <h1 class="logo">GLAMSTAR <span class="version">v${__APP_VERSION__}</span></h1>
     <p class="tagline">London, January 1982. You have a voice, three mates from the pub and a band name scribbled on a beer mat.</p>
     <div class="create">
       <div class="names">
         <div class="field">
-          <label for="name">Real name</label>
-          <input class="text" id="name" name="name" value="${esc(draft.name)}" placeholder="e.g. John Whitaker" autocomplete="off" />
+          <label for="firstName">First name</label>
+          <input class="text" id="firstName" name="firstName" value="${esc(draft.firstName)}" placeholder="e.g. ${draft.gender === 'female' ? 'Joanne' : draft.gender === 'male' ? 'John' : 'Sam'}" autocomplete="off" />
         </div>
         <div class="field">
+          <label for="lastName">Last name</label>
+          <input class="text" id="lastName" name="lastName" value="${esc(draft.lastName)}" placeholder="e.g. Whitaker" autocomplete="off" />
+        </div>
+        <div class="field wide">
           <label for="stageName">Known as</label>
           <div class="row">
-            <input class="text" id="stageName" name="stageName" value="${esc(draft.stageName ?? '')}" placeholder="e.g. Johnny Vain" autocomplete="off" />
+            <input class="text" id="stageName" name="stageName" value="${esc(draft.stageName ?? '')}" placeholder="e.g. ${draft.gender === 'female' ? 'Roxy Vain' : draft.gender === 'male' ? 'Johnny Vain' : 'Dusty Vain'}" autocomplete="off" />
             <button class="btn ghost" data-do="genStage">Suggest</button>
           </div>
         </div>
       </div>
       <p class="hint names-hint">The crowd chants your stage name. Contracts, landlords and gossip columns use the real one.</p>
+      <div class="field">
+        <span class="label">You are</span>
+        <div class="chips">
+          ${(['male', 'female', 'nonbinary'] as Gender[]).map((g) => `<button class="chip" data-do="gender" data-arg="${g}" ${pressed(draft.gender === g)}>${g === 'male' ? 'A man' : g === 'female' ? 'A woman' : 'Non-binary'}</button>`).join('')}
+        </div>
+      </div>
       <div class="field">
         <span class="label">You sing lead. Do you also play?</span>
         <div class="chips">
@@ -248,7 +264,7 @@ function renderCreate(): string {
       <div class="field">
         <span class="label">Where you come from</span>
         <div class="options">
-          ${(Object.keys(BACKGROUNDS) as Background[]).map((b) => `<button class="option" data-do="background" data-arg="${b}" ${pressed(draft.background === b)}><strong>${BACKGROUNDS[b].label}</strong><span>${BACKGROUNDS[b].text}</span></button>`).join('')}
+          ${(Object.keys(BACKGROUNDS) as Background[]).map((b) => `<button class="option" data-do="background" data-arg="${b}" ${pressed(draft.background === b)}><strong>${draft.gender === 'female' ? BACKGROUNDS[b].label.replace('Choirboy', 'Choirgirl') : draft.gender === 'nonbinary' ? BACKGROUNDS[b].label.replace('Choirboy', 'Choir kid') : BACKGROUNDS[b].label}</strong><span>${BACKGROUNDS[b].text}</span></button>`).join('')}
         </div>
       </div>
       <div class="field">
@@ -272,7 +288,7 @@ function renderGame(s: GameState): string {
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
-        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
+        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
       </div>
       <dl class="stats">
         <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>

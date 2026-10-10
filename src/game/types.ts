@@ -17,6 +17,8 @@ export interface Musician {
   realName: string;
   /** Hometown, for the tabloids. */
   from: string;
+  /** Set for the player; generated musicians go by their names. */
+  gender?: Gender;
   age: number;
   role: Role;
   /** Player can double on an instrument; bandmates may too. */
@@ -166,11 +168,14 @@ export interface Milestone {
   text: string;
 }
 
+export type Gender = 'male' | 'female' | 'nonbinary';
+
 export interface NewGameInput {
   /** Real name. */
   name: string;
   /** Known-as name; falls back to the real name. */
   stageName?: string;
+  gender?: Gender;
   instrument: PlayerInstrument;
   bandName: string;
   background: Background;

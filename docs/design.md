@@ -63,7 +63,7 @@ The band, the charts, songs and records, and the full history live in tabs besid
 
 ## Game start
 
-1. Player enters their **real name** and an optional **known-as (stage) name**, Football Manager style. The stage name is shown everywhere; contracts, landlords and gossip columns use the real name, and a tabloid exposé of a real name and hometown hurts image.
+1. Player picks a gender (man, woman, non-binary; it steers stage-name suggestions and a few labels, the game itself talks to "you"), enters first and last **real name** separately and an optional **known-as (stage) name**, Football Manager style. The stage name is shown everywhere; contracts, landlords and gossip columns use the real name, and a tabloid exposé of a real name and hometown hurts image.
 2. Player is always the **lead vocalist and frontperson**. They can also play: nothing, rhythm guitar or keyboards.
 3. Player picks a **band name** (typed or generated).
 4. Player picks a **background** that shapes starting stats (e.g. *Choirboy gone wrong*: vocals+, *Art school dropout*: image+ songwriting+, *Factory kid*: stamina+ reliability+).
@@ -180,11 +180,15 @@ Band, song, album, stage and real names are generated from large word pools and 
 - Pure, seedable game logic in `src/game/`, separate from rendering in `src/ui/`. Logic is unit tested with Vitest.
 - Save games in browser localStorage.
 
-## Prototype status (v0.1)
+## Versioning
+
+The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
+
+## Prototype status (v0.2)
 
 Playable in the browser. Implemented:
 
-- Character creation: name, optional instrument, band name (typed or generated), background, sound.
+- Character creation: gender, first and last name, optional stage name and instrument, band name (typed or generated), background, sound.
 - Generated starting trio (guitar, bass, drums), uneven by design, with hidden traits.
 - Character cards with gold/silver/bronze tiers by overall rating; hidden traits revealed through events and time.
 - Chemistry from style, relationships, mood and ego clashes; performance from skill, stage presence, tightness, songs and chemistry.

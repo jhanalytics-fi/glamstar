@@ -198,6 +198,7 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
     id: 'p',
     name: input.stageName?.trim() || input.name.trim() || 'Nobody',
     realName: input.name.trim() || 'Nobody',
+    ...(input.gender ? { gender: input.gender } : {}),
     from: hometown(rng),
     age: 20,
     role: 'vocals',

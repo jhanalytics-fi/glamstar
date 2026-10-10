@@ -783,6 +783,9 @@ const GLAM_LAST = [
   'Shock', 'Glitz', 'Spark', 'Flame', 'Ember', 'Cinder', 'Sweet', 'Sugar', 'Candy', 'Trash',
   'Bordeaux', 'Montague', 'Delacroix', 'Ravenscroft', 'Hellfire', 'Darkheart', 'Nightshade', 'Wildheart', 'Blackwood', 'Strange',
 ];
+/** Glam first names that read clearly one way; everything else in GLAM_FIRST goes either way. */
+const GLAM_FEM = new Set(['Misty', 'Roxy', 'Lizzy', 'Candy', 'Cherry', 'Lola', 'Suzy', 'Kitty', 'Vicki', 'Lexi', 'Gigi', 'Bunny', 'Honey', 'Kiki', 'Lulu', 'Trixie', 'Bambi', 'Lacey', 'Jade', 'Ruby', 'Scarlett', 'Electra', 'Christie', 'Raven', 'Sable', 'Angel']);
+const GLAM_MASC = new Set(['Johnny', 'Vinnie', 'Tommy', 'Bobby', 'Danny', 'Jimmy', 'Rocky', 'Ricky', 'Cody', 'Rusty', 'Sonny', 'Mikey', 'Joey', 'Davey', 'Rex', 'Max', 'Zak', 'Jax', 'Shane', 'Spike', 'Taz', 'Lex', 'Tyger']);
 /** One-name stage acts. */
 const GLAM_SINGLE = [
   'Stiletto', 'Zircon', 'Electra', 'Fang', 'Cobalt', 'Jinx', 'Nova', 'Halo', 'Vesper', 'Rook',
@@ -795,10 +798,11 @@ export function hometown(rng: Rng): string {
 }
 
 /** An invented showbiz name, e.g. "Nikki Valentine", or a one-word act. */
-export function stageName(rng: Rng): string {
+export function stageName(rng: Rng, gender?: 'male' | 'female' | 'nonbinary'): string {
+  const firsts = gender === 'female' ? GLAM_FIRST.filter((f) => !GLAM_MASC.has(f)) : gender === 'male' ? GLAM_FIRST.filter((f) => !GLAM_FEM.has(f)) : GLAM_FIRST;
   for (let i = 0; i < 20; i++) {
     const r = rng.next();
-    const n = r < 0.08 ? rng.pick(GLAM_SINGLE) : r < 0.15 ? rng.pick(GLAM_LAST) : `${rng.pick(GLAM_FIRST)} ${rng.pick(GLAM_LAST)}`;
+    const n = r < 0.08 ? rng.pick(GLAM_SINGLE) : r < 0.15 ? rng.pick(GLAM_LAST) : `${rng.pick(firsts)} ${rng.pick(GLAM_LAST)}`;
     if (!isBlockedPerson(n) && !n.startsWith(n.split(' ').at(-1) + ' ')) return n;
   }
   return 'Kid Nobody';
