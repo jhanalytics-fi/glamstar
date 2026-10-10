@@ -135,7 +135,7 @@ Every weekly action opens a set of choices with different costs and effects, so 
 
 ## Random situations
 
-About one week in three brings a situation the player must answer before the week continues, with 2-5 responses that trade money, mood, loyalty, buzz, habits and fans. Current set: band fights, the landlord, arrests, interviews, a dealer, a partner who wants to sing, a member demanding control, the van dying, buying a van, gear bargains, a fan roadie, battle of the bands, a police raid, Saturday morning TV, health scares, a radio session, poaching, and Christmas. Smaller news items (gig guide mentions, gossip columns, theft) still happen without a choice. New situations are added in `src/game/events.ts`.
+About one week in three brings one of about 60 situations the player must answer before the week continues, with 2-5 responses that trade money, mood, loyalty, buzz, habits and fans. They cover all four pillars, for example managers with hidden contract clauses, A&R scouts, pirate radio, support tours, benefit gigs, jingle sell-outs, bootlegs, plagiarism claims, tabloid stings, makeovers, Christmas singles, insurance and stolen kit, drink-driving temptation (always with a safe option), heroin scares, band fights, the landlord, arrests, interviews, a dealer, a partner who wants to sing, a member demanding control, the van dying, buying a van, gear bargains, a fan roadie, battle of the bands, a police raid, Saturday morning TV, health scares, a radio session, poaching, and Christmas. Smaller news items (gig guide mentions, gossip columns, theft) still happen without a choice. New situations are added in `src/game/events.ts`.
 
 ## Later systems (after the prototype)
 
@@ -150,7 +150,7 @@ About one week in three brings a situation the player must answer before the wee
 
 ## Name generation
 
-Band, album, song, venue and character names are generated from word pools and patterns that imitate the era (e.g. "[Adjective] [Plural noun]", "[Noun] of [Noun]", deliberately misspelled glam names). Generated names are checked against a small blocklist of real famous bands.
+Band, song, album, stage and real names are generated from large word pools and 95 patterns modelled on how 1980s chart acts and songs were named (studied from Billboard year-end lists): parenthetical titles, repetition, dropped g's, "X and the Ys", phrase names, mononyms, glam misspellings and umlauts. The patterns are borrowed, never the names: fuzzy-matched blocklists of about 700 real bands, 300 real musicians and 1,250 real song and album titles reject anything real or near-real ("Def Leopard" included). Music-press review quotes come from `PRESS_GOOD` and `PRESS_BAD`.
 
 ## Technical approach
 

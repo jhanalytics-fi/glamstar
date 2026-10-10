@@ -2,10 +2,10 @@
 import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
-import { PRESS, VENUES, songTitle } from './names';
+import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
 import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
-import { gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
+import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { Action, ActionType, GameState, Genre, Musician, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -240,10 +240,10 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     if (rng.chance(0.12 + s.buzz / 300)) {
       if (perf >= 60) {
         addBuzz(s, 6);
-        log(s, `${PRESS} was there: "${rng.pick(['Ear-splitting and gorgeous', 'Leather, lipgloss and a lot of noise', 'The best thing in Camden on a Tuesday', 'Loud enough to stop your heart'])}."`, 'good');
+        log(s, `${PRESS} was there: "${rng.pick(PRESS_GOOD)}"`, 'good');
       } else {
         addBuzz(s, -3);
-        log(s, `${PRESS} was there: "${rng.pick(['Like a pub fight with amplifiers', 'Avoid', 'Hair: 9/10. Music: see me after class', 'The singer looked lost, so did the songs'])}."`, 'bad');
+        log(s, `${PRESS} was there: "${rng.pick(PRESS_BAD)}"`, 'bad');
       }
     }
   }
@@ -251,7 +251,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
 
 function rehearse(s: GameState, rng: Rng, option: string): void {
   const here = available(s);
-  rehearsalCommentary(s, option);
+  rehearsalCommentary(s, option, rng);
   let gain = 6 + Math.round(chemistry(s).total / 25);
   if (option === 'bootcamp') gain = Math.round(gain * 1.8);
   if (option === 'coach' || option === 'stageshow') gain = Math.round(gain * 0.6);
@@ -341,6 +341,7 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
     bootcamp: 'Boot camp week. Nobody drank, everybody suffered',
     coach: 'A session pro drilled the band all week',
     stageshow: 'A week of rehearsing poses, kicks and the smoke machine',
+    lessons: 'A week of lessons and rehearsals',
   };
   log(s, `${what[option]}. Tightness ${s.tightness}.`, 'good');
 }
@@ -422,7 +423,7 @@ export const RELEASE_SONGS: Record<ReleaseKind, number> = { demo: 3, single: 2, 
 const RELEASE_LABEL: Record<ReleaseKind, string> = { demo: 'demo tape', single: '7" single', ep: '12" EP', album: 'album' };
 
 function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
-  releaseCommentary(s, kind);
+  releaseCommentary(s, kind, rng);
   const pool = kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
   const studio = kind === 'demo' ? -8 : kind === 'single' ? 0 : 3;
@@ -487,7 +488,7 @@ function party(s: GameState, rng: Rng, option: string): void {
 }
 
 function rest(s: GameState, rng: Rng, option: string): void {
-  restCommentary(s, option);
+  restCommentary(s, option, rng);
   for (const m of s.members) {
     switch (option) {
       case 'sleep':
@@ -534,6 +535,7 @@ function rest(s: GameState, rng: Rng, option: string): void {
 const PLURAL: Record<Role, string> = { guitar: 'guitarists', bass: 'bassists', drums: 'drummers', keys: 'keyboard players', vocals: 'singers' };
 
 function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
+  advertCommentary(s, rng, option, role);
   const style = player(s).style;
   const taken = s.members.flatMap((m) => [m.name, m.realName]);
   const base = clamp(0.2 + s.fans / 2000 + s.buzz / 300, 0, 0.7);
