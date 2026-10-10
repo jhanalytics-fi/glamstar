@@ -95,7 +95,12 @@ export function upgradeSave(s: GameState): GameState {
     song.genre ??= s.members[0].style;
     song.released ??= false;
   }
-  for (const st of s.world.stars) st.age ??= 6;
+  for (const st of s.world.stars) {
+    st.age ??= 6;
+    st.album ??= `${st.name} Live`;
+    st.albumAge ??= 30;
+  }
+  s.world.charts.albums ??= [];
   const rng = new Rng(s.rng);
   for (const m of [...s.members, ...s.candidates]) {
     m.seen ??= 100;

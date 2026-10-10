@@ -559,7 +559,7 @@ function reducedMotion(): boolean {
 
 function chartsSection(s: GameState): string {
   const tabs = (Object.keys(CHART_NAME) as ChartId[])
-    .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'National' : id === 'europe' ? 'Europe' : 'World'}</button>`)
+    .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'National' : id === 'albums' ? 'Albums' : id === 'europe' ? 'Europe' : 'World'}</button>`)
     .join('');
   const rows = s.world.charts[chartTab];
   const mine = rows.find((r) => r.isPlayer);
@@ -569,7 +569,7 @@ function chartsSection(s: GameState): string {
   const note =
     chartTab === 'london'
       ? mine ? `You're at #${mine.pos}.` : 'Ranked by fans and buzz on the gig circuit. Keep gigging to break in.'
-      : mine ? `Your record is at #${mine.pos}.` : 'Release a single that sells and you could chart here.';
+      : mine ? `Your record is at #${mine.pos}.` : chartTab === 'albums' ? 'Release an album that sells and you could chart here.' : 'Release a single that sells and you could chart here.';
   const hot = hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ');
   return `
     <section class="charts">
@@ -577,7 +577,7 @@ function chartsSection(s: GameState): string {
       <p class="hint">${CHART_NAME[chartTab]}, ${dateLabel(s.week)}. ${note} Selling right now: ${hot}.</p>
       <div class="chart-wrap">
         <table class="chart">
-          <thead><tr><th>#</th><th>Move</th><th>Artist</th>${chartTab === 'london' ? '' : '<th>Single</th><th>From</th>'}<th>Wks</th></tr></thead>
+          <thead><tr><th>#</th><th>Move</th><th>Artist</th>${chartTab === 'london' ? '' : `<th>${chartTab === 'albums' ? 'Album' : 'Single'}</th><th>From</th>`}<th>Wks</th></tr></thead>
           <tbody>${shown
             .map(
               (r) => `<tr class="${r.isPlayer ? 'me' : ''}"><td class="pos">${r.pos}</td><td>${move(r)}</td><td>${esc(r.artist)}</td>${chartTab === 'london' ? '' : `<td>${esc(r.title ?? '')}</td><td>${r.origin ?? ''}</td>`}<td>${r.weeks}</td></tr>`,

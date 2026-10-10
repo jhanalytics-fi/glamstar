@@ -644,8 +644,8 @@ const MARGIN: Record<ReleaseKind, number> = { demo: 0, single: 0.35, ep: 0.9, al
 const KIND_DEMAND: Record<ReleaseKind, number> = { demo: 0, single: 1, ep: 0.7, album: 0.6 };
 
 /** Records in shops sell for a while after release. Returns this week's units for the charts. */
-export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => number): { id: string; title: string; units: number }[] {
-  const out: { id: string; title: string; units: number }[] = [];
+export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => number): { id: string; title: string; units: number; kind: string }[] {
+  const out: { id: string; title: string; units: number; kind: string }[] = [];
   for (const r of s.releases) {
     if (r.kind === 'demo') continue;
     const age = s.week - r.week;
@@ -657,7 +657,7 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
       s.money += Math.round(units * MARGIN[r.kind]);
       // Records win new listeners, but each extra fan is harder to find than the last.
       s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
-      out.push({ id: r.id, title: r.title, units });
+      out.push({ id: r.id, title: r.title, units, kind: r.kind });
     }
   }
   return out;

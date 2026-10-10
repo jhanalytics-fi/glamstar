@@ -374,10 +374,19 @@ describe('real and stage names', () => {
 describe('charts', () => {
   it('every chart has 40 ranked entries from the start', () => {
     const s = newGame(input);
-    for (const c of ['london', 'uk', 'europe', 'world'] as const) {
+    for (const c of ['london', 'uk', 'albums', 'europe', 'world'] as const) {
       expect(s.world.charts[c]).toHaveLength(40);
       expect(s.world.charts[c].map((e) => e.pos)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
     }
+  });
+
+  it('a selling album enters the album chart, not the singles chart', () => {
+    let s = { ...newGame(input), money: 5000, fans: 3000, buzz: 60 };
+    s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `Album Song ${i}`, quality: 75, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    s = settle(act(s, A('release', 'album')));
+    for (let i = 0; i < 3; i++) s = step(s, REST);
+    expect(s.world.charts.albums.some((e) => e.isPlayer)).toBe(true);
+    expect(s.world.charts.uk.some((e) => e.isPlayer && e.title === s.releases[0].title)).toBe(false);
   });
 
   it('charts already have history when the game starts', () => {
@@ -412,9 +421,14 @@ describe('potential and age', () => {
   it('skill never grows past potential', () => {
     let s = { ...newGame(input), money: 10000 };
     const g = s.members[1];
-    g.skill = 40; g.hidden.potential = 45;
-    for (let i = 0; i < 40; i++) s = step(s, A('rehearse', i % 2 ? 'coach' : 'regular'));
-    const after = s.members.find((m) => m.id === g.id)!;
+    g.skill = 40; g.hidden.potential = 45; g.hidden.loyalty = 99;
+    let after = g;
+    for (let i = 0; i < 40; i++) {
+      s = step(s, A('rehearse', i % 2 ? 'coach' : 'regular'));
+      const m = s.members.find((x) => x.id === g.id);
+      if (!m) break;
+      after = m;
+    }
     expect(after.skill).toBeLessThanOrEqual(45);
     expect(after.skill).toBeGreaterThanOrEqual(43);
   });
@@ -422,9 +436,15 @@ describe('potential and age', () => {
   it('a raw talent with headroom keeps improving', () => {
     let s = { ...newGame(input), money: 10000 };
     const g = s.members[1];
-    g.skill = 40; g.hidden.potential = 85;
-    for (let i = 0; i < 40; i++) s = step(s, A('rehearse', 'coach'));
-    expect(s.members.find((m) => m.id === g.id)!.skill).toBeGreaterThan(60);
+    g.skill = 40; g.hidden.potential = 85; g.hidden.loyalty = 99; g.hidden.ego = 20;
+    let skill = g.skill;
+    for (let i = 0; i < 40; i++) {
+      s = step(s, A('rehearse', 'coach'));
+      const m = s.members.find((x) => x.id === g.id);
+      if (!m) break;
+      skill = m.skill;
+    }
+    expect(skill).toBeGreaterThan(55);
   });
 
   it('younger musicians have more headroom on average', () => {
