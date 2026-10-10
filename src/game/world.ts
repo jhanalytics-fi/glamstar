@@ -103,10 +103,29 @@ const PLAYABLE: Genre[] = ['metal', 'hardrock', 'glam', 'punk', 'newwave'];
 const STAR_GENRES: StarGenre[] = ['pop', 'pop', 'pop', 'newwave', 'newwave', 'hardrock', 'metal', 'glam', 'punk'];
 const EURO: Origin[] = ['SWE', 'GER', 'ITA', 'NED', 'FIN', 'FRA'];
 
+const STOP = new Set(['the', 'and', 'of', 'a', 'an', 'in', 'on', 'de', 'der', 'die', 'la', 'le', 'les', 'el', 'los', 'mc', 'mr', 'dr']);
+
+/** Spelling-blind keys for the significant words of an act name: "Lüst Hartz" and "Lust Harts" collide. */
+export function nameKeys(name: string): string[] {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 1 && !STOP.has(w))
+    .map((w) => w.replace(/ph/g, 'f').replace(/ck/g, 'k').replace(/z/g, 's').replace(/y/g, 'i').replace(/(.)\1+/g, '$1').replace(/s$/, ''));
+}
+
+const clashes = (name: string, taken: Set<string>) => taken.has(name) || nameKeys(name).some((k) => taken.has(`w:${k}`));
+function claim(name: string, taken: Set<string>) {
+  taken.add(name);
+  for (const k of nameKeys(name)) taken.add(`w:${k}`);
+}
+
 function newRival(rng: Rng, id: string, taken: Set<string>, fans?: number): Rival {
   let name = bandName(rng);
-  for (let i = 0; i < 10 && taken.has(name); i++) name = bandName(rng);
-  taken.add(name);
+  for (let i = 0; i < 60 && clashes(name, taken); i++) name = bandName(rng);
+  claim(name, taken);
   return {
     id,
     name,
@@ -119,14 +138,15 @@ function newRival(rng: Rng, id: string, taken: Set<string>, fans?: number): Riva
 
 function newStar(rng: Rng, id: string, taken: Set<string>, origin: Origin, fame: number, genre?: StarGenre, name?: string): Star {
   let n = name ?? (rng.chance(0.3) ? stageName(rng) : bandName(rng));
-  for (let i = 0; i < 10 && taken.has(n); i++) n = rng.chance(0.3) ? stageName(rng) : bandName(rng);
-  taken.add(n);
+  for (let i = 0; i < 60 && clashes(n, taken); i++) n = rng.chance(0.3) ? stageName(rng) : bandName(rng);
+  claim(n, taken);
   const age = rng.int(0, 14);
   return { id, name: n, genre: genre ?? rng.pick(STAR_GENRES), origin, fame, single: songTitle(rng), age, heat: heatCurve(age), album: albumTitle(rng), albumAge: rng.int(0, 60) };
 }
 
 export function createWorld(rng: Rng, playerBand: string): World {
-  const taken = new Set([playerBand]);
+  const taken = new Set<string>();
+  claim(playerBand, taken);
   let nextId = 1;
   const id = (p: string) => `${p}${nextId++}`;
   const rivals = Array.from({ length: RIVAL_COUNT }, () => newRival(rng, id('r'), taken));
@@ -156,7 +176,8 @@ export interface ChartNews {
 /** Advance the outside world by one week and recompute every chart. Returns news worth logging. */
 export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerChartInput): ChartNews[] {
   const news: ChartNews[] = [];
-  const taken = new Set([player.bandName, ...w.rivals.map((r) => r.name), ...w.stars.map((s) => s.name)]);
+  const taken = new Set<string>();
+  for (const n of [player.bandName, ...w.rivals.map((r) => r.name), ...w.stars.map((s) => s.name)]) claim(n, taken);
 
   // London circuit
   for (const r of w.rivals) {

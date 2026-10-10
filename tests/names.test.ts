@@ -113,3 +113,23 @@ describe('pools', () => {
     }
   });
 });
+
+describe('world act names', () => {
+  it('no two acts share a significant word, even spelled differently', async () => {
+    const { newGame } = await import('../src/game/engine');
+    const { nameKeys } = await import('../src/game/world');
+    for (const seed of [1, 2, 3, 7, 42]) {
+      const s = newGame({ name: 'X', instrument: 'none', bandName: 'The Testers', background: 'artschool', style: 'glam', seed });
+      const seen = new Map<string, string>();
+      let clashes = 0;
+      for (const n of [...s.world.rivals.map((r) => r.name), ...s.world.stars.map((x) => x.name)]) {
+        for (const k of nameKeys(n)) {
+          if (seen.has(k) && seen.get(k) !== n) clashes++;
+          seen.set(k, n);
+        }
+      }
+      expect(clashes).toBe(0);
+    }
+    expect(nameKeys('Lüst Hartz')[0]).toBe(nameKeys('Lust Lyarz')[0]);
+  });
+});
