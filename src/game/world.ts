@@ -133,6 +133,8 @@ export interface PlayerChartInput {
   bandName: string;
   fans: number;
   buzz: number;
+  /** Your records in the shops and this week's sales. */
+  records?: { id: string; title: string; units: number }[];
 }
 
 export interface ChartNews {
@@ -203,6 +205,9 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
         score: s.fame * s.heat * trend(s.genre, week) * ORIGIN_WEIGHT[c](s.origin) * (0.92 + rng.next() * 0.16),
         isPlayer: false,
       }));
+    for (const r of player.records ?? []) {
+      rows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK', score: (r.units / 27) * ORIGIN_WEIGHT[c]('UK') * (0.92 + rng.next() * 0.16), isPlayer: true });
+    }
     setChart(w, c, rows);
   }
 
@@ -215,6 +220,14 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
       news.push({ text: me.pos === 1 ? `Number one on the ${CHART_NAME.london}. London is yours.` : `New peak: #${me.pos} on the ${CHART_NAME.london}.`, tone: 'good' });
     }
     w.peaks.london = Math.min(prevPeak ?? Infinity, me.pos);
+  }
+  for (const c of ['uk', 'europe', 'world'] as const) {
+    const mine = w.charts[c].filter((e) => e.isPlayer).sort((a, b) => a.pos - b.pos)[0];
+    if (!mine) continue;
+    const prevPeak = w.peaks[c];
+    if (prevPeak === undefined) news.push({ text: `"${mine.title}" entered the ${CHART_NAME[c]} at #${mine.pos}!`, tone: 'good' });
+    else if (mine.pos < prevPeak && mine.pos <= 10) news.push({ text: `"${mine.title}" climbed to #${mine.pos} on the ${CHART_NAME[c]}.`, tone: 'good' });
+    w.peaks[c] = Math.min(prevPeak ?? Infinity, mine.pos);
   }
   return news;
 }

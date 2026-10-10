@@ -317,3 +317,45 @@ section + section { margin-top: 32px; }
 .mv.down { color: var(--bad); }
 .mv.new { color: var(--chrome); }
 .btn.small { padding: 6px 12px; font-size: 0.9rem; }
+
+/* ---------------------------------------------------------------- choices & events */
+
+.action-group { display: grid; gap: 6px; }
+.action[aria-expanded='true'] { border-color: var(--lipstick); }
+
+.choices { display: grid; gap: 6px; padding-left: 12px; border-left: 2px solid var(--lipstick); }
+
+.choice {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--smoke);
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.choice:hover:not(:disabled) { border-color: var(--chrome); background: rgba(143, 227, 240, 0.08); }
+.choice:disabled { cursor: not-allowed; opacity: 0.5; }
+.choice-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.choice-head strong { font-weight: 600; }
+.cost { font-family: var(--cond); font-weight: 700; color: var(--nicotine); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.choice-hint { color: var(--muted); font-size: 0.9rem; }
+
+.role-pick { font-family: var(--cond); color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.role-pick select { background: var(--plum); border: 1px solid var(--smoke); border-radius: 6px; padding: 4px 8px; }
+
+.event {
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  background: linear-gradient(var(--plum), var(--plum)) padding-box, var(--gold) border-box;
+}
+.event h2 { font-size: 1.2rem; text-wrap: balance; }
+.event p { margin: 0 0 12px; }
+.event .choices { padding-left: 0; border-left: 0; }
+
+.rel-list { margin: 0 0 8px; padding-left: 18px; }
+.rel-list li { margin-bottom: 4px; }
+.cost.free { color: var(--muted); font-weight: 600; }

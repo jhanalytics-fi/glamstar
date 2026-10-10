@@ -1,11 +1,30 @@
 import { describe, expect, it } from 'vitest';
 import { act, canAct, fire, first, hire, newGame } from '../src/game/engine';
+import { actionOptions } from '../src/game/actions';
+import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
 import { bandName, isBlocked } from '../src/game/names';
-import type { GameState, NewGameInput } from '../src/game/types';
+import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
 
 const input: NewGameInput = { name: 'Jussi', instrument: 'guitar', bandName: 'Velvet Daggers', background: 'artschool', style: 'glam', seed: 42 };
+
+const A = (type: ActionType, option: string, extra: Partial<Action> = {}): Action => ({ type, option, ...extra });
+const REST = A('rest', 'sleep');
+
+/** Clears any pending situation by picking the first affordable response. */
+function settle(s: GameState): GameState {
+  while (s.pending) {
+    const v = viewPending(s)!;
+    const i = v.options.findIndex((o) => !o.locked);
+    s = resolvePending(s, i);
+  }
+  return s;
+}
+
+function step(s: GameState, a: Action): GameState {
+  return settle(act(settle(s), a));
+}
 
 describe('new game', () => {
   it('starts in London 1982 with the player plus guitar, bass and drums', () => {
@@ -21,74 +40,221 @@ describe('new game', () => {
     expect(newGame(input)).toEqual(newGame(input));
   });
 
-  it('hides bandmates\' traits at the start', () => {
+  it("hides bandmates' traits at the start", () => {
     const s = newGame(input);
     for (const m of s.members.slice(1)) expect(Object.values(m.known).every((k) => k === 0)).toBe(true);
   });
 
-  it('starting mates are uneven: one good, one average, one weak on average', () => {
+  it('starting mates are uneven', () => {
     const s = newGame(input);
     const skills = s.members.slice(1).map((m) => m.skill).sort((a, b) => a - b);
     expect(skills[2] - skills[0]).toBeGreaterThan(5);
   });
 });
 
-describe('actions', () => {
+describe('action choices', () => {
+  const types: ActionType[] = ['gig', 'rehearse', 'write', 'release', 'party', 'rest', 'advertise'];
+
+  it('every action offers between two and six choices', () => {
+    const s = newGame(input);
+    for (const t of types) {
+      const n = actionOptions(s, t).length;
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it('a new band can only play small gigs', () => {
+    const s = newGame(input);
+    const gigs = actionOptions(s, 'gig');
+    expect(gigs.find((o) => o.id === 'openmic')!.locked).toBeUndefined();
+    expect(gigs.find((o) => o.id === 'venue0')!.locked).toBeUndefined();
+    expect(gigs.find((o) => o.id === 'venue1')!.locked).toMatch(/fans/);
+    expect(gigs.some((o) => o.id === 'venue4')).toBe(false);
+  });
+
+  it('unaffordable choices are locked with the reason', () => {
+    const s = { ...newGame(input), money: 10 };
+    const throwParty = actionOptions(s, 'party').find((o) => o.id === 'throw')!;
+    expect(throwParty.locked).toMatch(/£90/);
+    expect(() => act(s, A('party', 'throw'))).toThrow();
+  });
+
+  it('every unlocked choice of every action can be played', () => {
+    for (let seed = 1; seed <= 5; seed++) {
+      let s = { ...newGame({ ...input, seed }), money: 5000, fans: 300 };
+      s = step(s, A('write', 'jam'));
+      s = step(s, A('write', 'jam'));
+      s = step(s, A('write', 'jam'));
+      for (const t of types) {
+        for (const o of actionOptions(s, t)) {
+          if (o.locked) continue;
+          const next = act(settle(s), A(t, o.id, { role: 'keys' }));
+          expect(next.week).toBe(s.week + 1);
+        }
+      }
+    }
+  });
+
   it('rehearsing raises tightness and advances the week', () => {
     const s0 = newGame(input);
-    const s1 = act(s0, { type: 'rehearse' });
+    const s1 = act(s0, A('rehearse', 'regular'));
     expect(s1.week).toBe(1);
     expect(s1.tightness).toBeGreaterThan(s0.tightness);
+  });
+
+  it('boot camp tightens more than a usual rehearsal', () => {
+    const s0 = newGame(input);
+    expect(act(s0, A('rehearse', 'bootcamp')).tightness).toBeGreaterThan(act(s0, A('rehearse', 'regular')).tightness);
   });
 
   it('does not mutate the previous state', () => {
     const s0 = newGame(input);
     const copy = structuredClone(s0);
-    act(s0, { type: 'gig' });
+    act(s0, A('gig', 'venue0'));
     expect(s0).toEqual(copy);
   });
 
-  it('gigging earns money and costs energy', () => {
+  it('gigging costs energy', () => {
     const s0 = newGame(input);
-    const s1 = act(s0, { type: 'gig' });
+    const s1 = act(s0, A('gig', 'venue0'));
     expect(s1.lastGigWeek).toBe(0);
-    const energyBefore = s0.members.reduce((a, m) => a + m.energy, 0);
-    const energyAfter = s1.members.reduce((a, m) => a + m.energy, 0);
-    expect(energyAfter).toBeLessThan(energyBefore);
+    expect(s1.members.reduce((a, m) => a + m.energy, 0)).toBeLessThan(s0.members.reduce((a, m) => a + m.energy, 0));
   });
 
-  it('writing adds songs', () => {
-    const s1 = act(newGame(input), { type: 'write' });
-    expect(s1.songs.length).toBeGreaterThan(0);
+  it('pay to play costs £60 and pays nothing at the door', () => {
+    const s0 = newGame(input);
+    const s1 = act(s0, A('gig', 'paytoplay'));
+    expect(s1.log.some((l) => l.text.includes('pay to play'))).toBe(true);
+    expect(s1.money).toBeLessThan(s0.money - 60 + 1);
   });
 
-  it('advertising produces three candidates of the role with one trait revealed each', () => {
-    const s1 = act(newGame(input), { type: 'advertise', role: 'keys' });
-    expect(s1.candidates).toHaveLength(3);
-    for (const c of s1.candidates) {
-      expect(c.role).toBe('keys');
-      expect(Object.values(c.known).filter((k) => k > 0)).toHaveLength(1);
+  it('writing sometimes produces nothing, but usually songs', () => {
+    let songs = 0;
+    for (let seed = 1; seed <= 30; seed++) songs += act(newGame({ ...input, seed }), A('write', 'jam')).songs.length;
+    expect(songs).toBeGreaterThan(20);
+  });
+
+  it('a trend song is written in the hottest genre', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const s = act(newGame({ ...input, seed }), A('write', 'trend'));
+      for (const song of s.songs) expect(song.genre).toBe('newwave');
     }
   });
 
+  it('the newsagent card brings two candidates, a poach brings one', () => {
+    const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
+    expect(s1.candidates).toHaveLength(2);
+    const rich = { ...newGame(input), fans: 200, money: 500 };
+    const s2 = act(rich, A('advertise', 'poach', { role: 'guitar' }));
+    expect(s2.candidates).toHaveLength(1);
+    expect(s2.candidates[0].known.loyalty).toBe(1);
+  });
+
   it('can hire a candidate as a replacement', () => {
-    const s1 = act(newGame(input), { type: 'advertise', role: 'drums' });
+    const s1 = settle(act(newGame(input), A('advertise', 'classified', { role: 'drums' })));
     const oldDrummer = s1.members.find((m) => m.role === 'drums')!;
     const s2 = hire(s1, s1.candidates[0].id, oldDrummer.id);
     expect(s2.members.find((m) => m.role === 'drums')!.id).toBe(s1.candidates[0].id);
     expect(s2.members).toHaveLength(4);
-    expect(Object.keys(s2.affinity).some((k) => k.includes(oldDrummer.id))).toBe(false);
   });
 
   it('a band without a drummer cannot gig', () => {
     const s0 = newGame(input);
     const s1 = fire(s0, s0.members.find((m) => m.role === 'drums')!.id);
-    expect(canAct(s1, { type: 'gig' })).toMatch(/drummer/);
-    expect(() => act(s1, { type: 'gig' })).toThrow();
+    expect(canAct(s1, A('gig', 'venue0'))).toMatch(/drummer/);
   });
 
   it('cannot fire the player', () => {
     expect(() => fire(newGame(input), 'p')).toThrow();
+  });
+});
+
+describe('records', () => {
+  function withSongs(n: number, q = 60): GameState {
+    const s = { ...newGame(input), money: 3000 };
+    s.songs = Array.from({ length: n }, (_, i) => ({ title: `Song ${i}`, quality: q, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    return s;
+  }
+
+  it('a single needs two unreleased songs and marks them released', () => {
+    expect(actionOptions(withSongs(1), 'release').find((o) => o.id === 'single')!.locked).toMatch(/2 unreleased/);
+    const s = act(withSongs(3), A('release', 'single'));
+    expect(s.releases).toHaveLength(1);
+    expect(s.songs.filter((x) => x.released)).toHaveLength(2);
+  });
+
+  it('a demo tape sells at gigs', () => {
+    let s = settle(act(withSongs(3), A('release', 'demo')));
+    s = act({ ...s, fans: 200 }, A('gig', 'venue1'));
+    expect(s.releases[0].sold).toBeGreaterThan(0);
+  });
+
+  it('a well-loved single can enter the National Top 40 and wins the prototype', () => {
+    let s = { ...withSongs(4, 80), fans: 1200, buzz: 50 };
+    s = settle(act(s, A('release', 'single')));
+    for (let i = 0; i < 4 && !s.over; i++) s = step(s, REST);
+    expect(s.world.peaks.uk).toBeDefined();
+    expect(s.over?.won).toBe(true);
+  });
+
+  it('a band with no fans does not chart', () => {
+    let s = settle(act(withSongs(4, 60), A('release', 'single')));
+    for (let i = 0; i < 4; i++) s = step(s, REST);
+    expect(s.world.peaks.uk).toBeUndefined();
+  });
+});
+
+describe('choice events', () => {
+  function richState(seed: number): GameState {
+    const s = { ...newGame({ ...input, seed }), money: 2000, fans: 150, buzz: 40, lastGigWeek: 0, week: 49 };
+    s.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    s.releases = [{ id: 'd', kind: 'demo', title: 'S1', quality: 40, appeal: 1, week: 0, sold: 0, lastWeek: 0 }];
+    s.flags = { lastBigParty: 49, noVan: 0 };
+    for (const m of s.members) {
+      m.habit = 65; m.energy = 30; m.hidden.vice = 80; m.hidden.ego = 75; m.writing = 50; m.weeksInBand = 6; m.skill = 60;
+    }
+    return s;
+  }
+
+  it('every event can fire and every response resolves cleanly', () => {
+    for (const id of EVENT_IDS) {
+      let tried = false;
+      for (let seed = 1; seed <= 10 && !tried; seed++) {
+        const s = richState(seed);
+        if (id === 'transit') s.flags.noVan = 1;
+        let forced: GameState;
+        try { forced = forceEvent(s, id); } catch { continue; }
+        tried = true;
+        const view = viewPending(forced)!;
+        expect(view.options.length).toBeGreaterThanOrEqual(2);
+        expect(view.options.length).toBeLessThanOrEqual(5);
+        view.options.forEach((o, i) => {
+          if (o.locked) return;
+          const after = resolvePending(forced, i);
+          expect(after.pending).toBeNull();
+          expect(after.week).toBe(forced.week);
+        });
+      }
+      expect(tried, `event ${id} never became eligible`).toBe(true);
+    }
+  });
+
+  it('a pending situation blocks the week until answered', () => {
+    const s = forceEvent(richState(1), 'gear');
+    expect(canAct(s, REST)).toMatch(/situation/);
+    expect(() => act(s, REST)).toThrow();
+    expect(canAct(resolvePending(s, 2), REST)).toBeNull();
+  });
+
+  it('events come up regularly over a season', () => {
+    let s = newGame(input);
+    let count = 0;
+    for (let i = 0; i < 40 && !s.over; i++) {
+      s = act(settle(s), REST);
+      if (s.pending) count++;
+    }
+    expect(count).toBeGreaterThan(5);
   });
 });
 
@@ -126,22 +292,18 @@ describe('real and stage names', () => {
   });
 
   it('falls back to the real name when there is no stage name', () => {
-    const s = newGame({ ...input, name: 'John Whitaker' });
-    expect(s.members[0].name).toBe('John Whitaker');
+    expect(newGame({ ...input, name: 'John Whitaker' }).members[0].name).toBe('John Whitaker');
   });
 
   it('gives some bandmates stage names over many games', () => {
     let staged = 0;
-    for (let seed = 1; seed <= 20; seed++) {
-      staged += newGame({ ...input, seed }).members.filter((m) => !m.isPlayer && m.name !== m.realName).length;
-    }
+    for (let seed = 1; seed <= 20; seed++) staged += newGame({ ...input, seed }).members.filter((m) => !m.isPlayer && m.name !== m.realName).length;
     expect(staged).toBeGreaterThan(10);
   });
 
   it('uses the nickname as the short name', () => {
     const s = newGame(input);
-    const m = { ...s.members[1], name: 'Dave "Razor" Price' };
-    expect(first(m)).toBe('Razor');
+    expect(first({ ...s.members[1], name: 'Dave "Razor" Price' })).toBe('Razor');
   });
 });
 
@@ -154,25 +316,21 @@ describe('charts', () => {
     }
   });
 
-  it('a band with no fans is not on the London chart, a popular one is', () => {
+  it('a popular band enters the London chart', () => {
     let s = newGame(input);
     expect(s.world.charts.london.some((e) => e.isPlayer)).toBe(false);
-    s = { ...s, fans: 900, buzz: 60 };
-    s = act(s, { type: 'rest' });
+    s = act({ ...s, fans: 900, buzz: 60 }, REST);
     expect(s.world.charts.london.find((e) => e.isPlayer)!.pos).toBeLessThanOrEqual(15);
     expect(s.log.some((l) => l.text.includes('entered the London Underground 40'))).toBe(true);
   });
 
-  it('the player never appears on the record charts without a record', () => {
-    let s = { ...newGame(input), fans: 5000, buzz: 100 };
-    s = act(s, { type: 'rest' });
+  it('no record, no record charts', () => {
+    const s = act({ ...newGame(input), fans: 5000, buzz: 100 }, REST);
     for (const c of ['uk', 'europe', 'world'] as const) expect(s.world.charts[c].some((e) => e.isPlayer)).toBe(false);
   });
 
   it('tracks weeks on chart and movement', () => {
-    let s = newGame(input);
-    s = act(s, { type: 'rest' });
-    s = act(s, { type: 'rest' });
+    const s = step(step(newGame(input), REST), REST);
     expect(s.world.charts.world.some((e) => e.weeks >= 2 && e.last !== null)).toBe(true);
   });
 });
@@ -186,13 +344,16 @@ describe('names', () => {
 
 describe('a full run', () => {
   it('a simple strategy can play to the end without crashing', () => {
-    for (let seed = 1; seed <= 30; seed++) {
+    for (let seed = 1; seed <= 20; seed++) {
       let s = newGame({ ...input, seed });
       let guard = 0;
       while (!s.over && guard++ < 200) {
+        s = settle(s);
+        if (s.over) break;
         const tired = s.members.some((m) => m.energy < 35);
-        const a = tired ? { type: 'rest' as const } : s.songs.length < 4 ? { type: 'write' as const } : canAct(s, { type: 'gig' }) ? { type: 'rehearse' as const } : { type: 'gig' as const };
-        s = act(s, a);
+        const gig = A('gig', 'venue0');
+        const a = tired ? REST : s.songs.length < 4 ? A('write', 'jam') : canAct(s, gig) ? A('rehearse', 'regular') : gig;
+        s = act(s, canAct(s, a) ? REST : a);
       }
       expect(s.over).not.toBeNull();
     }

@@ -37,10 +37,35 @@ export interface Musician {
   blurb: string;
 }
 
+export type SongKind = 'standard' | 'ballad' | 'trend' | 'solo';
+
 export interface Song {
   title: string;
   quality: number;
   writer: string;
+  kind: SongKind;
+  genre: Genre;
+  released: boolean;
+}
+
+export type ReleaseKind = 'demo' | 'single' | 'ep' | 'album';
+
+export interface Release {
+  id: string;
+  kind: ReleaseKind;
+  title: string;
+  quality: number;
+  /** Sales multiplier from song kinds and fashion at release time. */
+  appeal: number;
+  week: number;
+  sold: number;
+  lastWeek: number;
+}
+
+export interface PendingEvent {
+  def: string;
+  params: Record<string, string | number>;
+  week: number;
 }
 
 export interface LogEntry {
@@ -71,6 +96,13 @@ export interface GameState {
   over: GameOver | null;
   nextId: number;
   world: World;
+  /** Gear quality 0-5, adds to performance. */
+  gear: number;
+  /** Misc. persistent state: roadie, noVan, lastBigParty week, rentUp, tvBan... */
+  flags: Record<string, number>;
+  releases: Release[];
+  /** A situation the player must respond to before the next week. */
+  pending: PendingEvent | null;
 }
 
 export interface NewGameInput {
@@ -85,10 +117,11 @@ export interface NewGameInput {
   seed?: number;
 }
 
-export type Action =
-  | { type: 'rehearse' }
-  | { type: 'write' }
-  | { type: 'gig' }
-  | { type: 'party' }
-  | { type: 'rest' }
-  | { type: 'advertise'; role: Role };
+export type ActionType = 'rehearse' | 'write' | 'gig' | 'party' | 'rest' | 'advertise' | 'release';
+
+export interface Action {
+  type: ActionType;
+  option: string;
+  /** For adverts: which role to recruit. */
+  role?: Role;
+}

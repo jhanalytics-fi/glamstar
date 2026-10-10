@@ -75,7 +75,7 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
   if (tier === 'good' && rng.chance(0.5)) hidden.ego = clamp(hidden.ego + 20, 1, 99);
   return {
     id,
-    name: knownAs(rng, real),
+    name: knownAs(rng, real, takenNames),
     realName: real,
     from: hometown(rng),
     age: rng.int(18, 29),

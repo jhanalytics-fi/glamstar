@@ -100,6 +100,22 @@ All chart names, acts and songs are fictional. Real bands and real charts are ne
 - **National Top 40, Euro Top 40, World Top 40:** singles by established acts from the UK, the US and Europe (Sweden, Germany, Italy, the Netherlands, Finland, France). Origin weights each chart: the World chart is US-heavy, the Euro chart favours European acts. Singles climb for a few weeks, peak and slide. Your band can enter these only with a record out, which comes with the label system.
 - **Genre trends** drift year by year from 1982 to 1991: new wave dominates the start, glam peaks around 1986-87, and the rawer sound returns at the end. Trends shape the charts and how fast your gigs win fans.
 
+## Choices everywhere
+
+Every weekly action opens a set of choices with different costs and effects, so the player feels each decision:
+
+- **Play a gig:** open mic (free, small), headline any venue your fan count unlocks (the next one is shown locked), support a London top-10 band (their crowd, little pay), or pay to play in Soho.
+- **Rehearse:** usual rehearsal, a dry boot camp week, a hired session pro, or work on the stage show.
+- **Write songs:** jam together, write alone, chase the current trend, or try a power ballad. Writing can fail and produce nothing.
+- **Release a record:** four-track demo tape (sold at gigs, sent to radio), self-financed 7" single, 12" EP or album. Records sell for weeks after release and can enter the National, Euro and World charts. A National Top 40 entry wins the prototype.
+- **Party:** cans in the rehearsal room, a squat party, the Soho clubs, or throw your own (expect the police).
+- **Rest:** sleep it off, day trip to Brighton, a dry week, or everyone goes home to mum.
+- **Find a musician:** newsagent card, music paper classified, ask around at the bar, or poach from a rival band.
+
+## Random situations
+
+About one week in three brings a situation the player must answer before the week continues, with 2-5 responses that trade money, mood, loyalty, buzz, habits and fans. Current set: band fights, the landlord, arrests, interviews, a dealer, a partner who wants to sing, a member demanding control, the van dying, buying a van, gear bargains, a fan roadie, battle of the bands, a police raid, Saturday morning TV, health scares, a radio session, poaching, and Christmas. Smaller news items (gig guide mentions, gossip columns, theft) still happen without a choice. New situations are added in `src/game/events.ts`.
+
 ## Later systems (after the prototype)
 
 - Song catalogue, demos, singles and albums with chart simulation.

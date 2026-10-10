@@ -78,9 +78,14 @@ export function stageName(rng: Rng): string {
 }
 
 /** Known-as name for a generated musician: a full stage name, a nickname, or just their real name. */
-export function knownAs(rng: Rng, real: string): string {
+export function knownAs(rng: Rng, real: string, taken: string[] = []): string {
   const r = rng.next();
-  if (r < 0.4) return stageName(rng);
+  if (r < 0.4) {
+    const used = new Set(taken.map((n) => n.replace(/"[^"]*"\s*/, '').split(' ')[0]));
+    let n = stageName(rng);
+    for (let i = 0; i < 10 && used.has(n.split(' ')[0]); i++) n = stageName(rng);
+    return n;
+  }
   if (r < 0.7) {
     const [f, ...rest] = real.split(' ');
     return `${f} "${rng.pick(NICK)}" ${rest.join(' ')}`;

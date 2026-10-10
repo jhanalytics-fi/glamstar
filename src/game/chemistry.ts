@@ -84,7 +84,7 @@ export function performance(s: GameState, wasted: Set<string> = new Set()): numb
   const songBonus = topSongs(s).length ? (avgQuality(s) - 40) * 0.15 : -6; // covers only
   const chem = chemistry(s).total;
   const factor = 0.6 + (chem / 100) * 0.7;
-  return Math.max(0, Math.round((indiv + s.tightness * 0.2 + songBonus) * factor));
+  return Math.max(0, Math.round((indiv + s.tightness * 0.2 + songBonus + (s.gear ?? 0) * 3) * factor));
 }
 
 export function topSongs(s: GameState, n = 6) {

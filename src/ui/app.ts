@@ -1,10 +1,12 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, overall, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, canAct, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
+import { ACTION_LABEL, actionOptions } from '../game/actions';
+import { resolvePending, viewPending } from '../game/events';
 import { bandName, bestVenue, stageName } from '../game/names';
-import type { Action, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 const SAVE_KEY = 'glamstar.save.v1';
 
@@ -22,6 +24,8 @@ let draft: NewGameInput = {
 let adRole: Role = 'guitar';
 let chartTab: ChartId = 'london';
 let chartAll = false;
+let openAction: ActionType | null = null;
+let armedFire: string | null = null;
 let error = '';
 
 function load(): GameState | null {
@@ -71,6 +75,7 @@ function onClick(e: Event, root: HTMLElement): void {
   if (el.tagName === 'A') e.preventDefault();
   const { do: what, arg, arg2 } = el.dataset;
   error = '';
+  if (what !== 'fire') armedFire = null;
   try {
     switch (what) {
       case 'instrument': draft.instrument = arg as PlayerInstrument; break;
@@ -82,18 +87,18 @@ function onClick(e: Event, root: HTMLElement): void {
         if (!draft.name.trim()) { error = 'Enter your real name first. Your stage name is optional.'; break; }
         state = newGame(draft);
         break;
-      case 'act': {
-        const a: Action = arg === 'advertise' ? { type: 'advertise', role: adRole } : ({ type: arg } as Action);
-        state = act(state!, a);
+      case 'open': openAction = openAction === arg ? null : (arg as ActionType); break;
+      case 'choose':
+        state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole });
+        openAction = null;
         break;
-      }
+      case 'respond': state = resolvePending(state!, Number(arg)); break;
       case 'hire': state = hire(state!, arg!, arg2 || undefined); break;
-      case 'fire': {
-        const m = state!.members.find((x) => x.id === arg)!;
-        if (confirmFire(el, m)) state = fire(state!, arg!);
-        else { render(root); return; }
+      case 'fire':
+        // Two-step button instead of a browser dialog.
+        if (armedFire === arg) { state = fire(state!, arg!); armedFire = null; }
+        else armedFire = arg!;
         break;
-      }
       case 'chart': chartTab = arg as ChartId; chartAll = false; break;
       case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
@@ -104,14 +109,6 @@ function onClick(e: Event, root: HTMLElement): void {
   save();
   render(root);
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
-}
-
-/** Two-step fire button instead of a browser dialog. */
-function confirmFire(el: HTMLElement, m: Musician): boolean {
-  if (el.dataset.armed === '1') return true;
-  el.dataset.armed = '1';
-  el.textContent = `Really fire ${first(m)}?`;
-  return false;
 }
 
 function render(root: HTMLElement): void {
@@ -203,6 +200,7 @@ function renderGame(s: GameState): string {
           <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>
         </section>
         ${chartsSection(s)}
+        ${recordsSection(s)}
         ${s.candidates.length ? `
         <section>
           <h2>Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h2>
@@ -212,22 +210,19 @@ function renderGame(s: GameState): string {
       <section class="turn">
         <h2>${s.week === 0 ? 'The story so far' : 'Last week'}</h2>
         ${logList(s, (w) => w >= s.week - 1)}
+        ${eventCard(s)}
         <h2 class="next">This week</h2>
         ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
         <div class="actions">
-          ${actionBtn(s, 'rehearse', 'Rehearse', 'Get tighter. Egos may collide.')}
-          ${actionBtn(s, 'write', 'Write songs', s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'} so far.` : 'You only have covers.')}
-          ${actionBtn(s, 'gig', 'Play a gig', missing.length ? `Need ${missing.join(' and ')}.` : `Best you can book: ${bestVenue(s.fans).name}.`)}
-          ${actionBtn(s, 'party', 'Party', '£15. Good for mood, bad for livers.')}
-          ${actionBtn(s, 'rest', 'Rest', 'Recover energy and dry out a bit.')}
-          <div class="ad">
-            <select name="adRole" aria-label="Role to advertise for">
-              ${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<option value="${r}" ${r === adRole ? 'selected' : ''}>${ROLE_LABEL[r]}</option>`).join('')}
-            </select>
-            ${actionBtn(s, 'advertise', 'Place an ad', '£12. Three hopefuls audition.')}
-          </div>
+          ${actionRow(s, 'gig', missing.length ? `Need ${missing.join(' and ')}.` : `Best you can headline: ${bestVenue(s.fans).name}.`)}
+          ${actionRow(s, 'rehearse', 'Get tighter. Egos may collide.')}
+          ${actionRow(s, 'write', s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'} so far.` : 'You only have covers.')}
+          ${actionRow(s, 'release', s.releases.length ? `${s.releases.length} release${s.releases.length === 1 ? '' : 's'} so far.` : 'Put your songs on tape or vinyl.')}
+          ${actionRow(s, 'party', 'Good for morale, bad for livers.')}
+          ${actionRow(s, 'rest', 'Recover energy and dry out a bit.')}
+          ${actionRow(s, 'advertise', 'Replace someone or add a player.')}
         </div>
-        <p class="hint">Goal: ${WIN_FANS} fans and ${WIN_BUZZ} buzz gets a label interested before the end of 1983.</p>
+        <p class="hint">Goal before the end of 1983: ${WIN_FANS} fans and ${WIN_BUZZ} buzz, or a record in the National Top 40. Either gets the labels calling.</p>
       </section>
       ${s.week > 1 ? `<section class="history"><h2>Earlier</h2>${logList(s, (w) => w < s.week - 1)}</section>` : ''}
     </div>`;
@@ -245,7 +240,7 @@ function chartsSection(s: GameState): string {
   const note =
     chartTab === 'london'
       ? mine ? `You're at #${mine.pos}.` : 'Ranked by fans and buzz on the gig circuit. Keep gigging to break in.'
-      : 'Release a record to chart here. Records come with a label deal.';
+      : mine ? `Your record is at #${mine.pos}.` : 'Release a single that sells and you could chart here.';
   const hot = hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ');
   return `
     <section class="charts">
@@ -266,10 +261,51 @@ function chartsSection(s: GameState): string {
     </section>`;
 }
 
-function actionBtn(s: GameState, type: Action['type'], title: string, sub: string): string {
-  const a = (type === 'advertise' ? { type, role: adRole } : { type }) as Action;
-  const why = canAct(s, a);
-  return `<button class="action" data-do="act" data-arg="${type}" ${why ? 'disabled' : ''} title="${esc(why ?? '')}"><strong>${title}</strong><span>${esc(why ?? sub)}</span></button>`;
+function actionRow(s: GameState, type: ActionType, sub: string): string {
+  const blocked = s.over ? 'The game is over.' : s.pending ? 'Deal with the situation first.' : null;
+  const open = openAction === type && !blocked;
+  const opts = open ? actionOptions(s, type) : [];
+  const roleSelect =
+    type === 'advertise'
+      ? `<label class="role-pick">Looking for <select name="adRole">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<option value="${r}" ${r === adRole ? 'selected' : ''}>${ROLE_LABEL[r].toLowerCase()}</option>`).join('')}</select></label>`
+      : '';
+  return `
+    <div class="action-group ${open ? 'open' : ''}">
+      <button class="action" data-do="open" data-arg="${type}" aria-expanded="${open}" ${blocked ? 'disabled' : ''}>
+        <strong>${ACTION_LABEL[type]}</strong><span>${esc(blocked ?? sub)}</span>
+      </button>
+      ${open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', type, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
+    </div>`;
+}
+
+function choiceBtn(what: string, arg: string, arg2: string, label: string, cost: number, hint: string, locked?: string): string {
+  return `<button class="choice" data-do="${what}" data-arg="${arg}" data-arg2="${arg2}" ${locked ? 'disabled' : ''}>
+    <span class="choice-head"><strong>${esc(label)}</strong><span class="cost ${cost ? '' : 'free'}">${cost ? `£${cost}` : 'Free'}</span></span>
+    <span class="choice-hint">${esc(locked ?? hint)}</span>
+  </button>`;
+}
+
+function eventCard(s: GameState): string {
+  const v = viewPending(s);
+  if (!v) return '';
+  return `
+    <div class="event" role="alertdialog" aria-labelledby="event-title">
+      <h2 id="event-title">${esc(v.title)}</h2>
+      <p>${esc(v.text)}</p>
+      <div class="choices">${v.options.map((o, i) => choiceBtn('respond', String(i), '', o.label, o.cost, o.hint, o.locked)).join('')}</div>
+    </div>`;
+}
+
+function recordsSection(s: GameState): string {
+  if (!s.releases.length && !s.songs.length) return '';
+  const kind = { demo: 'Demo tape', single: '7" single', ep: '12" EP', album: 'Album' } as const;
+  const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
+  return `
+    <section class="records">
+      <h2>Songs and records</h2>
+      ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${kind[r.kind]}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
+      <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
+    </section>`;
 }
 
 function logList(s: GameState, keep: (week: number) => boolean): string {
@@ -302,7 +338,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
     if (s.members.length < MAX_MEMBERS) btns.push(`<button class="btn ${same.length ? 'ghost' : ''}" data-do="hire" data-arg="${m.id}">Add to band</button>`);
     foot = btns.join('');
   } else if (!m.isPlayer && !s.over) {
-    foot = `<button class="btn ghost" data-do="fire" data-arg="${m.id}">Fire</button>`;
+    foot = `<button class="btn ghost" data-do="fire" data-arg="${m.id}">${armedFire === m.id ? `Really fire ${esc(first(m))}?` : 'Fire'}</button>`;
   }
 
   return `
