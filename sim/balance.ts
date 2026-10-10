@@ -6,11 +6,14 @@ import { missingForGig } from '../src/game/chemistry';
 import { overall } from '../src/game/characters';
 import type { Action, GameState, Role } from '../src/game/types';
 
-const results: { won: boolean; reason: string; week: number; fans: number; charted: boolean; releases: number; events: number }[] = [];
+const results: { won: boolean; reason: string; week: number; fans: number; charted: boolean; releases: number; events: number; tours: number; label: number | undefined; maxTier: string }[] = [];
 
-for (let seed = 1; seed <= 300; seed++) {
+const RUNS = Number(process.env.RUNS ?? 300);
+for (let seed = 1; seed <= RUNS; seed++) {
   let s: GameState = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: (['choirboy', 'artschool', 'factory', 'posh'] as const)[seed % 4], style: 'glam', seed });
   let events = 0;
+  let tours = 0;
+  let maxTier = '-';
   while (!s.over) {
     while (s.pending) {
       events++;
@@ -32,6 +35,18 @@ for (let seed = 1; seed <= 300; seed++) {
     const bestGig = actionOptions(s, 'gig').filter((o) => !o.locked && o.id.startsWith('venue')).pop();
     const unreleased = s.songs.filter((x) => !x.released).length;
     let a: Action;
+    if (s.tour) {
+      const worn = s.members.filter((m) => m.energy < 15).length >= 2;
+      s = act(s, { type: 'tour', option: worn ? 'abandon' : 'continue:steady' });
+      continue;
+    }
+    const tiers = actionOptions(s, 'tour').filter((o) => !o.locked);
+    if (tiers.length && s.members.every((m) => m.energy >= 70) && !roleMiss && s.week % 6 === 0) {
+      s = act(s, { type: 'tour', option: tiers[tiers.length - 1].id });
+      tours++;
+      maxTier = tiers[tiers.length - 1].id;
+      continue;
+    }
     if (roleMiss && s.members.every((m) => m.outWeeks === 0)) a = { type: 'advertise', option: 'classified', role: roleMiss };
     else if (avgE < 40) a = { type: 'rest', option: 'sleep' };
     else if (avgM < 40) a = { type: 'party', option: 'squat' };
@@ -44,11 +59,14 @@ for (let seed = 1; seed <= 300; seed++) {
     if (canAct(s, a)) a = { type: 'rest', option: 'sleep' };
     s = act(s, a);
   }
-  results.push({ won: s.over!.won, reason: s.over!.reason.slice(0, 32), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events });
+  results.push({ won: s.over!.won, reason: s.over!.reason.split(':')[0].slice(0, 40), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events, tours, label: s.flags.labelCalling, maxTier });
 }
 
-const won = results.filter((r) => r.won);
 const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
+const won = results.filter((r) => r.won);
+const tierCount: Record<string, number> = {}; for (const r of results) tierCount[r.maxTier] = (tierCount[r.maxTier] ?? 0) + 1;
+console.log('highest tour tier reached', tierCount, 'avg tours', avg(results.map((r) => r.tours)), 'label calling week', avg(results.filter((r) => r.label !== undefined).map((r) => r.label!)), 'label rate', results.filter((r) => r.label !== undefined).length / results.length);
+const fansSorted = results.map((r) => r.fans).sort((a, b) => a - b); console.log('end fans p10/p50/p90', fansSorted[Math.floor(RUNS * 0.1)], fansSorted[Math.floor(RUNS * 0.5)], fansSorted[Math.floor(RUNS * 0.9)]);
 console.log('win rate', won.length / results.length, 'avg win week', avg(won.map((r) => r.week)));
 console.log('won by charting', won.filter((r) => r.charted).length, 'avg releases', avg(results.map((r) => r.releases)), 'events per game', avg(results.map((r) => r.events)));
 const byReason: Record<string, number> = {};

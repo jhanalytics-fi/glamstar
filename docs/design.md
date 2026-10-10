@@ -10,6 +10,26 @@ The game is text- and card-driven, not an action game. Depth comes from people, 
 
 Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the setting and the mechanics, handled with satirical bite. Adult themes are fine; explicit sexual content stays off-screen.
 
+## Touring
+
+"Go on tour" is a weekly action that unlocks once promoters will have you, and climbs a ladder of seven tiers. Each shows the next locked tier and what it needs:
+
+| Tier | Length | Gigs a week | Capacity | Needs |
+|---|---|---|---|---|
+| Pubs and bars of the South East | 1-3 weeks | 4 | 60-150 | 40 fans |
+| UK club tour | 2-4 | 5 | 200-500 | 250 fans, something released |
+| UK theatres and universities | 3-6 | 5 | 700-2,500 | 900 fans, buzz 25, a record in the shops |
+| European club tour | 3-6 | 5 | 300-1,200 | 1,800 fans, buzz 40, a record |
+| Arena tour, UK and Europe | 4-8 | 4 | 5,000-15,000 | 6,000 fans, buzz 50, a National Top 40 hit |
+| North American tour | 6-12 | 5 | 1,500-15,000 | 12,000 fans, buzz 55, a World Top 40 record |
+| World stadium tour | 10-20 | 3 | 30,000-80,000 | 30,000 fans, buzz 65, a World Top 10 hit |
+
+The player picks the tier, the length and how the band behaves on the road (party every night, work hard and play hard, or a clean tour), and can change the behaviour each week. While on tour nothing else happens: each week plays its dates (real cities and countries, invented venues) with a day-by-day report, road costs come out, and road-only situations turn up more often (breakdowns, customs searches, trashed hotels, promoters doing a runner, food poisoning, homesickness, extra dates, riots). The tour can be abandoned at any time, with cancellation fees, lost buzz and fans, and promoters who remember. Bands come home tight, famous and often wrecked.
+
+## Timeline and milestones
+
+The game runs to the end of 1991. 1,000 fans with 55 buzz, or a record in the National Top 40, are milestones that get the labels calling; the game carries on. It ends when you go broke, lose the whole band for three months, or the decade ends.
+
 ## Screen layout: the action zone
 
 The player's eyes stay on one place. The left (top on phones) is the **action zone**: a screen that plays back the week line by line like a match report, with clock times ("21:35 Stevie owns the room..."), then the effects as coloured chips (band, then each member), then anything that happened later in the week, and finally "What now?" with the next choices in the same place. Situations that need an answer appear right there too, as do audition hopefuls. Any click skips the playback.
@@ -168,6 +188,6 @@ Playable in the browser. Implemented:
 - Chemistry from style, relationships, mood and ego clashes; performance from skill, stage presence, tightness, songs and chemistry.
 - Weekly actions: rehearse, write songs, gig, party, rest, place an ad. Hire and fire are free actions.
 - Habits, A&E, the clinic, quitting, poaching, press reviews, day jobs when skint, random events.
-- Prototype goal: 1000 fans and 55 buzz before the end of 1983 triggers a label offer. Going below -£250 ends the game.
+- The game runs to the end of 1991; label interest is a milestone. Going below -£250 ends the game.
 
 Balance is checked with `npm run sim` (300 seeded runs with a simple bot). Current bot: about 90% wins, around week 56. Expect harder tuning once labels and touring add their own pressure.

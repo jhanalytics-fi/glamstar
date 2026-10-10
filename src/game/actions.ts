@@ -5,7 +5,9 @@ import { addAffinity, available, chemistry, forEachPair, getAffinity, missingFor
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
 import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
+import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
+import type { TourPolicy } from './types';
 import type { Action, ActionType, GameState, Genre, Musician, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -26,6 +28,7 @@ export const ACTION_LABEL: Record<ActionType, string> = {
   party: 'Party',
   rest: 'Rest',
   advertise: 'Find a musician',
+  tour: 'Go on tour',
 };
 
 // ---------------------------------------------------------------- option lists
@@ -97,7 +100,24 @@ export function actionOptions(s: GameState, type: ActionType): ActionOption[] {
 
 function rawOptions(s: GameState, type: ActionType): ActionOption[] {
   const unreleased = s.songs.filter((x) => !x.released).length;
+  if (s.tour && type !== 'tour') return [];
   switch (type) {
+    case 'tour': {
+      if (s.tour) {
+        return [
+          ...(['wild', 'steady', 'clean'] as const).map((p) => ({ id: `continue:${p}`, label: `Next week: ${POLICY_LABEL[p].toLowerCase()}`, cost: 0, hint: POLICY_HINT[p] })),
+          { id: 'abandon', label: 'Abandon the tour', cost: 0, hint: 'Go home now. Cancellation fees, angry promoters, lost fans.' },
+        ];
+      }
+      const miss = missingForGig(s);
+      return visibleTiers(s).map((t) => ({
+        id: t.id,
+        label: t.name,
+        cost: 0,
+        hint: `${t.minWeeks}-${t.maxWeeks} weeks, ${t.gigsPerWeek} gigs a week, ${t.capacity[0].toLocaleString('en-GB')}-${t.capacity[1].toLocaleString('en-GB')} capacity. Road costs about £${t.weeklyCost.toLocaleString('en-GB')} a week.`,
+        locked: miss.length ? `You need ${miss.join(' and ')} to tour.` : tierLocked(s, t) ?? (s.money < t.weeklyCost ? `You need £${t.weeklyCost.toLocaleString('en-GB')} to get on the road. You have £${s.money}.` : undefined),
+      }));
+    }
     case 'gig': {
       const opts: ActionOption[] = [
         { id: 'openmic', label: 'Open mic night', cost: 0, hint: 'No pay. Small crowd, low pressure, easy on the legs.' },
@@ -185,6 +205,10 @@ export function optionLocked(s: GameState, a: Action): string | null {
 export function perform(s: GameState, rng: Rng, a: Action): void {
   const opt = actionOptions(s, a.type).find((x) => x.id === a.option)!;
   s.money -= opt.cost;
+  if (available(s).length === 0 && ['write', 'rehearse', 'release', 'party'].includes(a.type)) {
+    log(s, 'Everyone is in hospital, in the clinic or missing. The week goes nowhere.', 'bad');
+    return;
+  }
   switch (a.type) {
     case 'gig': return gig(s, rng, gigSpecs(s)[a.option]);
     case 'rehearse': return rehearse(s, rng, a.option);
@@ -193,6 +217,13 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
     case 'party': return party(s, rng, a.option);
     case 'rest': return rest(s, rng, a.option);
     case 'advertise': return advertise(s, rng, a.role ?? 'guitar', a.option);
+    case 'tour':
+      if (a.option === 'abandon') return abandonTour(s);
+      if (a.option.startsWith('continue')) {
+        s.tour!.policy = (a.option.split(':')[1] as TourPolicy | undefined) ?? s.tour!.policy;
+        return playTourWeek(s, rng);
+      }
+      return startTour(s, rng, a.option, a.weeks ?? tierById(a.option)!.minWeeks, a.policy ?? 'steady');
   }
 }
 
@@ -209,7 +240,9 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   for (const m of wastedMembers) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
   const pay = g.fee + Math.round(crowd * 2 * g.door);
   const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
-  const raw = ((crowd * (perf - 42)) / 90) * g.fanMult;
+  // Playing the same London rooms mostly reaches people who already know you.
+  const novelty = clamp(1 - s.fans / (g.capacity * 8), 0.05, 1);
+  const raw = ((crowd * (perf - 42)) / 90) * g.fanMult * (perf > 42 ? novelty : 1);
   const fanDelta = Math.max(Math.round(raw > 0 ? raw * fashion : raw), -Math.round(crowd * 0.1));
   s.money += pay;
   s.fans = Math.max(0, s.fans + fanDelta);
@@ -599,7 +632,8 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     r.sold += units;
     if (units > 0) {
       s.money += Math.round(units * MARGIN[r.kind]);
-      s.fans += Math.round(units * 0.04);
+      // Records win new listeners, but each extra fan is harder to find than the last.
+      s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
       out.push({ id: r.id, title: r.title, units });
     }
   }

@@ -4,6 +4,8 @@ import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
+import { startTour } from '../src/game/tour';
+import { TOUR_EVENT_IDS } from '../src/game/tourEvents';
 import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, reveal, rollPotential, seenRange, traitDisplay } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
 import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
@@ -191,12 +193,13 @@ describe('records', () => {
     expect(s.releases[0].sold).toBeGreaterThan(0);
   });
 
-  it('a well-loved single can enter the National Top 40 and wins the prototype', () => {
+  it('a well-loved single can enter the National Top 40, a milestone that does not end the game', () => {
     let s = { ...withSongs(4, 80), fans: 1200, buzz: 50 };
     s = settle(act(s, A('release', 'single')));
     for (let i = 0; i < 4 && !s.over; i++) s = step(s, REST);
     expect(s.world.peaks.uk).toBeDefined();
-    expect(s.over?.won).toBe(true);
+    expect(s.flags.chartedNational).toBeDefined();
+    expect(s.over).toBeNull();
   });
 
   it('a band with no fans does not chart', () => {
@@ -236,6 +239,7 @@ describe('choice events', () => {
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
         SETUP[id]?.(s);
+        if (TOUR_EVENT_IDS.includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;
@@ -578,6 +582,17 @@ describe('the action zone scene', () => {
   });
 });
 
+describe('nobody available', () => {
+  it('a week with the whole band out does not crash', () => {
+    for (const a of [A('write', 'jam'), A('rehearse', 'regular'), A('party', 'cans'), A('release', 'demo')]) {
+      const s0 = { ...newGame(input), money: 500 };
+      s0.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+      for (const m of s0.members) m.outWeeks = 2;
+      expect(() => act(s0, a)).not.toThrow();
+    }
+  });
+});
+
 describe('names', () => {
   it('never generates blocklisted real band names', () => {
     const rng = new Rng(1);
@@ -586,19 +601,101 @@ describe('names', () => {
 });
 
 describe('a full run', () => {
-  it('a simple strategy can play to the end without crashing', () => {
-    for (let seed = 1; seed <= 20; seed++) {
+  it('a simple strategy, touring when it can, plays all the way to 1991', () => {
+    for (let seed = 1; seed <= 5; seed++) {
       let s = newGame({ ...input, seed });
       let guard = 0;
-      while (!s.over && guard++ < 200) {
+      let toured = 0;
+      while (!s.over && guard++ < 700) {
         s = settle(s);
         if (s.over) break;
+        if (s.tour) { s = act(s, A('tour', 'continue:steady')); continue; }
+        const tiers = actionOptions(s, 'tour').filter((o) => !o.locked);
+        const fresh = s.members.every((m) => m.energy >= 70);
+        if (tiers.length && fresh && s.week % 8 === 0) {
+          s = act(s, A('tour', tiers[tiers.length - 1].id));
+          toured++;
+          continue;
+        }
         const tired = s.members.some((m) => m.energy < 35);
         const gig = A('gig', 'venue0');
         const a = tired ? REST : s.songs.length < 4 ? A('write', 'jam') : canAct(s, gig) ? A('rehearse', 'regular') : gig;
         s = act(s, canAct(s, a) ? REST : a);
       }
       expect(s.over).not.toBeNull();
+      if (s.week >= 520) expect(toured).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('touring', () => {
+  const ready = (fans: number, money = 5000): GameState => {
+    const s = { ...newGame(input), fans, money, buzz: 40 };
+    s.releases = [{ id: 'r', kind: 'single', title: 'Hit', quality: 60, appeal: 1, week: 0, sold: 0, lastWeek: 0 }];
+    return s;
+  };
+
+  it('a brand new band cannot tour yet, a pub band can', () => {
+    expect(actionOptions(newGame(input), 'tour').every((o) => o.locked)).toBe(true);
+    const pubs = actionOptions({ ...newGame(input), fans: 50 }, 'tour');
+    expect(pubs.find((o) => o.id === 'pubs')!.locked).toBeUndefined();
+    expect(pubs.find((o) => o.id === 'clubs')!.locked).toMatch(/fans/);
+  });
+
+  it('only shows the next rung of the ladder', () => {
+    expect(actionOptions({ ...newGame(input), fans: 50 }, 'tour').map((o) => o.id)).toEqual(['pubs', 'clubs']);
+  });
+
+  it('a tour plays several gigs a week in real cities and locks other actions', () => {
+    const s = act(ready(300), A('tour', 'clubs', { weeks: 3, policy: 'steady' }));
+    expect(s.tour).not.toBeNull();
+    expect(s.tour!.week).toBe(1);
+    expect(s.tour!.gigsPlayed).toBe(5);
+    expect(s.tour!.route).toHaveLength(15);
+    expect(canAct(s, REST)).toMatch(/on tour/);
+    expect(s.scene!.beats.filter((b) => /people/.test(b.text)).length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('the tour ends by itself after the chosen weeks', () => {
+    let s = settle(act(ready(300), A('tour', 'clubs', { weeks: 2, policy: 'steady' })));
+    s = settle(act(s, A('tour', 'continue:steady')));
+    expect(s.tour).toBeNull();
+    expect(s.log.some((l) => l.text.startsWith('Tour over'))).toBe(true);
+  });
+
+  it('abandoning costs money and buzz and frees the band', () => {
+    const s0 = settle(act(ready(300), A('tour', 'clubs', { weeks: 4, policy: 'steady' })));
+    const s1 = act(s0, A('tour', 'abandon'));
+    expect(s1.tour).toBeNull();
+    expect(s1.flags.cancelledTour).toBeDefined();
+    expect(s1.log.some((l) => l.text.startsWith('You pulled the plug'))).toBe(true);
+  });
+
+  it('a wild tour builds habits faster than a clean one', () => {
+    let wild = 0;
+    let clean = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const base = { ...ready(300), rng: seed };
+      const w = act(base, A('tour', 'clubs', { weeks: 2, policy: 'wild' }));
+      const c = act(base, A('tour', 'clubs', { weeks: 2, policy: 'clean' }));
+      wild += w.members.reduce((a, m) => a + m.habit, 0);
+      clean += c.members.reduce((a, m) => a + m.habit, 0);
+    }
+    expect(wild).toBeGreaterThan(clean);
+  });
+
+  it('touring wins fans and wears the band out', () => {
+    const s0 = ready(1000);
+    const s1 = act(s0, A('tour', 'theatres', { weeks: 3, policy: 'steady' }));
+    expect(s1.tour!.people).toBeGreaterThan(1000);
+    expect(s1.members.reduce((a, m) => a + m.energy, 0)).toBeLessThan(s0.members.reduce((a, m) => a + m.energy, 0));
+  });
+
+  it('only road situations happen on tour', () => {
+    let s = act(ready(300), A('tour', 'clubs', { weeks: 4, policy: 'steady' }));
+    for (let i = 0; i < 3 && s.tour; i++) {
+      if (s.pending) expect(['rent', 'squat', 'tv', 'christmas', 'battle']).not.toContain(s.pending.def);
+      s = act(settle(s), A('tour', 'continue:steady'));
     }
   });
 });

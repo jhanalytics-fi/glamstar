@@ -5,15 +5,17 @@ import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
+import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
 
 export const START_YEAR = 1982;
-export const DEADLINE_WEEK = 104; // end of 1983 for the prototype
-export const WIN_FANS = 1000;
-export const WIN_BUZZ = 55;
+export const DEADLINE_WEEK = 520; // end of 1991, when the decade and the game end
+/** Fans and buzz at which record labels start calling. A milestone, not the end. */
+export const LABEL_FANS = 1000;
+export const LABEL_BUZZ = 55;
 export const MAX_MEMBERS = 6;
 export const BROKE_LIMIT = -250;
 
@@ -56,6 +58,7 @@ export function newGame(input: NewGameInput): GameState {
     releases: [],
     pending: null,
     scene: null,
+    tour: null,
   };
   s.world = createWorld(rng, s.bandName);
   advanceWorld(s.world, rng, 0, { bandName: s.bandName, fans: 0, buzz: 0 });
@@ -82,6 +85,7 @@ export function upgradeSave(s: GameState): GameState {
   s.releases ??= [];
   s.pending ??= null;
   s.scene ??= null;
+  s.tour ??= null;
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;
@@ -104,6 +108,7 @@ export function upgradeSave(s: GameState): GameState {
 export function canAct(s: GameState, a: Action): string | null {
   if (s.over) return 'The game is over.';
   if (s.pending) return 'Deal with the situation first.';
+  if (s.tour && a.type !== 'tour') return 'You are on tour. Play on or abandon it.';
   return optionLocked(s, a);
 }
 
@@ -112,7 +117,8 @@ export function act(state: GameState, a: Action): GameState {
   if (why) throw new Error(why);
   return mutate(state, (s, rng) => {
     const label = actionOptions(s, a.type).find((o) => o.id === a.option)?.label ?? ACTION_LABEL[a.type];
-    openScene(s, a.type, label, a.type === 'gig' ? 'gig' : 'normal');
+    const title = s.tour && a.type === 'tour' ? `${s.tour.name}, week ${s.tour.week + 1} of ${s.tour.weeks}` : a.type === 'tour' ? `${label}, week 1 of ${a.weeks ?? tierById(a.option)?.minWeeks ?? 1}` : label;
+    openScene(s, a.type, title, a.type === 'gig' || a.type === 'tour' ? 'gig' : 'normal');
     const before = snapshot(s);
     perform(s, rng, a);
     for (const m of available(s)) getToKnow(m, KNOW_BY_ACTION[a.type]);
@@ -125,7 +131,7 @@ export function act(state: GameState, a: Action): GameState {
 }
 
 /** How much a week of each activity teaches you about your bandmates. */
-const KNOW_BY_ACTION: Record<Action['type'], number> = { rehearse: 18, gig: 14, release: 12, party: 12, write: 10, rest: 4, advertise: 3 };
+const KNOW_BY_ACTION: Record<Action['type'], number> = { rehearse: 18, gig: 14, release: 12, party: 12, write: 10, rest: 4, advertise: 3, tour: 20 };
 
 // ---------------------------------------------------------------- free actions
 
@@ -231,17 +237,32 @@ function ageAndBurnout(s: GameState, m: Musician, rng: Rng): void {
 
 function checkOver(s: GameState): void {
   if (s.over) return;
-  if (s.world.peaks.uk !== undefined) {
-    s.over = { won: true, reason: `Your record made the National Top 40 with no label behind it. Every A&R man in London wants to buy ${s.bandName} lunch. To be continued.` };
-  } else if (s.fans >= WIN_FANS && s.buzz >= WIN_BUZZ) {
-    s.over = { won: true, reason: `An A&R man from Blackhat Records was at the Odeum. He wants to "do lunch". ${s.bandName} is about to get signed, and ripped off. To be continued.` };
-  } else if (s.money < BROKE_LIMIT) {
-    s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
-  } else if (s.week >= DEADLINE_WEEK) {
-    s.over = { won: false, reason: 'Two years on the circuit and nobody signed you. Everyone has a day job now.' };
+  // Milestones: the story goes on.
+  if (!s.flags.labelCalling && s.fans >= LABEL_FANS && s.buzz >= LABEL_BUZZ) {
+    s.flags.labelCalling = s.week;
+    log(s, `Milestone: an A&R man from Blackhat Records wants to "do lunch". The labels have noticed ${s.bandName}.`, 'good');
   }
+  if (!s.flags.chartedNational && s.world.peaks.uk !== undefined) {
+    s.flags.chartedNational = s.week;
+    log(s, `Milestone: a record in the National Top 40 with no label behind it. Every A&R man in London wants to buy you lunch.`, 'good');
+  }
+  if (s.money < BROKE_LIMIT && !s.tour) {
+    s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
+  } else if (s.members.filter((m) => !m.isPlayer).length === 0 && s.candidates.length === 0 && s.flags.aloneSince !== undefined && s.week - s.flags.aloneSince > 12) {
+    s.over = { won: false, reason: 'Three months with no band. You sell your stage clothes at Camden market. It is over.' };
+  } else if (s.week >= DEADLINE_WEEK) {
+    const best = s.world.peaks.world ?? s.world.peaks.uk;
+    const big = s.fans >= 30000 ? 'Legends.' : s.fans >= 8000 ? 'A proper rock band.' : s.fans >= 1500 ? 'A cult band with a loyal following.' : 'A local band that nearly made it.';
+    s.over = {
+      won: s.fans >= 5000,
+      reason: `The eighties are over. ${s.bandName}: ${s.fans.toLocaleString('en-GB')} fans${best ? `, best chart position #${best}` : ''}. ${big}`,
+    };
+  }
+  if (s.members.filter((m) => !m.isPlayer).length === 0) s.flags.aloneSince ??= s.week;
+  else delete s.flags.aloneSince;
   if (s.over) {
     s.pending = null;
+    s.tour = null;
     log(s, s.over.reason, s.over.won ? 'good' : 'bad');
   }
 }

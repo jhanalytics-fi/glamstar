@@ -5,6 +5,7 @@ import { PRESS, songTitle } from './names';
 import { addBuzz, adjust, beat, first, grow, log, logEffects, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
 import type { GameState, HiddenTrait, Musician } from './types';
+import { TOUR_EVENTS } from './tourEvents';
 
 type Params = Record<string, string | number>;
 
@@ -16,9 +17,11 @@ export interface EventOption {
   resolve: (s: GameState, rng: Rng, p: Params) => void;
 }
 
-interface EventDef {
+export interface EventDef {
   id: string;
   weight: number;
+  /** 'home' events never happen on tour, 'tour' events only on tour. Default: both. */
+  where?: 'home' | 'tour';
   when: (s: GameState, rng: Rng) => Params | null;
   title: (s: GameState, p: Params) => string;
   text: (s: GameState, p: Params) => string;
@@ -54,7 +57,7 @@ const bestUnreleased = (s: GameState) => [...s.songs].filter((x) => !x.released)
 const song = (s: GameState, title: string | number) => s.songs.find((x) => x.title === title);
 const loudest = (s: GameState) => [...mates(s)].sort((a, b) => b.hidden.ego - a.hidden.ego)[0];
 
-const EVENTS: EventDef[] = [
+const BASE_EVENTS: EventDef[] = [
   {
     id: 'fight',
     weight: 3,
@@ -2463,6 +2466,17 @@ const EVENTS: EventDef[] = [
   },
 ];
 
+/** Things that only make sense at home: offers, landlords, the squat, the telly. */
+const HOME_ONLY = new Set([
+  'rent', 'transit', 'roadie', 'battle', 'raid', 'tv', 'christmas', 'squat', 'noise', 'benefit', 'euro_gig', 'support_tour',
+  'talent_show', 'xmas_single', 'session_vox', 'video', 'pirate_radio', 'straight_job', 'van', 'gear', 'insurance', 'manager_offer',
+]);
+
+const EVENTS: EventDef[] = [
+  ...BASE_EVENTS.map((e) => (HOME_ONLY.has(e.id) ? { ...e, where: 'home' as const } : e)),
+  ...TOUR_EVENTS,
+];
+
 // ---------------------------------------------------------------- news (no choice)
 
 function news(s: GameState, rng: Rng): void {
@@ -2696,10 +2710,13 @@ function news(s: GameState, rng: Rng): void {
 export function rollEvents(s: GameState, rng: Rng): void {
   if (rng.chance(0.18)) news(s, rng);
   if (s.pending || s.over) return;
-  const forced = EVENTS.find((e) => e.id === 'christmas' && e.when(s, rng));
-  if (!forced && !rng.chance(0.35)) return;
+  const fits = (e: EventDef) => (s.tour ? e.where !== 'home' : e.where !== 'tour');
+  const forced = s.tour ? undefined : EVENTS.find((e) => e.id === 'christmas' && e.when(s, rng));
+  if (!forced && !rng.chance(s.tour ? 0.55 : 0.35)) return;
   const eligible: { def: EventDef; p: Params }[] = [];
-  for (const def of forced ? [forced] : rng.shuffle(EVENTS)) {
+  // On the road, road stories come first.
+  const pool = forced ? [forced] : rng.shuffle(EVENTS.filter(fits)).sort((a, b) => (s.tour ? (b.where === 'tour' ? 1 : 0) - (a.where === 'tour' ? 1 : 0) : 0));
+  for (const def of pool) {
     const p = def.when(s, rng);
     if (p) eligible.push({ def, p });
   }

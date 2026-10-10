@@ -148,6 +148,8 @@ export interface GameState {
   pending: PendingEvent | null;
   /** The latest week or situation, for the action zone. */
   scene: Scene | null;
+  /** The tour in progress, if any. */
+  tour: Tour | null;
 }
 
 export interface NewGameInput {
@@ -162,11 +164,39 @@ export interface NewGameInput {
   seed?: number;
 }
 
-export type ActionType = 'rehearse' | 'write' | 'gig' | 'party' | 'rest' | 'advertise' | 'release';
+export type ActionType = 'rehearse' | 'write' | 'gig' | 'party' | 'rest' | 'advertise' | 'release' | 'tour';
 
 export interface Action {
   type: ActionType;
   option: string;
   /** For adverts: which role to recruit. */
   role?: Role;
+  /** For starting a tour: how many weeks. */
+  weeks?: number;
+  /** For tours: how the band behaves on the road. */
+  policy?: TourPolicy;
+}
+
+export type TourPolicy = 'wild' | 'steady' | 'clean';
+
+export interface TourStop {
+  city: string;
+  country: string;
+  venue: string;
+  capacity: number;
+}
+
+export interface Tour {
+  tier: string;
+  name: string;
+  weeks: number;
+  /** Weeks already played. */
+  week: number;
+  policy: TourPolicy;
+  route: TourStop[];
+  gigsPerWeek: number;
+  gigsPlayed: number;
+  people: number;
+  fansGained: number;
+  startMoney: number;
 }

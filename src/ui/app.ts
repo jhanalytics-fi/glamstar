@@ -1,11 +1,13 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { DEADLINE_WEEK, LABEL_BUZZ, LABEL_FANS, MAX_MEMBERS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
+import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
+import type { TourPolicy } from '../game/types';
 import type { ActionType, Background, Beat, EffectChip, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
@@ -32,6 +34,10 @@ let panelTab: PanelTab = 'band';
 /** Scene already played back, so re-renders don't replay it. */
 let playedScene: number | null = null;
 let armedFire: string | null = null;
+let armedAbandon = false;
+let tourTier: string | null = null;
+let tourWeeks = 1;
+let tourPolicy: TourPolicy = 'steady';
 /** Development aid: shows true values and hidden changes. */
 let debug = (() => { try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; } })();
 let error = '';
@@ -87,6 +93,7 @@ function onClick(e: Event, root: HTMLElement): void {
   // Any interaction finishes the playback of the current scene.
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
+  if (what !== 'abandon') armedAbandon = false;
   try {
     switch (what) {
       case 'instrument': draft.instrument = arg as PlayerInstrument; break;
@@ -98,7 +105,25 @@ function onClick(e: Event, root: HTMLElement): void {
         if (!draft.name.trim()) { error = 'Enter your real name first. Your stage name is optional.'; break; }
         state = newGame(draft);
         break;
-      case 'open': openAction = openAction === arg ? null : (arg as ActionType); break;
+      case 'open': openAction = openAction === arg ? null : (arg as ActionType); tourTier = null; break;
+      case 'tourTier': {
+        tourTier = arg!;
+        const t = tierById(arg!)!;
+        tourWeeks = t.minWeeks;
+        break;
+      }
+      case 'tourWeeks': tourWeeks = Number(arg); break;
+      case 'tourPolicy': tourPolicy = arg as TourPolicy; break;
+      case 'startTour':
+        state = act(state!, { type: 'tour', option: tourTier!, weeks: tourWeeks, policy: tourPolicy });
+        openAction = null;
+        tourTier = null;
+        break;
+      case 'tourNext': state = act(state!, { type: 'tour', option: `continue:${arg}` }); break;
+      case 'abandon':
+        if (armedAbandon) { state = act(state!, { type: 'tour', option: 'abandon' }); armedAbandon = false; }
+        else armedAbandon = true;
+        break;
       case 'choose':
         state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole });
         openAction = null;
@@ -127,7 +152,7 @@ function onClick(e: Event, root: HTMLElement): void {
   render(root);
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
   // Keep the eyes on the action zone after a decision.
-  if (what === 'choose' || what === 'respond' || what === 'hire') {
+  if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'startTour' || what === 'tourNext' || (what === 'abandon' && !armedAbandon)) {
     const z = document.getElementById('zone');
     if (z && z.getBoundingClientRect().top < 0) z.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
@@ -265,7 +290,7 @@ function panelBody(s: GameState): string {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  gig: 'Live tonight', rehearse: 'Rehearsal', write: 'Songwriting', release: 'In the studio', party: 'Night out',
+  tour: 'On tour', gig: 'Live tonight', rehearse: 'Rehearsal', write: 'Songwriting', release: 'In the studio', party: 'Night out',
   rest: 'Time off', advertise: 'Auditions', event: 'Situation', start: 'Previously',
 };
 
@@ -320,6 +345,7 @@ function nextBlock(s: GameState): string {
   }
   const ev = eventCard(s);
   if (ev) return ev;
+  if (s.tour) return tourPanel(s);
   const missing = missingForGig(s);
   const subs: Record<ActionType, string> = {
     gig: missing.length ? `Need ${missing.join(' and ')}` : bestVenue(s.fans).name.split(',')[0],
@@ -329,8 +355,10 @@ function nextBlock(s: GameState): string {
     party: 'Morale up, livers down',
     rest: 'Recharge, dry out',
     advertise: 'Replace or add a player',
+    tour: tourSub(s),
   };
-  const types: ActionType[] = ['gig', 'rehearse', 'write', 'release', 'party', 'rest', 'advertise'];
+  const types: ActionType[] = ['gig', 'tour', 'rehearse', 'write', 'release', 'party', 'rest', 'advertise'];
+  const tourShut = TOUR_TIERS.every((t) => tierLocked(s, t));
   const open = openAction;
   const opts = open ? actionOptions(s, open) : [];
   const roleSelect =
@@ -342,10 +370,70 @@ function nextBlock(s: GameState): string {
     <h3 class="what-now">${s.candidates.length ? 'Or get on with the week' : 'What now?'}</h3>
     ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
     <div class="tiles">
-      ${types.map((t) => `<button class="tile" data-do="open" data-arg="${t}" aria-expanded="${open === t}"><strong>${ACTION_LABEL[t]}</strong><span>${esc(subs[t])}</span></button>`).join('')}
+      ${types.map((t) => `<button class="tile ${t === 'tour' && tourShut ? 'shut' : ''}" data-do="open" data-arg="${t}" aria-expanded="${open === t}"><strong>${ACTION_LABEL[t]}</strong><span>${esc(subs[t])}</span></button>`).join('')}
     </div>
-    ${open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
-    <p class="hint goal">Goal before the end of 1983: ${WIN_FANS} fans and ${WIN_BUZZ} buzz, or a record in the National Top 40.</p>`;
+    ${open === 'tour' ? tourSetup(s, opts) : open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
+    <p class="hint goal">${s.flags.labelCalling || s.flags.chartedNational ? 'The labels know your name. Now make it big before the decade ends.' : `Get the labels calling: ${LABEL_FANS} fans and ${LABEL_BUZZ} buzz, or a record in the National Top 40. The game runs to the end of 1991.`}</p>`;
+}
+
+function tourSub(s: GameState): string {
+  const open = visibleTiers(s).filter((t) => !tierLocked(s, t));
+  if (open.length) return open[open.length - 1].name.replace(/,.*$/, '');
+  return `Need ${TOUR_TIERS[0].fans} fans`;
+}
+
+/** Pick a tour: tier, then length and how wild, then go. */
+function tourSetup(_s: GameState, opts: ReturnType<typeof actionOptions>): string {
+  const tiers = opts.map((o) => {
+    const sel = tourTier === o.id;
+    return `<button class="choice ${sel ? 'selected' : ''}" data-do="tourTier" data-arg="${o.id}" ${o.locked ? 'disabled' : ''} aria-pressed="${sel}">
+      <span class="choice-head"><strong>${esc(o.label)}</strong></span>
+      <span class="choice-hint">${esc(o.locked ?? o.hint)}</span>
+    </button>`;
+  });
+  let detail = '';
+  const t = tourTier ? tierById(tourTier) : null;
+  if (t) {
+    const weeks = Array.from({ length: t.maxWeeks - t.minWeeks + 1 }, (_, i) => t.minWeeks + i);
+    detail = `
+      <div class="tour-setup">
+        <span class="label">How long?</span>
+        <div class="chips">${weeks.map((w) => `<button class="chip" data-do="tourWeeks" data-arg="${w}" aria-pressed="${tourWeeks === w}">${w} wk, ${w * t.gigsPerWeek} gigs</button>`).join('')}</div>
+        <span class="label">On the road</span>
+        <div class="chips">${(['wild', 'steady', 'clean'] as TourPolicy[]).map((p) => `<button class="chip" data-do="tourPolicy" data-arg="${p}" aria-pressed="${tourPolicy === p}" title="${esc(POLICY_HINT[p])}">${POLICY_LABEL[p]}</button>`).join('')}</div>
+        <p class="hint">${esc(POLICY_HINT[tourPolicy])} Road costs about £${(t.weeklyCost * tourWeeks).toLocaleString('en-GB')} in total. Nothing else happens until you come home or give up.</p>
+        <button class="btn big" data-do="startTour">Hit the road</button>
+      </div>`;
+  }
+  return `<div class="choices">${tiers.join('')}</div>${detail}`;
+}
+
+/** While on tour: progress, who's struggling, and how to play the next week. */
+function tourPanel(s: GameState): string {
+  const tour = s.tour!;
+  const t = tierById(tour.tier)!;
+  const next = tour.route.slice(tour.week * tour.gigsPerWeek, (tour.week + 1) * tour.gigsPerWeek);
+  const pct = Math.round((tour.week / tour.weeks) * 100);
+  const net = s.money - tour.startMoney;
+  const hurting = strugglers(s);
+  return `
+    <div class="tour-panel">
+      <h3 class="what-now">${esc(t.name)}</h3>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${tour.weeks}" aria-valuenow="${tour.week}"><i style="width:${pct}%"></i></div>
+      <p class="tour-stats">Week ${tour.week} of ${tour.weeks} done. ${tour.gigsPlayed} gigs, ${tour.people.toLocaleString('en-GB')} people, fans ${tour.fansGained >= 0 ? '+' : ''}${tour.fansGained}, money ${net >= 0 ? '+' : '-'}£${Math.abs(net).toLocaleString('en-GB')}.</p>
+      <p class="hint">Next: ${next.map((x) => `${esc(x.city)}${x.country !== 'England' ? ` (${esc(x.country)})` : ''}`).join(' -> ')}</p>
+      ${hurting.length ? `<p class="hint warn">Struggling: ${hurting.map((m) => `${esc(m.isPlayer ? 'you' : first(m))} (${m.energy < 25 ? 'exhausted' : m.habit >= 60 ? 'using heavily' : 'miserable'})`).join(', ')}.</p>` : ''}
+      <div class="choices">
+        ${(['wild', 'steady', 'clean'] as TourPolicy[]).map((p) => `<button class="choice ${tour.policy === p ? 'selected' : ''}" data-do="tourNext" data-arg="${p}">
+          <span class="choice-head"><strong>Next week: ${esc(POLICY_LABEL[p].toLowerCase())}</strong>${tour.policy === p ? '<span class="cost free">current</span>' : ''}</span>
+          <span class="choice-hint">${esc(POLICY_HINT[p])}</span>
+        </button>`).join('')}
+        <button class="choice danger" data-do="abandon">
+          <span class="choice-head"><strong>${armedAbandon ? 'Really abandon the tour?' : 'Abandon the tour'}</strong></span>
+          <span class="choice-hint">${armedAbandon ? 'Click again to go home. Cancellation fees and angry promoters.' : 'Go home now. Costs money, buzz and fans.'}</span>
+        </button>
+      </div>
+    </div>`;
 }
 
 /** Candidates from an advert, compact, right where the decision is made. */

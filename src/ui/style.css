@@ -420,7 +420,7 @@ section + section { margin-top: 32px; }
 .kicker { font-family: var(--cond); font-weight: 700; color: var(--lipstick); font-size: 0.95rem; }
 
 .beats { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; position: relative; z-index: 1; }
-.beat { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: 10px; font-size: 1.02rem; line-height: 1.45; }
+.beat { display: grid; grid-template-columns: 6.2em minmax(0, 1fr); gap: 10px; font-size: 1.02rem; line-height: 1.45; }
 .beat .t { font-family: var(--cond); font-weight: 700; color: var(--chrome); font-variant-numeric: tabular-nums; padding-top: 1px; }
 .beat.good .txt { color: var(--spot); }
 .beat.good .t { color: var(--good); }
@@ -537,3 +537,18 @@ section + section { margin-top: 32px; }
 .vibe-quiet .screen { background: linear-gradient(var(--screen), var(--screen)) padding-box, var(--silver) border-box; }
 
 .zone .wait { display: none; }
+
+/* ---------------------------------------------------------------- touring */
+
+.tile.shut { opacity: 0.45; }
+.choice.selected { border-color: var(--lipstick); background: rgba(255, 61, 139, 0.1); }
+.choice.danger:hover { border-color: var(--bad); background: rgba(255, 122, 122, 0.08); }
+.tour-setup { display: grid; gap: 8px; margin-top: 12px; padding: 12px; border-radius: 10px; border: 1px solid var(--lipstick); }
+.tour-setup .label { font-family: var(--cond); font-weight: 600; color: var(--muted); }
+.tour-setup .btn.big { justify-self: start; margin-top: 4px; }
+.progress { height: 8px; border-radius: 4px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin: 4px 0 10px; }
+.progress i { display: block; height: 100%; background: var(--gold); }
+.tour-stats { margin: 0 0 6px; }
+.hint.warn { color: var(--nicotine); }
+
+@media (max-width: 520px) { .beat { grid-template-columns: 5.2em minmax(0, 1fr); font-size: 0.97rem; } }
