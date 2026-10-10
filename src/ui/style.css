@@ -301,3 +301,19 @@ section + section { margin-top: 32px; }
     to { opacity: 1; transform: skewX(-8deg); }
   }
 }
+
+/* ---------------------------------------------------------------- charts */
+
+.charts .chips { margin-bottom: 8px; }
+.chart-wrap { overflow-x: auto; margin: 12px 0 10px; }
+.chart { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+.chart th { font-family: var(--cond); font-weight: 600; color: var(--muted); text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--smoke); }
+.chart td { padding: 6px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); white-space: nowrap; }
+.chart td.pos { font-family: var(--display); font-weight: 800; width: 2.5em; }
+.chart tr.me td { background: rgba(255, 61, 139, 0.16); font-weight: 600; }
+.chart tr.me td.pos { color: var(--lipstick); }
+.mv { font-family: var(--cond); font-weight: 600; color: var(--muted); }
+.mv.up { color: var(--good); }
+.mv.down { color: var(--bad); }
+.mv.new { color: var(--chrome); }
+.btn.small { padding: 6px 12px; font-size: 0.9rem; }

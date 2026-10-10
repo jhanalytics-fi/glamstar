@@ -1,3 +1,5 @@
+import type { World } from './world';
+
 export type Role = 'vocals' | 'guitar' | 'bass' | 'drums' | 'keys';
 export type PlayerInstrument = 'none' | 'guitar' | 'keys';
 export type Genre = 'metal' | 'hardrock' | 'glam' | 'punk' | 'newwave';
@@ -68,6 +70,7 @@ export interface GameState {
   log: LogEntry[];
   over: GameOver | null;
   nextId: number;
+  world: World;
 }
 
 export interface NewGameInput {

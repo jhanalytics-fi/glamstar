@@ -2,6 +2,7 @@ import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateMusician, generateStartingBand, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, bandName as genBandName, bestVenue, songTitle } from './names';
+import { advanceWorld, createWorld, pickRivalName, trend } from './world';
 import type { Action, GameState, HiddenTrait, LogEntry, Musician, NewGameInput, Role } from './types';
 
 export const START_YEAR = 1982;
@@ -44,7 +45,10 @@ export function newGame(input: NewGameInput): GameState {
     log: [],
     over: null,
     nextId,
+    world: undefined as never,
   };
+  s.world = createWorld(rng, s.bandName);
+  advanceWorld(s.world, rng, 0, { bandName: s.bandName, fans: 0, buzz: 0 });
   forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(5, 35)));
   log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
   log(s, 'You have a rehearsal room above a kebab shop, a handful of covers and no original songs.', 'neutral');
@@ -83,6 +87,17 @@ function mutate(state: GameState, fn: (s: GameState, rng: Rng) => void): GameSta
 }
 
 // ---------------------------------------------------------------- actions
+
+/** Brings saves from older versions up to date. */
+export function upgradeSave(s: GameState): GameState {
+  if (!s.world) {
+    const rng = new Rng(s.rng);
+    s.world = createWorld(rng, s.bandName);
+    advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz });
+    s.rng = rng.state;
+  }
+  return s;
+}
 
 export function canAct(s: GameState, a: Action): string | null {
   if (s.over) return 'The game is over.';
@@ -179,7 +194,10 @@ function gig(s: GameState, rng: Rng): void {
   const perf = performance(s, wasted);
   const crowd = clamp(Math.round(s.fans * 0.5 + 12 + s.buzz * 0.8 + rng.int(-8, 10)), 6, venue.capacity);
   const pay = venue.fee + Math.round(crowd * 2 * 0.6);
-  const fanDelta = Math.max(Math.round((crowd * (perf - 42)) / 90), -Math.round(crowd * 0.1));
+  // A sound that's in fashion wins converts faster.
+  const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
+  const raw = (crowd * (perf - 42)) / 90;
+  const fanDelta = Math.max(Math.round(raw > 0 ? raw * fashion : raw), -Math.round(crowd * 0.1));
   s.money += pay;
   s.fans = Math.max(0, s.fans + fanDelta);
   s.buzz = clamp(Math.round(s.buzz + Math.max(0, (perf - 45) / 5) + crowd / 60), 0, 100);
@@ -354,6 +372,8 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   if (rng.chance(0.3)) randomEvent(s, rng);
 
+  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz })) log(s, n.text, n.tone);
+
   s.week++;
   checkOver(s);
 }
@@ -393,7 +413,7 @@ function randomEvent(s: GameState, rng: Rng): void {
     () => {
       const target = mates.filter((m) => m.skill >= 50).sort((a, b) => a.hidden.loyalty - b.hidden.loyalty)[0];
       if (!target || s.fans < 40) return false;
-      const rival = genBandName(rng);
+      const rival = pickRivalName(s.world, rng);
       if (target.hidden.loyalty < 35) {
         removeMember(s, target.id, 'poached');
         log(s, `${target.name} has left to join ${rival}. They have a manager and a proper van.`, 'bad');

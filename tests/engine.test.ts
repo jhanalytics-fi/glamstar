@@ -145,6 +145,38 @@ describe('real and stage names', () => {
   });
 });
 
+describe('charts', () => {
+  it('every chart has 40 ranked entries from the start', () => {
+    const s = newGame(input);
+    for (const c of ['london', 'uk', 'europe', 'world'] as const) {
+      expect(s.world.charts[c]).toHaveLength(40);
+      expect(s.world.charts[c].map((e) => e.pos)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
+    }
+  });
+
+  it('a band with no fans is not on the London chart, a popular one is', () => {
+    let s = newGame(input);
+    expect(s.world.charts.london.some((e) => e.isPlayer)).toBe(false);
+    s = { ...s, fans: 900, buzz: 60 };
+    s = act(s, { type: 'rest' });
+    expect(s.world.charts.london.find((e) => e.isPlayer)!.pos).toBeLessThanOrEqual(15);
+    expect(s.log.some((l) => l.text.includes('entered the London Underground 40'))).toBe(true);
+  });
+
+  it('the player never appears on the record charts without a record', () => {
+    let s = { ...newGame(input), fans: 5000, buzz: 100 };
+    s = act(s, { type: 'rest' });
+    for (const c of ['uk', 'europe', 'world'] as const) expect(s.world.charts[c].some((e) => e.isPlayer)).toBe(false);
+  });
+
+  it('tracks weeks on chart and movement', () => {
+    let s = newGame(input);
+    s = act(s, { type: 'rest' });
+    s = act(s, { type: 'rest' });
+    expect(s.world.charts.world.some((e) => e.weeks >= 2 && e.last !== null)).toBe(true);
+  });
+});
+
 describe('names', () => {
   it('never generates blocklisted real band names', () => {
     const rng = new Rng(1);

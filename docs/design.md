@@ -92,6 +92,14 @@ Each turn is one week. The player picks one main action:
 
 Weekly upkeep (rent, gear, food) costs money. Running out of money or members ends the run.
 
+## The music world and charts
+
+All chart names, acts and songs are fictional. Real bands and real charts are never used.
+
+- **London Underground 40:** the gig circuit chart. About 70 rival London bands compete with yours, ranked by fans and buzz. Rivals grow, stall, split up, and get signed (moving up to the record charts). Your band can enter from early on by gigging.
+- **National Top 40, Euro Top 40, World Top 40:** singles by established acts from the UK, the US and Europe (Sweden, Germany, Italy, the Netherlands, Finland, France). Origin weights each chart: the World chart is US-heavy, the Euro chart favours European acts. Singles climb for a few weeks, peak and slide. Your band can enter these only with a record out, which comes with the label system.
+- **Genre trends** drift year by year from 1982 to 1991: new wave dominates the start, glam peaks around 1986-87, and the rawer sound returns at the end. Trends shape the charts and how fast your gigs win fans.
+
 ## Later systems (after the prototype)
 
 - Song catalogue, demos, singles and albums with chart simulation.

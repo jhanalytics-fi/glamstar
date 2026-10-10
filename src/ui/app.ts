@@ -1,6 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, overall, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
-import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, canAct, dateLabel, fire, first, hire, newGame } from '../game/engine';
+import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
+import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, canAct, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { bandName, bestVenue, stageName } from '../game/names';
 import type { Action, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
@@ -19,6 +20,8 @@ let draft: NewGameInput = {
   style: 'glam',
 };
 let adRole: Role = 'guitar';
+let chartTab: ChartId = 'london';
+let chartAll = false;
 let error = '';
 
 function load(): GameState | null {
@@ -32,7 +35,7 @@ function load(): GameState | null {
       m.realName ??= m.name;
       m.from ??= 'London';
     }
-    return s;
+    return upgradeSave(s);
   } catch {
     return null;
   }
@@ -91,6 +94,8 @@ function onClick(e: Event, root: HTMLElement): void {
         else { render(root); return; }
         break;
       }
+      case 'chart': chartTab = arg as ChartId; chartAll = false; break;
+      case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
     }
   } catch (err) {
@@ -185,6 +190,7 @@ function renderGame(s: GameState): string {
           <div><dt>Chemistry</dt><dd>${chem.total}</dd></div>
           <div><dt>Tightness</dt><dd>${s.tightness}</dd></div>
           <div><dt>Songs</dt><dd>${s.songs.length}</dd></div>
+          <div><dt>London chart</dt><dd>${(() => { const p = playerPosition(s.world, 'london'); return p ? `#${p}` : 'Not yet'; })()}</dd></div>
         </dl>
         <p class="chem-detail">Chemistry: style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.egoPenalty ? `, egos -${chem.egoPenalty}` : ''}</p>
       </div>
@@ -196,6 +202,7 @@ function renderGame(s: GameState): string {
           <h2>The band</h2>
           <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>
         </section>
+        ${chartsSection(s)}
         ${s.candidates.length ? `
         <section>
           <h2>Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h2>
@@ -224,6 +231,39 @@ function renderGame(s: GameState): string {
       </section>
       ${s.week > 1 ? `<section class="history"><h2>Earlier</h2>${logList(s, (w) => w < s.week - 1)}</section>` : ''}
     </div>`;
+}
+
+function chartsSection(s: GameState): string {
+  const tabs = (Object.keys(CHART_NAME) as ChartId[])
+    .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'National' : id === 'europe' ? 'Europe' : 'World'}</button>`)
+    .join('');
+  const rows = s.world.charts[chartTab];
+  const mine = rows.find((r) => r.isPlayer);
+  const shown = chartAll ? rows : rows.filter((r) => r.pos <= 10 || r.isPlayer);
+  const move = (r: (typeof rows)[number]) =>
+    r.last === null ? '<span class="mv new">New</span>' : r.last === r.pos ? '<span class="mv">=</span>' : r.last > r.pos ? `<span class="mv up">+${r.last - r.pos}</span>` : `<span class="mv down">-${r.pos - r.last}</span>`;
+  const note =
+    chartTab === 'london'
+      ? mine ? `You're at #${mine.pos}.` : 'Ranked by fans and buzz on the gig circuit. Keep gigging to break in.'
+      : 'Release a record to chart here. Records come with a label deal.';
+  const hot = hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ');
+  return `
+    <section class="charts">
+      <h2>The charts</h2>
+      <div class="chips">${tabs}</div>
+      <p class="hint">${CHART_NAME[chartTab]}, ${dateLabel(s.week)}. ${note} Selling right now: ${hot}.</p>
+      <div class="chart-wrap">
+        <table class="chart">
+          <thead><tr><th>#</th><th>Move</th><th>Artist</th>${chartTab === 'london' ? '' : '<th>Single</th><th>From</th>'}<th>Wks</th></tr></thead>
+          <tbody>${shown
+            .map(
+              (r) => `<tr class="${r.isPlayer ? 'me' : ''}"><td class="pos">${r.pos}</td><td>${move(r)}</td><td>${esc(r.artist)}</td>${chartTab === 'london' ? '' : `<td>${esc(r.title ?? '')}</td><td>${r.origin ?? ''}</td>`}<td>${r.weeks}</td></tr>`,
+            )
+            .join('')}</tbody>
+        </table>
+      </div>
+      <button class="btn ghost small" data-do="chartAll">${chartAll ? 'Show top 10' : `Show all ${rows.length}`}</button>
+    </section>`;
 }
 
 function actionBtn(s: GameState, type: Action['type'], title: string, sub: string): string {
