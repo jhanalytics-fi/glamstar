@@ -181,3 +181,13 @@ export function setVibe(s: GameState, vibe: Vibe): void {
 export function milestone(s: GameState, kind: MilestoneKind, text: string): void {
   (s.milestones ??= []).push({ week: s.week, kind, text });
 }
+
+/** The week's one-word verdict for the report headline. */
+export function verdict(s: GameState, text: string, tone: Beat['tone']): void {
+  if (s.scene?.recording) s.scene.verdict = { text, tone };
+}
+
+/** A key figure for the report headline. */
+export function headline(s: GameState, label: string, value: string): void {
+  if (s.scene?.recording) (s.scene.stats ??= []).push({ label, value });
+}

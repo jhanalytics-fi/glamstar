@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
-import { addBuzz, adjust, first, grow, log, milestone, player, prospects, revealLog, signed, subj } from './helpers';
+import { addBuzz, adjust, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict } from './helpers';
 import { hotGenres, trend } from './world';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
@@ -250,6 +250,8 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   if (s.lastGigWeek === null) milestone(s, 'career', `First gig: ${g.venue}, ${crowd} people.`);
   s.lastGigWeek = s.week;
   const verdict = perf >= 75 ? 'Storming.' : perf >= 55 ? 'A solid night.' : perf >= 40 ? 'Ropey.' : 'A shambles.';
+  setVerdict(s, perf >= 75 ? 'Storming' : perf >= 55 ? 'Solid' : perf >= 40 ? 'Ropey' : 'Shambles', perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
+  headline(s, 'Crowd', `${crowd} / ${g.capacity}`);
   log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
 
   const demo = s.releases.find((r) => r.kind === 'demo');
@@ -370,6 +372,7 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
     log(s, `The session pro's verdict: ${here.map((m) => `${m.isPlayer ? 'you' : first(m)} ${m.isPlayer ? prospects(m).replace('has', 'have') : prospects(m)}`).join(', ')}.`, 'reveal');
   }
   s.tightness = clamp(s.tightness + gain, 0, 100);
+  headline(s, 'Tightness', String(s.tightness));
   const what: Record<string, string> = {
     regular: 'Rehearsal',
     bootcamp: 'Boot camp week. Nobody drank, everybody suffered',
@@ -386,6 +389,8 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
   s.songs.push(song);
   const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : 'song';
   log(s, `New ${kindText}: "${song.title}" (${song.quality}), mostly ${writer.isPlayer ? 'yours' : `${first(writer)}'s`}.`, song.quality >= 55 ? 'good' : 'neutral');
+  headline(s, 'New song', `${song.quality}`);
+  setVerdict(s, song.quality >= 65 ? 'A belter' : song.quality >= 50 ? 'Keeper' : 'Filler', song.quality >= 50 ? 'good' : 'neutral');
   return song;
 }
 

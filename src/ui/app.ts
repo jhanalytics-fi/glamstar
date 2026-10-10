@@ -8,7 +8,7 @@ import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
 import type { TourPolicy } from '../game/types';
-import type { ActionType, Background, Beat, EffectChip, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, EffectChip, GameState, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
 import { nextGoal } from '../game/goals';
@@ -368,7 +368,7 @@ function zone(s: GameState): string {
   const late = sc ? sc.beats.filter((b) => b.late) : [];
   let t = 0.3;
   const delay = () => { const d = t; t += step; return d; };
-  const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay().toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${esc(b.text)}</span></li>`;
+  const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay().toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${emph(b.text)}</span></li>`;
   const mainHtml = main.map(beatLi).join('');
   const fxDelay = t;
   t += 0.4;
@@ -398,12 +398,33 @@ function zone(s: GameState): string {
           ${playing ? '<button class="btn ghost small skip" data-do="skip">Skip</button>' : ''}
           ${sc ? `<button class="btn ghost small fold" data-do="fold" aria-expanded="true" ${playing ? 'hidden' : ''}>Hide report</button>` : ''}
         </div>
+        ${sc ? headlineRow(sc) : ''}
         <ol class="beats">${mainHtml}</ol>
         ${sc && (sc.effects.length || (debug && sc.hidden)) ? `<div class="fx" data-d="${fxDelay.toFixed(2)}">${effectChips(sc.effects)}${debug && sc.hidden ? `<p class="hidden-fx">${esc(sc.hidden)}</p>` : ''}</div>` : ''}
         ${lateHtml}
       </div>
       <div class="next" data-d="${nextDelay.toFixed(2)}">${nextBlock(s)}</div>
     </section>`;
+}
+
+/** Big headline: verdict, key figures and the band's money, fans and buzz. */
+function headlineRow(sc: Scene): string {
+  const tiles: string[] = [];
+  if (sc.verdict) tiles.push(`<div class="hl verdict ${sc.verdict.tone}"><span>Verdict</span><b>${esc(sc.verdict.text)}</b></div>`);
+  for (const st of sc.stats ?? []) tiles.push(`<div class="hl"><span>${esc(st.label)}</span><b>${esc(st.value)}</b></div>`);
+  for (const e of sc.effects.filter((x) => x.who === null && ['money', 'fans', 'buzz'].includes(x.stat))) {
+    const val = e.stat === 'money' ? `${e.delta > 0 ? '+' : '-'}£${Math.abs(e.delta).toLocaleString('en-GB')}` : `${e.delta > 0 ? '+' : ''}${e.delta.toLocaleString('en-GB')}`;
+    tiles.push(`<div class="hl ${e.delta > 0 ? 'good' : 'bad'}"><span>${e.stat === 'money' ? 'Money' : e.stat === 'fans' ? 'Fans' : 'Buzz'}</span><b>${val}</b></div>`);
+  }
+  return tiles.length ? `<div class="headline">${tiles.join('')}</div>` : '';
+}
+
+/** Make the facts in a line of commentary stand out: money, numbers, chart places and song titles. */
+function emph(text: string): string {
+  return text
+    .split(/(£-?[\d,]+|#\d+|"[^"]{1,60}"|\b\d[\d,]*\b)/)
+    .map((part, i) => (i % 2 === 0 ? esc(part) : part.startsWith('"') ? `<em class="song">${esc(part)}</em>` : `<b class="num">${esc(part)}</b>`))
+    .join('');
 }
 
 function effectChips(fx: EffectChip[]): string {

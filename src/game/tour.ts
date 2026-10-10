@@ -2,7 +2,7 @@
 // Cities and countries are real; venues are invented so nothing real gets trashed.
 import { Rng, clamp } from './rng';
 import { available, missingForGig, performance } from './chemistry';
-import { addBuzz, adjust, beat, first, grow, log, milestone, player, revealLog, setVibe } from './helpers';
+import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, revealLog, setVibe, verdict } from './helpers';
 import { trend } from './world';
 import type { GameState, Musician, TourPolicy, TourStop } from './types';
 
@@ -260,6 +260,9 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   s.money += weekMoney - cost;
   s.fans = Math.max(0, s.fans + weekFans);
   const avgPerf = played ? perfSum / played : 0;
+  verdict(s, avgPerf >= 75 ? 'Storming week' : avgPerf >= 55 ? 'Solid week' : avgPerf >= 40 ? 'Ropey week' : 'Shambolic week', avgPerf >= 55 ? 'good' : avgPerf >= 40 ? 'neutral' : 'bad');
+  headline(s, 'Gigs', String(played));
+  headline(s, 'People', weekPeople.toLocaleString('en-GB'));
   addBuzz(s, Math.max(0, (avgPerf - 45) / 4) + Math.log10(1 + weekPeople) + (tour.policy === 'wild' ? 3 : 0));
   s.tightness = clamp(s.tightness + 4, 0, 100);
   s.lastGigWeek = s.week;

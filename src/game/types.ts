@@ -113,6 +113,10 @@ export interface Scene {
   beats: Beat[];
   effects: EffectChip[];
   hidden?: string;
+  /** One-word verdict on the week, e.g. Storming. */
+  verdict?: { text: string; tone: Beat['tone'] };
+  /** Key figures to show big, e.g. crowd 13 / 80. */
+  stats?: { label: string; value: string }[];
   /** While true, logged lines are mirrored into the beats. */
   recording: boolean;
   /** While true, mirrored lines are marked as later in the week. */
