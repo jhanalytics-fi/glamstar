@@ -4,6 +4,7 @@ import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
+import { rollPotential } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
 import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
 
@@ -332,6 +333,73 @@ describe('charts', () => {
   it('tracks weeks on chart and movement', () => {
     const s = step(step(newGame(input), REST), REST);
     expect(s.world.charts.world.some((e) => e.weeks >= 2 && e.last !== null)).toBe(true);
+  });
+});
+
+describe('potential and age', () => {
+  it('skill never grows past potential', () => {
+    let s = { ...newGame(input), money: 10000 };
+    const g = s.members[1];
+    g.skill = 40; g.hidden.potential = 45;
+    for (let i = 0; i < 40; i++) s = step(s, A('rehearse', i % 2 ? 'coach' : 'regular'));
+    const after = s.members.find((m) => m.id === g.id)!;
+    expect(after.skill).toBeLessThanOrEqual(45);
+    expect(after.skill).toBeGreaterThanOrEqual(43);
+  });
+
+  it('a raw talent with headroom keeps improving', () => {
+    let s = { ...newGame(input), money: 10000 };
+    const g = s.members[1];
+    g.skill = 40; g.hidden.potential = 85;
+    for (let i = 0; i < 40; i++) s = step(s, A('rehearse', 'coach'));
+    expect(s.members.find((m) => m.id === g.id)!.skill).toBeGreaterThan(60);
+  });
+
+  it('younger musicians have more headroom on average', () => {
+    const rng = new Rng(3);
+    let young = 0, old = 0;
+    for (let i = 0; i < 500; i++) {
+      young += rollPotential(rng, 50, 18) - 50;
+      old += rollPotential(rng, 50, 29) - 50;
+    }
+    expect(young).toBeGreaterThan(old * 2);
+  });
+
+  it('nobody starting at 20 becomes a legend', () => {
+    const rng = new Rng(9);
+    for (let i = 0; i < 1000; i++) expect(rollPotential(rng, 20, 18)).toBeLessThan(65);
+  });
+
+  it('the session pro reveals everyone\'s potential roughly', () => {
+    const s = act({ ...newGame(input), money: 500 }, A('rehearse', 'coach'));
+    for (const m of s.members.filter((x) => x.outWeeks === 0)) expect(m.known.potential).toBeGreaterThanOrEqual(1);
+    expect(s.log.some((l) => l.text.startsWith("The session pro's verdict"))).toBe(true);
+  });
+
+  it('musicians age at New Year and decline after thirty', () => {
+    let s = newGame(input);
+    s = { ...s, week: 51 };
+    const g = s.members[1];
+    g.age = 34; g.hidden.potential = 70; g.hidden.stamina = 60;
+    s = act(s, REST);
+    const after = s.members.find((m) => m.id === g.id)!;
+    expect(after.age).toBe(35);
+    expect(after.hidden.potential).toBeLessThan(70);
+    expect(after.hidden.stamina).toBeLessThan(60);
+  });
+
+  it('heavy habits eat potential', () => {
+    let s = newGame(input);
+    const g = s.members[1];
+    g.hidden.potential = 80;
+    for (let i = 0; i < 40; i++) {
+      const m = s.members.find((x) => x.id === g.id);
+      if (!m) break;
+      m.habit = 90; m.outWeeks = 0;
+      s = step(s, REST);
+    }
+    const after = s.members.find((m) => m.id === g.id);
+    if (after) expect(after.hidden.potential).toBeLessThan(80);
   });
 });
 

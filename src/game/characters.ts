@@ -2,7 +2,7 @@ import { Rng, clamp } from './rng';
 import { hometown, knownAs, personName } from './names';
 import type { Background, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
 
-export const HIDDEN_TRAITS: HiddenTrait[] = ['ego', 'reliability', 'vice', 'stamina', 'loyalty'];
+export const HIDDEN_TRAITS: HiddenTrait[] = ['potential', 'ego', 'reliability', 'vice', 'stamina', 'loyalty'];
 export const GENRES: Genre[] = ['metal', 'hardrock', 'glam', 'punk', 'newwave'];
 
 export const GENRE_LABEL: Record<Genre, string> = {
@@ -64,12 +64,15 @@ function genreNear(rng: Rng, base: Genre): Genre {
 export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = []): Musician {
   const mean = TIER_MEAN[tier];
   const real = personName(rng, takenNames);
+  const age = rng.int(18, 29);
+  const skill = rng.around(mean, 14);
   const hidden = {
     ego: rng.int(10, 95),
     reliability: rng.int(10, 95),
     vice: rng.int(10, 95),
     stamina: rng.int(20, 90),
     loyalty: rng.int(10, 95),
+    potential: rollPotential(rng, skill, age),
   };
   // Talent and trouble often travel together.
   if (tier === 'good' && rng.chance(0.5)) hidden.ego = clamp(hidden.ego + 20, 1, 99);
@@ -78,10 +81,10 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
     name: knownAs(rng, real, takenNames),
     realName: real,
     from: hometown(rng),
-    age: rng.int(18, 29),
+    age,
     role,
     isPlayer: false,
-    skill: rng.around(mean, 14),
+    skill,
     stage: rng.around(mean - 4, 20),
     image: rng.around(48, 30),
     writing: rng.around(mean - 8, 24),
@@ -98,7 +101,20 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
 }
 
 function unknownTraits(): Record<HiddenTrait, Knowledge> {
-  return { ego: 0, reliability: 0, vice: 0, stamina: 0, loyalty: 0 };
+  return { ego: 0, reliability: 0, vice: 0, stamina: 0, loyalty: 0, potential: 0 };
+}
+
+/**
+ * The ceiling a musician can grow to. Young players have more headroom; a few are
+ * raw talents with a lot more. Someone starting at 20 will never become a legend.
+ */
+export function rollPotential(rng: Rng, skill: number, age: number): number {
+  const youth = Math.max(0, 30 - age) * 1.2;
+  let headroom = youth + rng.int(0, 12);
+  if (rng.chance(0.06)) headroom += rng.int(15, 30); // the raw talent nobody has spotted yet
+  // Low starters rarely hide much: talent shows early.
+  if (skill < 35) headroom *= 0.6;
+  return clamp(Math.round(skill + headroom), skill, 99);
 }
 
 export function createPlayer(rng: Rng, input: NewGameInput): Musician {
@@ -122,9 +138,10 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
       vice: rng.int(30, 70),
       stamina: rng.int(45, 70),
       loyalty: 99,
+      potential: 0,
     },
-    // You know yourself. Except how much you can handle.
-    known: { ego: 2, reliability: 2, vice: 0, stamina: 2, loyalty: 2 },
+    // You know yourself. Except how much you can handle, and how good you could get.
+    known: { ego: 2, reliability: 2, vice: 0, stamina: 2, loyalty: 2, potential: 0 },
     energy: 90,
     mood: 70,
     habit: 5,
@@ -140,6 +157,7 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
   }
   // A frontperson who also plays splits their focus a little.
   if (p.doubles) p.stage -= 4;
+  p.hidden.potential = rollPotential(rng, Math.max(p.skill, p.stage, p.writing), p.age);
   for (const k of ['skill', 'stage', 'image', 'writing'] as const) p[k] = clamp(p[k], 1, 99);
   for (const t of HIDDEN_TRAITS) p.hidden[t] = clamp(p.hidden[t], 1, 99);
   return p;

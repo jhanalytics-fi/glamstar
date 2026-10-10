@@ -1,12 +1,12 @@
 import { Rng, clamp } from './rng';
-import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand } from './characters';
+import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand, rollPotential } from './characters';
 import { addAffinity, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
 import { optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { adjust, first, log, mutate, removeMember, revealLog } from './helpers';
-import type { Action, GameState, NewGameInput } from './types';
+import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
 
@@ -83,6 +83,14 @@ export function upgradeSave(s: GameState): GameState {
     song.released ??= false;
   }
   for (const st of s.world.stars) st.age ??= 6;
+  const rng = new Rng(s.rng);
+  for (const m of [...s.members, ...s.candidates]) {
+    if (m.hidden.potential === undefined) {
+      m.hidden.potential = rollPotential(rng, Math.max(m.skill, m.stage, m.writing), m.age);
+      m.known.potential = 0;
+    }
+  }
+  s.rng = rng.state;
   return s;
 }
 
@@ -149,6 +157,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
     adjust(m, 'energy', 8);
     m.mood = clamp(Math.round(m.mood + (55 - m.mood) * 0.15), 0, 100);
     if (m.habit > 30) adjust(m, 'habit', 1);
+    ageAndBurnout(s, m, rng);
 
     if (m.isPlayer) {
       if (m.habit >= 40) revealLog(s, m, 'vice', 1);
@@ -184,6 +193,22 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   s.week++;
   checkOver(s);
+}
+
+/** New Year birthdays, decline after thirty, and talent quietly burned away by habits. */
+function ageAndBurnout(s: GameState, m: Musician, rng: Rng): void {
+  if (s.week % 52 === 51) {
+    m.age++;
+    if (m.age >= 31) {
+      const loss = Math.min(4, m.age - 30);
+      m.hidden.potential = clamp(m.hidden.potential - rng.int(1, loss + 1), 1, 99);
+      m.hidden.stamina = clamp(m.hidden.stamina - rng.int(1, loss + 1), 1, 99);
+      adjust(m, 'skill', -rng.int(0, Math.ceil(loss / 2)));
+    }
+  }
+  if (m.habit >= 70 && rng.chance(0.08)) m.hidden.potential = clamp(m.hidden.potential - 1, 1, 99);
+  // Living beyond your ceiling doesn't last.
+  if (m.skill > m.hidden.potential && rng.chance(0.1)) adjust(m, 'skill', -1);
 }
 
 function checkOver(s: GameState): void {

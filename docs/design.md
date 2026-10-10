@@ -58,6 +58,9 @@ Every musician has a FIFA-style card. Values are 1-99. Each also has a real name
 | Vice | Susceptibility to substances and excess |
 | Stamina | How fast touring drains them |
 | Loyalty | Resistance to poaching and quitting |
+| Potential | The ceiling for skill, stage presence and writing |
+
+**Potential and age.** Every musician has a hidden potential, Football Manager style. Skill, stage presence and writing grow toward it through rehearsals, gigs and songwriting, slowing as they near it and stopping there. Young musicians usually have more headroom, a few are raw talents with much more, and low starters rarely hide much: someone starting at 20 never becomes a legend, while a gifted 18-year-old at 60 can end up a star. Everyone ages a year at New Year; after thirty, potential, stamina and skill start to slip. Heavy habits quietly eat potential. A hired session pro gives a rough read on everyone's prospects. The player does not know their own potential either.
 
 Hidden traits start as "?", narrow to a rough range ("high", "low") after weeks together or a revealing event, and become exact over time. A great-looking card can hide a disaster. This is the design rule that keeps recruitment from becoming spreadsheet optimisation.
 

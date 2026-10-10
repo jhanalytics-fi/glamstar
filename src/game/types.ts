@@ -3,7 +3,8 @@ import type { World } from './world';
 export type Role = 'vocals' | 'guitar' | 'bass' | 'drums' | 'keys';
 export type PlayerInstrument = 'none' | 'guitar' | 'keys';
 export type Genre = 'metal' | 'hardrock' | 'glam' | 'punk' | 'newwave';
-export type HiddenTrait = 'ego' | 'reliability' | 'vice' | 'stamina' | 'loyalty';
+/** Hidden traits. `potential` is the ceiling for skill, stage presence and writing. */
+export type HiddenTrait = 'ego' | 'reliability' | 'vice' | 'stamina' | 'loyalty' | 'potential';
 /** 0 = unknown, 1 = rough range known, 2 = exact value known */
 export type Knowledge = 0 | 1 | 2;
 export type Background = 'choirboy' | 'artschool' | 'factory' | 'posh';

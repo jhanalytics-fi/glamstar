@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, missingForGig, performance } from './chemistry';
 import { PRESS, VENUES, songTitle } from './names';
-import { addBuzz, adjust, first, log, player, revealLog, signed, subj } from './helpers';
+import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
 import type { Action, ActionType, GameState, Genre, Musician, ReleaseKind, Role, Song, SongKind } from './types';
 
@@ -226,6 +226,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     adjust(m, 'energy', -22 * (1.4 - m.hidden.stamina / 100) * energyMult);
     adjust(m, 'mood', perf >= 50 ? 5 : perf < 40 ? -6 : 0);
     adjust(m, 'habit', (m.hidden.vice / 50) * rng.int(0, 2));
+    grow(m, 'stage', 1, rng, 0.12);
     if (m.energy < 25) revealLog(s, m, 'stamina', 1);
   }
   if (g.door > 0 || g.buzzBonus > 0) {
@@ -253,15 +254,16 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       addAffinity(s, m.id, 'p', -3);
       gain = Math.floor(gain * 0.6);
     }
-    if (rng.chance((75 - m.skill) / 100)) adjust(m, 'skill', 1);
-    if (rng.chance(0.15)) adjust(m, 'stage', 1);
+    grow(m, 'skill', 1, rng, 0.8);
+    grow(m, 'stage', 1, rng, 0.2);
     adjust(m, 'energy', option === 'bootcamp' ? -16 : -8);
     if (option === 'bootcamp') {
       adjust(m, 'habit', -6);
       adjust(m, 'mood', -8);
     }
     if (option === 'coach') {
-      if (m.skill < 80) adjust(m, 'skill', 2);
+      grow(m, 'skill', 3, rng);
+      reveal(m, 'potential', 1);
       if (m.hidden.ego >= 70) {
         adjust(m, 'mood', -6);
         log(s, `${subj(m, 'did not', 'did not')} enjoy being told how to play by a man in a cardigan.`, 'bad');
@@ -269,7 +271,7 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       }
     }
     if (option === 'stageshow') {
-      adjust(m, 'stage', 2);
+      grow(m, 'stage', 3, rng);
       adjust(m, 'image', 1);
     }
   }
@@ -282,6 +284,9 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       revealLog(s, b, 'ego', 1);
     }
   });
+  if (option === 'coach') {
+    log(s, `The session pro's verdict: ${here.map((m) => `${m.isPlayer ? 'you' : first(m)} ${m.isPlayer ? prospects(m).replace('has', 'have') : prospects(m)}`).join(', ')}.`, 'reveal');
+  }
   s.tightness = clamp(s.tightness + gain, 0, 100);
   const what: Record<string, string> = {
     regular: 'Rehearsal',
@@ -293,6 +298,7 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
 }
 
 function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind: SongKind, genre: Genre): Song {
+  grow(writer, 'writing', 1, rng, 0.5);
   const song: Song = { title: songTitle(rng), quality: clamp(Math.round(quality), 1, 99), writer: writer.id, kind, genre, released: false };
   s.songs.push(song);
   const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : 'song';

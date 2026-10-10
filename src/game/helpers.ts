@@ -67,3 +67,26 @@ export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | '
   for (const k of Object.keys(s.affinity)) if (k.split('|').includes(id)) delete s.affinity[k];
   if (how === 'fired') log(s, `You fired ${m.name}. ${m.hidden.ego >= 70 ? 'Took the good amp on the way out.' : 'Took it better than expected.'}`, 'bad');
 }
+
+/**
+ * Improve a stat toward the musician's hidden potential. The closer to the ceiling,
+ * the slower it goes; at the ceiling it stops.
+ */
+export function grow(m: Musician, k: 'skill' | 'stage' | 'writing', steps: number, rng: Rng, rate = 1): number {
+  let gained = 0;
+  for (let i = 0; i < steps; i++) {
+    const gap = m.hidden.potential - m[k];
+    if (gap <= 0) break;
+    if (rng.chance(clamp(gap / 30, 0.05, 0.9) * rate)) {
+      adjust(m, k, 1);
+      gained++;
+    }
+  }
+  return gained;
+}
+
+/** How a coach or a long spell together sums up someone's prospects. */
+export function prospects(m: Musician): string {
+  const gap = m.hidden.potential - Math.max(m.skill, m.stage);
+  return gap >= 15 ? 'has a real future' : gap >= 6 ? 'can still get better' : 'has peaked';
+}
