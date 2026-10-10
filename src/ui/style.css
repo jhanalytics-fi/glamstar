@@ -599,7 +599,7 @@ section + section { margin-top: 32px; }
 
 /* ---------------------------------------------------------------- headline figures */
 
-.headline { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; position: relative; z-index: 1; }
+.headline { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; position: relative; z-index: 1; }
 .hl { display: grid; gap: 0; padding: 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); min-width: 72px; }
 .hl span { font-family: var(--cond); font-weight: 600; font-size: 0.82rem; color: var(--muted); }
 .hl b { font-family: var(--display); font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -610,3 +610,12 @@ section + section { margin-top: 32px; }
 .hl.verdict.neutral b { color: var(--nicotine); }
 .beat .num { font-weight: 700; color: var(--spot); }
 .beat .song { font-style: normal; font-weight: 600; color: var(--chrome); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .headline.enter .hl { animation: score-in 520ms cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+  .headline.enter .hl:nth-child(2) { animation-delay: 120ms; }
+  .headline.enter .hl:nth-child(3) { animation-delay: 240ms; }
+  .headline.enter .hl:nth-child(4) { animation-delay: 360ms; }
+  .headline.enter .hl:nth-child(5) { animation-delay: 480ms; }
+  @keyframes score-in { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
+}

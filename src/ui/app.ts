@@ -364,8 +364,8 @@ function zone(s: GameState): string {
   const delay = () => { const d = t; t += step; return d; };
   const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay().toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${emph(b.text)}</span></li>`;
   const mainHtml = main.map(beatLi).join('');
-  const fxDelay = t;
-  t += 0.4;
+  const fxDelay = t + 0.3;
+  t += 1.3;
   const lateHtml = late.length ? `<div class="later" data-d="${t.toFixed(2)}"><h3>Later that week</h3><ul>${late.map((b) => `<li class="${b.tone}">${esc(b.text)}</li>`).join('')}</ul></div>` : '';
   if (late.length) t += 0.5;
   const nextDelay = t;
@@ -392,9 +392,9 @@ function zone(s: GameState): string {
           ${playing ? '<button class="btn ghost small skip" data-do="skip">Skip</button>' : ''}
           ${sc ? `<button class="btn ghost small fold" data-do="fold" aria-expanded="true" ${playing ? 'hidden' : ''}>Hide report</button>` : ''}
         </div>
-        ${sc ? headlineRow(sc) : ''}
         <ol class="beats">${mainHtml}</ol>
-        ${sc && (sc.effects.length || (debug && sc.hidden)) ? `<div class="fx" data-d="${fxDelay.toFixed(2)}">${effectChips(sc.effects)}${debug && sc.hidden ? `<p class="hidden-fx">${esc(sc.hidden)}</p>` : ''}</div>` : ''}
+        ${sc ? headlineRow(sc, fxDelay) : ''}
+        ${sc && (sc.effects.length || (debug && sc.hidden)) ? `<div class="fx" data-d="${(fxDelay + 0.6).toFixed(2)}">${effectChips(sc.effects)}${debug && sc.hidden ? `<p class="hidden-fx">${esc(sc.hidden)}</p>` : ''}</div>` : ''}
         ${lateHtml}
       </div>
       <div class="next" data-d="${nextDelay.toFixed(2)}">${nextBlock(s)}</div>
@@ -402,7 +402,7 @@ function zone(s: GameState): string {
 }
 
 /** Big headline: verdict, key figures and the band's money, fans and buzz. */
-function headlineRow(sc: Scene): string {
+function headlineRow(sc: Scene, at: number): string {
   const tiles: string[] = [];
   if (sc.verdict) tiles.push(`<div class="hl verdict ${sc.verdict.tone}"><span>Verdict</span><b>${esc(sc.verdict.text)}</b></div>`);
   for (const st of sc.stats ?? []) tiles.push(`<div class="hl"><span>${esc(st.label)}</span><b>${esc(st.value)}</b></div>`);
@@ -410,7 +410,8 @@ function headlineRow(sc: Scene): string {
     const val = e.stat === 'money' ? `${e.delta > 0 ? '+' : '-'}£${Math.abs(e.delta).toLocaleString('en-GB')}` : `${e.delta > 0 ? '+' : ''}${e.delta.toLocaleString('en-GB')}`;
     tiles.push(`<div class="hl ${e.delta > 0 ? 'good' : 'bad'}"><span>${e.stat === 'money' ? 'Money' : e.stat === 'fans' ? 'Fans' : 'Buzz'}</span><b>${val}</b></div>`);
   }
-  return tiles.length ? `<div class="headline">${tiles.join('')}</div>` : '';
+  // Revealed after the last line of commentary: the final score.
+  return tiles.length ? `<div class="headline" data-d="${at.toFixed(2)}">${tiles.join('')}</div>` : '';
 }
 
 /** Make the facts in a line of commentary stand out: money, numbers, chart places and song titles. */
