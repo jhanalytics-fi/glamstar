@@ -4,7 +4,9 @@ London, January 1982. You have a voice, three mates from the pub and a band name
 
 A rock-career management sim inspired by *Rockstar* (1989), with real characters, hidden traits and band chemistry at its core.
 
-## Run it
+Play it: https://jhanalytics-fi.github.io/glamstar/
+
+## Run it locally
 
 ```bash
 npm install
