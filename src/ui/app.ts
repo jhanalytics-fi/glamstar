@@ -263,6 +263,7 @@ function renderGame(s: GameState): string {
         <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
         <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${pos ? `#${pos}` : '-'}</dd></div>
       </dl>
+      ${bandPulse(s)}
     </header>
     <div class="layout">
       ${zone(s)}
@@ -272,6 +273,39 @@ function renderGame(s: GameState): string {
         </div>
         <div class="tab-body">${panelBody(s)}</div>
       </aside>
+    </div>`;
+}
+
+/** Band-wide averages and red flags, so nobody has to scan every card. */
+function bandPulse(s: GameState): string {
+  const ms = s.members;
+  if (!ms.length) return '';
+  const avg = (f: (m: Musician) => number) => Math.round(ms.reduce((a, m) => a + f(m), 0) / ms.length);
+  const meters: [string, string, number, boolean][] = [
+    ['Energy', 'energy', avg((m) => m.energy), false],
+    ['Mood', 'mood', avg((m) => m.mood), false],
+    ['Habit', 'habit', avg((m) => m.habit), true],
+    ['Stage', 'stage', avg((m) => (debug ? m.stage : estimate(m, m.stage))), false],
+  ];
+  const meter = ([label, key, v, badHigh]: [string, string, number, boolean]) => {
+    const danger = badHigh ? v >= 50 : v < 35;
+    return `<div class="pulse-m ${danger ? 'danger' : ''}"><span>${tip(label, key)} <b>${v}</b></span><div class="bar ${badHigh ? 'habit' : ''} ${danger && !badHigh ? 'low' : ''}"><i style="width:${v}%"></i></div></div>`;
+  };
+  const flags: string[] = [];
+  for (const m of ms) {
+    const who = m.isPlayer ? 'You' : first(m);
+    if (m.outWeeks > 0) flags.push(`${who}: out ${m.outWeeks} wk`);
+    else if (m.energy < 25) flags.push(`${who}: exhausted`);
+    if (m.habit >= 60) flags.push(`${who}: using heavily`);
+    if (m.mood < 25 && !m.isPlayer) flags.push(`${who}: might quit`);
+  }
+  const miss = missingForGig(s);
+  if (miss.length) flags.unshift(`No ${miss.map((x) => x.replace(/^an? /, '')).join(', ')}`);
+  return `
+    <div class="pulse" aria-label="Band condition">
+      <span class="pulse-label">Band</span>
+      ${meters.map(meter).join('')}
+      ${flags.length ? `<button class="flags" data-do="tab" data-arg="band" title="Open the band tab">${flags.map((f) => `<span class="flag">${esc(f)}</span>`).join('')}</button>` : '<span class="flag ok">All fit to play</span>'}
     </div>`;
 }
 

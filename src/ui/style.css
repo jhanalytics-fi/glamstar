@@ -573,3 +573,19 @@ section + section { margin-top: 32px; }
 .hope-done { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
 .hope-done .hint { margin: 0; }
 .sub .btn { margin-left: 8px; vertical-align: middle; }
+
+/* ---------------------------------------------------------------- band pulse in the header */
+
+.top { flex-wrap: wrap; }
+.pulse { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
+.pulse-label { font-family: var(--display); font-weight: 800; font-size: 0.9rem; }
+.pulse-m { display: grid; gap: 3px; min-width: 110px; font-family: var(--cond); color: var(--muted); }
+.pulse-m b { color: var(--spot); font-weight: 700; font-variant-numeric: tabular-nums; }
+.pulse-m.danger b { color: var(--bad); }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; background: none; border: 0; padding: 0; cursor: pointer; }
+.flag { font-family: var(--cond); font-weight: 700; font-size: 0.92rem; padding: 2px 9px; border-radius: 999px; background: rgba(255, 122, 122, 0.16); color: var(--bad); }
+.flag.ok { background: rgba(126, 224, 161, 0.12); color: var(--good); }
+@media (prefers-reduced-motion: no-preference) {
+  .flag:not(.ok), .pulse-m.danger .bar i { animation: alarm 1.6s ease-in-out infinite; }
+  @keyframes alarm { 50% { opacity: 0.45; } }
+}
