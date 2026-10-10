@@ -10,6 +10,12 @@ The game is text- and card-driven, not an action game. Depth comes from people, 
 
 Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the setting and the mechanics, handled with satirical bite. Adult themes are fine; explicit sexual content stays off-screen.
 
+## Transparency
+
+- Every stat, trait and header figure explains itself on hover or keyboard focus.
+- Every action and every answered situation logs an Effects line with all visible changes (money, fans, buzz, tightness, each member's stats, energy, mood and habit). Within a week the log reads in the order things happened, so effects follow their cause.
+- Debug mode (header link, development aid) shows true values, marks values the player would not know yet with *, and adds hidden-trait changes to the Effects lines.
+
 ## The four pillars
 
 1. **The band (people and chemistry).** Members have stat cards and hidden traits. Chemistry decides whether talent turns into success. The primary pillar: everything else leans on it.
@@ -58,11 +64,11 @@ Every musician has a FIFA-style card. Values are 1-99. Each also has a real name
 | Trait | Meaning |
 |---|---|
 | Ego | Need for spotlight; clashes with other big egos |
-| Reliability | Shows up sober and on time |
+| Reliability | Professionalism: shows up sober and on time. Low means late rehearsals, vanishing and playing wasted. Not the same as performance consistency, which may become its own trait later |
 | Vice | Susceptibility to substances and excess |
 | Stamina | How fast touring drains them |
 | Loyalty | Resistance to poaching and quitting |
-| Potential | The ceiling for skill, stage presence and writing |
+| Potential | The ceiling for skill, stage presence and writing. Always hidden: only ever shown as an opinion (Big future / Can improve / Peaked), never a number |
 
 **Potential and age.** Every musician has a hidden potential, Football Manager style. Skill, stage presence and writing grow toward it through rehearsals, gigs and songwriting, slowing as they near it and stopping there. Young musicians usually have more headroom, a few are raw talents with much more, and low starters rarely hide much: someone starting at 20 never becomes a legend, while a gifted 18-year-old at 60 can end up a star. Everyone ages a year at New Year; after thirty, potential, stamina and skill start to slip. Heavy habits quietly eat potential. A hired session pro gives a rough read on everyone's prospects. The player does not know their own potential either.
 

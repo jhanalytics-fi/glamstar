@@ -4,7 +4,7 @@ import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
-import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, rollPotential, seenRange } from '../src/game/characters';
+import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, reveal, rollPotential, seenRange, traitDisplay } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
 import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
 
@@ -471,10 +471,40 @@ describe('fair starts and getting to know the band', () => {
         const s0 = { ...newGame({ ...input, seed }), money: 1000 };
         s0.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
         for (const m of s0.members) m.hidden.potential = 95;
-        moved = act(s0, a).log.some((l) => l.text.startsWith('Progress:'));
+        moved = act(s0, a).log.some((l) => l.tone === 'fx' && /(skill|stage|writing|image) [+-]/.test(l.text));
       }
       expect(moved, a.type).toBe(true);
     }
+  });
+});
+
+describe('visible effects', () => {
+  it('answering a situation logs its effects, hidden ones separately', () => {
+    let s: GameState = { ...newGame(input), money: 500, lastGigWeek: 0 };
+    const m = s.members[1];
+    m.hidden.vice = 90; m.hidden.ego = 90;
+    s = forceEvent(s, 'arrest');
+    const who = first(s.members.find((x) => x.id === s.pending!.params.m)!);
+    const after = resolvePending(s, 0);
+    const fx = after.log.filter((l) => l.tone === 'fx').pop()!;
+    expect(fx.text).toContain('money -£80');
+    expect(fx.text).toContain(`${who}: mood +8`);
+    expect(fx.hidden).toContain(`${who}: loyalty +8`);
+  });
+
+  it('a gig logs money, fans and energy changes', () => {
+    const s = act(newGame(input), A('gig', 'venue0'));
+    const fx = s.log.find((l) => l.tone === 'fx')!;
+    expect(fx.text).toMatch(/money \+£\d+/);
+    expect(fx.text).toMatch(/energy -\d+/);
+  });
+
+  it('potential is never shown as a number', () => {
+    const s = newGame(input);
+    const m = s.members[1];
+    reveal(m, 'potential', 2);
+    expect(m.known.potential).toBe(1);
+    expect(['Big future', 'Can improve', 'Peaked']).toContain(traitDisplay(m, 'potential'));
   });
 });
 

@@ -5,7 +5,7 @@ import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
 import { optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
-import { adjust, first, log, mutate, removeMember, revealLog } from './helpers';
+import { adjust, first, log, logEffects, mutate, removeMember, revealLog, snapshot } from './helpers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
@@ -106,10 +106,10 @@ export function act(state: GameState, a: Action): GameState {
   const why = canAct(state, a);
   if (why) throw new Error(why);
   return mutate(state, (s, rng) => {
-    const before = new Map(s.members.map((m) => [m.id, { skill: m.skill, stage: m.stage, writing: m.writing, image: m.image }]));
+    const before = snapshot(s);
     perform(s, rng, a);
     for (const m of available(s)) getToKnow(m, KNOW_BY_ACTION[a.type]);
-    logProgress(s, before);
+    logEffects(s, before);
     if (a.type !== 'rehearse') s.tightness = clamp(s.tightness - 1, 0, 100);
     endOfWeek(s, rng);
   });
@@ -117,23 +117,6 @@ export function act(state: GameState, a: Action): GameState {
 
 /** How much a week of each activity teaches you about your bandmates. */
 const KNOW_BY_ACTION: Record<Action['type'], number> = { rehearse: 18, gig: 14, release: 12, party: 12, write: 10, rest: 4, advertise: 3 };
-
-const STAT_LABEL = { skill: 'skill', stage: 'stage', writing: 'writing', image: 'image' } as const;
-
-/** One line telling the player who got better (or worse) this week. */
-function logProgress(s: GameState, before: Map<string, Record<keyof typeof STAT_LABEL, number>>): void {
-  const parts: string[] = [];
-  for (const m of s.members) {
-    const b = before.get(m.id);
-    if (!b) continue;
-    const ch = (Object.keys(STAT_LABEL) as (keyof typeof STAT_LABEL)[])
-      .map((k) => [k, m[k] - b[k]] as const)
-      .filter(([, d]) => d !== 0)
-      .map(([k, d]) => `${STAT_LABEL[k]} ${d > 0 ? '+' : ''}${d}`);
-    if (ch.length) parts.push(`${m.isPlayer ? 'you' : first(m)} ${ch.join(', ')}`);
-  }
-  if (parts.length) log(s, `Progress: ${parts.join('; ')}.`, 'good');
-}
 
 // ---------------------------------------------------------------- free actions
 

@@ -238,7 +238,7 @@ section + section { margin-top: 32px; }
 .traits dd.unknown { color: var(--smoke); }
 
 .meters { display: grid; gap: 4px; }
-.meter { display: grid; grid-template-columns: 52px 1fr; align-items: center; gap: 8px; font-family: var(--cond); font-size: 0.92rem; color: var(--muted); }
+.meter { display: grid; grid-template-columns: 70px 1fr; align-items: center; gap: 8px; font-family: var(--cond); font-size: 0.92rem; color: var(--muted); }
 .bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }
 .bar i { display: block; height: 100%; background: var(--chrome); }
 .bar.habit i { background: var(--nicotine); }
@@ -363,3 +363,32 @@ section + section { margin-top: 32px; }
 /* Uncertain stats: you only have a rough idea yet */
 .attrs dd .range { font-size: 0.82rem; letter-spacing: -0.02em; color: var(--muted); }
 .ovr .approx { font-size: 0.6em; color: var(--muted); margin-right: 1px; }
+
+/* ---------------------------------------------------------------- explanations & debug */
+
+.tip { position: relative; cursor: help; text-decoration: underline dotted rgba(185, 166, 198, 0.5); text-underline-offset: 3px; }
+.tip:hover::after, .tip:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: max-content;
+  max-width: min(260px, 70vw);
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--spot);
+  color: var(--velvet);
+  font: 400 0.85rem/1.4 var(--body);
+  text-align: left;
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+/* Tips near the right edge open leftwards. */
+.stats div:nth-last-child(-n + 3) .tip::after { left: auto; right: 0; }
+
+.log li.fx { border-color: transparent; font-family: var(--cond); font-size: 0.92rem; color: var(--muted); padding-left: 12px; }
+.hidden-fx { display: block; color: var(--nicotine); }
+.debug-toggle { margin-left: 8px; }

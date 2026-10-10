@@ -4,8 +4,10 @@ import { reveal } from './characters';
 import { addAffinity, getAffinity } from './chemistry';
 import type { GameState, HiddenTrait, LogEntry, Musician } from './types';
 
-export function log(s: GameState, text: string, tone: LogEntry['tone'] = 'neutral'): void {
-  s.log.push({ week: s.week, text, tone });
+export type Snapshot = ReturnType<typeof snapshot>;
+
+export function log(s: GameState, text: string, tone: LogEntry['tone'] = 'neutral', hidden?: string): void {
+  s.log.push(hidden ? { week: s.week, text, tone, hidden } : { week: s.week, text, tone });
   if (s.log.length > 200) s.log.splice(0, s.log.length - 200);
 }
 
@@ -89,4 +91,55 @@ export function grow(m: Musician, k: 'skill' | 'stage' | 'writing', steps: numbe
 export function prospects(m: Musician): string {
   const gap = m.hidden.potential - Math.max(m.skill, m.stage);
   return gap >= 15 ? 'has a real future' : gap >= 6 ? 'can still get better' : 'has peaked';
+}
+
+// ---------------------------------------------------------------- effects
+
+const VISIBLE = ['skill', 'stage', 'image', 'writing', 'energy', 'mood', 'habit'] as const;
+const HIDDEN = ['potential', 'ego', 'reliability', 'vice', 'stamina', 'loyalty'] as const;
+
+/** Everything a choice can change, captured before it happens. */
+export function snapshot(s: GameState) {
+  return {
+    money: s.money,
+    fans: s.fans,
+    buzz: s.buzz,
+    tightness: s.tightness,
+    gear: s.gear,
+    members: new Map(s.members.map((m) => [m.id, { ...pick(m, VISIBLE), ...m.hidden }])),
+  };
+}
+
+function pick<T extends object, K extends keyof T>(o: T, keys: readonly K[]): Pick<T, K> {
+  const r = {} as Pick<T, K>;
+  for (const k of keys) r[k] = o[k];
+  return r;
+}
+
+const fmt = (d: number) => (d > 0 ? `+${d}` : String(d));
+
+/**
+ * Logs one "Effects" line with every visible change since the snapshot, e.g.
+ * "£-80, buzz +3. Steve mood +8; Lola skill +1." Hidden-trait changes go in a
+ * separate part that only debug mode shows.
+ */
+export function logEffects(s: GameState, before: Snapshot, opts: { skipRoutine?: boolean } = {}): void {
+  const band: string[] = [];
+  if (s.money !== before.money) band.push(`money ${s.money > before.money ? '+' : '-'}£${Math.abs(s.money - before.money)}`);
+  for (const k of ['fans', 'buzz', 'tightness', 'gear'] as const) if (s[k] !== before[k]) band.push(`${k} ${fmt(s[k] - before[k])}`);
+  const people: string[] = [];
+  const secret: string[] = [];
+  for (const m of s.members) {
+    const b = before.members.get(m.id);
+    if (!b) continue;
+    const who = m.isPlayer ? 'You' : first(m);
+    const vis = VISIBLE.filter((k) => m[k] !== b[k] && !(opts.skipRoutine && (k === 'energy' || k === 'mood' || k === 'habit')))
+      .map((k) => `${k} ${fmt(m[k] - b[k])}`);
+    if (vis.length) people.push(`${who}: ${vis.join(', ')}`);
+    const hid = HIDDEN.filter((k) => m.hidden[k] !== b[k]).map((k) => `${k} ${fmt(m.hidden[k] - b[k])}`);
+    if (hid.length) secret.push(`${who}: ${hid.join(', ')}`);
+  }
+  for (const [id] of before.members) if (!s.members.some((m) => m.id === id)) people.push('one member gone');
+  const text = [band.join(', '), people.join('; ')].filter(Boolean).join('. ');
+  if (text || secret.length) log(s, text ? `Effects: ${text}.` : 'Effects: nothing you can see.', 'fx', secret.length ? `Hidden: ${secret.join('; ')}.` : undefined);
 }

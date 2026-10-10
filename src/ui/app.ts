@@ -8,7 +8,10 @@ import { resolvePending, viewPending } from '../game/events';
 import { bandName, bestVenue, stageName } from '../game/names';
 import type { ActionType, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
+import { tip } from './glossary';
+
 const SAVE_KEY = 'glamstar.save.v1';
+const DEBUG_KEY = 'glamstar.debug';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -26,6 +29,8 @@ let chartTab: ChartId = 'london';
 let chartAll = false;
 let openAction: ActionType | null = null;
 let armedFire: string | null = null;
+/** Development aid: shows true values and hidden changes. */
+let debug = (() => { try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; } })();
 let error = '';
 
 function load(): GameState | null {
@@ -102,6 +107,10 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'chart': chartTab = arg as ChartId; chartAll = false; break;
       case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
+      case 'debug':
+        debug = !debug;
+        try { localStorage.setItem(DEBUG_KEY, debug ? '1' : '0'); } catch { /* fine */ }
+        break;
     }
   } catch (err) {
     error = (err as Error).message;
@@ -177,17 +186,17 @@ function renderGame(s: GameState): string {
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
-        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a></p>
+        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
       </div>
       <div>
         <dl class="stats">
-          <div><dt>Money</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
-          <div><dt>Fans</dt><dd>${s.fans}</dd></div>
-          <div><dt>Buzz</dt><dd>${s.buzz}</dd></div>
-          <div><dt>Chemistry</dt><dd>${chem.total}</dd></div>
-          <div><dt>Tightness</dt><dd>${s.tightness}</dd></div>
-          <div><dt>Songs</dt><dd>${s.songs.length}</dd></div>
-          <div><dt>London chart</dt><dd>${(() => { const p = playerPosition(s.world, 'london'); return p ? `#${p}` : 'Not yet'; })()}</dd></div>
+          <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
+          <div><dt>${tip('Fans', 'fans')}</dt><dd>${s.fans}</dd></div>
+          <div><dt>${tip('Buzz', 'buzz')}</dt><dd>${s.buzz}</dd></div>
+          <div><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
+          <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
+          <div><dt>${tip('Songs', 'songs')}</dt><dd>${s.songs.length}</dd></div>
+          <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${(() => { const p = playerPosition(s.world, 'london'); return p ? `#${p}` : 'Not yet'; })()}</dd></div>
         </dl>
         <p class="chem-detail">Chemistry: style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.egoPenalty ? `, egos -${chem.egoPenalty}` : ''}</p>
       </div>
@@ -309,33 +318,36 @@ function recordsSection(s: GameState): string {
 }
 
 function logList(s: GameState, keep: (week: number) => boolean): string {
-  const items = [...s.log].reverse().filter((l) => keep(l.week)).slice(0, 40);
+  // Newest week first, but each week reads in the order things happened, so effects follow their cause.
+  const kept = s.log.filter((l) => keep(l.week)).slice(-60);
+  const weeks = [...new Set(kept.map((l) => l.week))].sort((a, b) => b - a);
+  const items = weeks.flatMap((w) => kept.filter((l) => l.week === w));
   let prevWeek = -2;
   return `<ol class="log">${items
     .map((l) => {
       const head = l.week !== prevWeek ? `<span class="wk">${dateLabel(l.week)}, week ${l.week + 1}</span>` : '';
       prevWeek = l.week;
-      return `<li class="${l.tone}">${head}${esc(l.text)}</li>`;
+      return `<li class="${l.tone}">${head}${esc(l.text)}${debug && l.hidden ? `<span class="hidden-fx">${esc(l.hidden)}</span>` : ''}</li>`;
     })
     .join('')}</ol>`;
 }
 
 function card(s: GameState, m: Musician, candidate = false): string {
   // Everything shown is what you believe, not the truth, until you know them well.
-  const ovr = estimate(m, overall(m));
-  const fuzzy = seenRange(m, overall(m))[0] !== seenRange(m, overall(m))[1];
+  const ovr = debug ? overall(m) : estimate(m, overall(m));
+  const fuzzy = !debug && seenRange(m, overall(m))[0] !== seenRange(m, overall(m))[1];
   const tier = ovr >= 58 ? 'gold' : ovr >= 45 ? 'silver' : 'bronze';
   const stat = (v: number) => {
     const [lo, hi] = seenRange(m, v);
-    return lo === hi ? String(v) : `<span class="range">${lo}-${hi}</span>`;
+    return debug || lo === hi ? String(v) : `<span class="range">${lo}-${hi}</span>`;
   };
   const out = !candidate && !available(s).includes(m);
   const roleText = m.isPlayer ? `Vocals${m.doubles ? ` + ${ROLE_LABEL[m.doubles].toLowerCase()}` : ''}` : ROLE_LABEL[m.role];
   const traits = HIDDEN_TRAITS.map((t) => {
-    const v = traitDisplay(m, t);
-    return `<dt>${t}</dt><dd class="${v === '?' ? 'unknown' : ''}">${v}</dd>`;
+    const v = debug ? `${m.hidden[t]}${m.known[t] < 2 || t === 'potential' ? '*' : ''}` : traitDisplay(m, t);
+    return `<dt>${tip(t.charAt(0).toUpperCase() + t.slice(1), t)}</dt><dd class="${v === '?' ? 'unknown' : ''}">${v}</dd>`;
   }).join('');
-  const meter = (label: string, v: number, cls = '') => `<div class="meter">${label}<div class="bar ${cls} ${cls !== 'habit' && v < 30 ? 'low' : ''}"><i style="width:${v}%"></i></div></div>`;
+  const meter = (label: string, v: number, cls = '') => `<div class="meter"><span>${tip(label, label.toLowerCase())}${debug ? ` ${v}` : ''}</span><div class="bar ${cls} ${cls !== 'habit' && v < 30 ? 'low' : ''}"><i style="width:${v}%"></i></div></div>`;
 
   let foot = '';
   if (candidate) {
@@ -351,14 +363,14 @@ function card(s: GameState, m: Musician, candidate = false): string {
     <article class="card ${tier} ${out ? 'out' : ''}">
       <div class="card-in">
         <div class="card-head">
-          <div class="ovr" ${fuzzy ? 'title="Your best guess. Play together more to know for sure."' : ''}>${fuzzy ? '<span class="approx">~</span>' : ''}${ovr}<small>${roleText}</small></div>
+          <div class="ovr" title="${fuzzy ? 'Your best guess. Play together more to know for sure.' : 'Overall rating'}">${fuzzy ? '<span class="approx">~</span>' : ''}${ovr}<small>${roleText}</small></div>
           <div class="who"><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong>${m.realName !== m.name && !m.name.includes('"') ? `<span class="real">${esc(m.realName)}</span>` : ''}<span>${m.age}, ${esc(m.from)}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
         </div>
         <dl class="attrs">
-          <div><dt>Skill</dt><dd>${stat(m.skill)}</dd></div>
-          <div><dt>Stage</dt><dd>${stat(m.stage)}</dd></div>
-          <div><dt>Image</dt><dd>${stat(m.image)}</dd></div>
-          <div><dt>Write</dt><dd>${stat(m.writing)}</dd></div>
+          <div><dt>${tip('Skill', 'skill')}</dt><dd>${stat(m.skill)}</dd></div>
+          <div><dt>${tip('Stage', 'stage')}</dt><dd>${stat(m.stage)}</dd></div>
+          <div><dt>${tip('Image', 'image')}</dt><dd>${stat(m.image)}</dd></div>
+          <div><dt>${tip('Write', 'write')}</dt><dd>${stat(m.writing)}</dd></div>
         </dl>
         <dl class="traits">${traits}</dl>
         ${candidate ? '' : `<div class="meters">${meter('Energy', m.energy)}${meter('Mood', m.mood)}${meter('Habit', m.habit, 'habit')}</div>`}

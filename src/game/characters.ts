@@ -233,12 +233,18 @@ export function traitDisplay(m: Musician, t: HiddenTrait): string {
   const k = m.known[t];
   if (k === 0) return '?';
   const v = m.hidden[t];
+  // Potential is never a number, only an opinion about how far they can still go.
+  if (t === 'potential') {
+    const gap = v - Math.max(m.skill, m.stage);
+    return gap >= 15 ? 'Big future' : gap >= 6 ? 'Can improve' : 'Peaked';
+  }
   if (k === 2) return String(v);
   return v >= 67 ? 'High' : v >= 34 ? 'Mid' : 'Low';
 }
 
 /** Returns true if knowledge actually increased. */
 export function reveal(m: Musician, t: HiddenTrait, level: Knowledge): boolean {
+  if (t === 'potential') level = Math.min(level, 1) as Knowledge;
   if (m.known[t] >= level) return false;
   m.known[t] = level;
   return true;

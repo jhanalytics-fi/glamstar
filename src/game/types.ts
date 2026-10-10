@@ -76,7 +76,10 @@ export interface PendingEvent {
 export interface LogEntry {
   week: number;
   text: string;
-  tone: 'good' | 'bad' | 'neutral' | 'reveal';
+  /** 'fx' = the measurable effects of what just happened. */
+  tone: 'good' | 'bad' | 'neutral' | 'reveal' | 'fx';
+  /** Changes to hidden values, shown only in debug mode. */
+  hidden?: string;
 }
 
 export type GameOver = { reason: string; won: boolean };

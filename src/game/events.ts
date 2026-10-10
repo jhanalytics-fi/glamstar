@@ -2,7 +2,7 @@
 import { Rng, clamp } from './rng';
 import { addAffinity, available, forEachPair, getAffinity, performance } from './chemistry';
 import { PRESS, songTitle } from './names';
-import { addBuzz, adjust, first, log, mutate, player, removeMember, revealLog, subj } from './helpers';
+import { addBuzz, adjust, first, log, logEffects, mutate, player, removeMember, revealLog, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
 import type { GameState, Musician } from './types';
 
@@ -826,8 +826,10 @@ export function resolvePending(state: GameState, index: number): GameState {
   return mutate(state, (s, rng) => {
     const p = s.pending!;
     const opt = optionsFor(s)[index];
+    const before = snapshot(s);
     s.money -= opt.cost ?? 0;
     opt.resolve(s, rng, p.params);
+    logEffects(s, before);
     s.pending = null;
   });
 }
