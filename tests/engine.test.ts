@@ -64,7 +64,7 @@ describe('action choices', () => {
     for (const t of types) {
       const n = actionOptions(s, t).length;
       expect(n).toBeGreaterThanOrEqual(2);
-      expect(n).toBeLessThanOrEqual(6);
+      expect(n).toBeLessThanOrEqual(t === 'gig' ? 8 : 6);
     }
   });
 
@@ -124,6 +124,25 @@ describe('action choices', () => {
     const s1 = act(s0, A('gig', 'venue0'));
     expect(s1.lastGigWeek).toBe(0);
     expect(s1.members.reduce((a, m) => a + m.energy, 0)).toBeLessThan(s0.members.reduce((a, m) => a + m.energy, 0));
+  });
+
+  it('one-off gig offers turn up early, change weekly and pay their fee', () => {
+    const seen = new Set<string>();
+    let played = false;
+    for (let week = 0; week < 20; week++) {
+      const s = { ...newGame(input), week };
+      const offers = actionOptions(s, 'gig').filter((o) => o.id.startsWith('offer_'));
+      for (const o of offers) seen.add(o.id);
+      if (!played && offers.length) {
+        const after = act(s, A('gig', offers[0].id));
+        expect(after.lastGigWeek).toBe(week);
+        played = true;
+      }
+    }
+    expect(played).toBe(true);
+    expect(seen.size).toBeGreaterThan(4);
+    const famous = { ...newGame(input), fans: 5000 };
+    expect(actionOptions(famous, 'gig').some((o) => o.id.startsWith('offer_'))).toBe(false);
   });
 
   it('pay to play costs £60 and pays nothing at the door', () => {

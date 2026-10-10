@@ -5,6 +5,7 @@ import { addAffinity, available, chemistry, forEachPair, getAffinity, missingFor
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
 import { addBuzz, adjust, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict } from './helpers';
 import { hotGenres, trend } from './world';
+import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { TourPolicy } from './types';
@@ -44,6 +45,8 @@ interface GigSpec {
   energyMult: number;
   buzzBonus: number;
   crowd: (s: GameState, rng: Rng) => number;
+  /** One-off bookings have their own aftermath. */
+  after?: (s: GameState, rng: Rng, perf: number, crowd: number) => void;
 }
 
 function supportAct(s: GameState): { name: string; fans: number } | null {
@@ -60,6 +63,16 @@ function baseCrowd(s: GameState, rng: Rng): number {
 
 function gigSpecs(s: GameState): Record<string, GigSpec> {
   const specs: Record<string, GigSpec> = {
+    ...Object.fromEntries(
+      weeklyOffers(s).map((o) => [
+        `offer_${o.id}`,
+        {
+          venue: o.venue, capacity: o.capacity, fee: o.fee, door: 0, cost: 0, fanMult: o.fanMult, energyMult: o.energyMult, buzzBonus: o.buzzBonus,
+          crowd: (_st: GameState, rng: Rng) => rng.int(o.crowd[0], o.crowd[1]),
+          after: o.after,
+        } satisfies GigSpec,
+      ]),
+    ),
     openmic: {
       venue: 'open mic night at The Crown & Gutter',
       capacity: 45, fee: 0, door: 0, cost: 0, fanMult: 0.6, energyMult: 0.6, buzzBonus: 0,
@@ -121,6 +134,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
     case 'gig': {
       const opts: ActionOption[] = [
         { id: 'openmic', label: 'Open mic night', cost: 0, hint: 'No pay. Small crowd, low pressure, easy on the legs.' },
+        ...weeklyOffers(s).map((o) => ({ id: `offer_${o.id}`, label: `This week only: ${o.label}`, cost: 0, hint: `£${o.fee}. ${o.hint}` })),
       ];
       VENUES.forEach((v, i) => {
         if (s.fans >= v.minFans) {
@@ -253,6 +267,8 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   setVerdict(s, perf >= 75 ? 'Storming' : perf >= 55 ? 'Solid' : perf >= 40 ? 'Ropey' : 'Shambles', perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
   headline(s, 'Crowd', `${crowd} / ${g.capacity}`);
   log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
+
+  g.after?.(s, rng, perf, crowd);
 
   const demo = s.releases.find((r) => r.kind === 'demo');
   if (demo) {
