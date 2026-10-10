@@ -35,6 +35,8 @@ let panelTab: PanelTab = 'band';
 let historyView: 'milestones' | 'all' = 'milestones';
 /** Scene already played back, so re-renders don't replay it. */
 let playedScene: number | null = null;
+/** Scene folded down to one line so the choices sit near the top. */
+let collapsedScene: number | null = null;
 let armedFire: string | null = null;
 let armedAbandon = false;
 let tourTier: string | null = null;
@@ -107,7 +109,14 @@ function onClick(e: Event, root: HTMLElement): void {
         if (!draft.name.trim()) { error = 'Enter your real name first. Your stage name is optional.'; break; }
         state = newGame(draft);
         break;
-      case 'open': openAction = openAction === arg ? null : (arg as ActionType); tourTier = null; break;
+      case 'open':
+        openAction = openAction === arg ? null : (arg as ActionType);
+        tourTier = null;
+        // Opening a choice folds last week's report so the options stay near the top.
+        if (openAction && state?.scene) collapsedScene = state.scene.id;
+        break;
+      case 'fold': collapsedScene = state?.scene?.id ?? null; break;
+      case 'unfold': collapsedScene = null; break;
       case 'tourTier': {
         tourTier = arg!;
         const t = tierById(arg!)!;
@@ -155,6 +164,8 @@ function onClick(e: Event, root: HTMLElement): void {
   save();
   render(root);
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
+  if (what === 'open' || what === 'tourTier') bringIntoView(root.querySelector('.next .choices, .tour-setup'));
+  if (what === 'fold') bringIntoView(root.querySelector('#zone'));
   // Keep the eyes on the action zone after a decision.
   if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'dismiss' || what === 'startTour' || what === 'tourNext' || (what === 'abandon' && !armedAbandon)) {
     const z = document.getElementById('zone');
@@ -169,6 +180,13 @@ function render(root: HTMLElement): void {
   timers = [];
   root.innerHTML = state ? renderGame(state) : renderCreate();
   playback(root);
+}
+
+/** Scroll something into view only if it is off screen. */
+function bringIntoView(el: Element | null): void {
+  if (!el) return;
+  const r = el.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: r.height > window.innerHeight ? 'start' : 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
 }
 
 /** Reveal the scene line by line, like a match report coming in. */
@@ -188,6 +206,13 @@ function playback(root: HTMLElement): void {
     playedScene = id;
     z.classList.remove('playing');
     z.querySelector('.skip')?.remove();
+    z.querySelector('.fold')?.removeAttribute('hidden');
+    // A situation is waiting: fold the report so the question is in view.
+    if (state?.pending) {
+      collapsedScene = id;
+      render(root);
+      bringIntoView(root.querySelector('.event'));
+    }
   }, last + 300));
 }
 
@@ -350,12 +375,28 @@ function zone(s: GameState): string {
   const lateHtml = late.length ? `<div class="later" data-d="${t.toFixed(2)}"><h3>Later that week</h3><ul>${late.map((b) => `<li class="${b.tone}">${esc(b.text)}</li>`).join('')}</ul></div>` : '';
   if (late.length) t += 0.5;
   const nextDelay = t;
+  const collapsed = !!sc && !playing && collapsedScene === sc.id;
+  if (collapsed && sc) {
+    const band = sc.effects.filter((e) => e.who === null);
+    return `
+    <section id="zone" class="zone vibe-${sc.vibe}" aria-live="polite">
+      <div class="screen folded">
+        <div class="screen-head">
+          <div><span class="kicker">${KIND_LABEL[sc.kind]}</span><h2>${esc(sc.title)}</h2></div>
+          <button class="btn ghost small" data-do="unfold" aria-expanded="false">Show report</button>
+        </div>
+        ${band.length ? `<div class="fx fx-mini">${effectChips(band)}</div>` : ''}
+      </div>
+      <div class="next">${nextBlock(s)}</div>
+    </section>`;
+  }
   return `
     <section id="zone" class="zone vibe-${sc?.vibe ?? 'quiet'} ${playing ? 'playing' : ''}" aria-live="polite">
       <div class="screen">
         <div class="screen-head">
           <div><span class="kicker">${KIND_LABEL[sc?.kind ?? 'start']}</span><h2>${esc(sc?.title ?? s.bandName)}</h2></div>
           ${playing ? '<button class="btn ghost small skip" data-do="skip">Skip</button>' : ''}
+          ${sc ? `<button class="btn ghost small fold" data-do="fold" aria-expanded="true" ${playing ? 'hidden' : ''}>Hide report</button>` : ''}
         </div>
         <ol class="beats">${mainHtml}</ol>
         ${sc && (sc.effects.length || (debug && sc.hidden)) ? `<div class="fx" data-d="${fxDelay.toFixed(2)}">${effectChips(sc.effects)}${debug && sc.hidden ? `<p class="hidden-fx">${esc(sc.hidden)}</p>` : ''}</div>` : ''}
