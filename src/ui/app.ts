@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { DEADLINE_WEEK, MAX_MEMBERS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { DEADLINE_WEEK, MAX_MEMBERS, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -132,6 +132,7 @@ function onClick(e: Event, root: HTMLElement): void {
         break;
       case 'respond': state = resolvePending(state!, Number(arg)); break;
       case 'hire': state = hire(state!, arg!, arg2 || undefined); break;
+      case 'dismiss': state = dismissCandidates(state!); break;
       case 'fire':
         // Two-step button instead of a browser dialog.
         if (armedFire === arg) { state = fire(state!, arg!); armedFire = null; }
@@ -155,7 +156,7 @@ function onClick(e: Event, root: HTMLElement): void {
   render(root);
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
   // Keep the eyes on the action zone after a decision.
-  if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'startTour' || what === 'tourNext' || (what === 'abandon' && !armedAbandon)) {
+  if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'dismiss' || what === 'startTour' || what === 'tourNext' || (what === 'abandon' && !armedAbandon)) {
     const z = document.getElementById('zone');
     if (z && z.getBoundingClientRect().top < 0) z.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
@@ -281,7 +282,7 @@ function panelBody(s: GameState): string {
   switch (panelTab) {
     case 'band':
       return `
-        ${s.candidates.length ? `<h3 class="sub">Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h3><div class="cards">${s.candidates.map((c) => card(s, c, true)).join('')}</div><h3 class="sub">Your band</h3>` : ''}
+        ${s.candidates.length ? `<h3 class="sub">Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()} <button class="btn ghost small" data-do="dismiss">Send them home</button></h3><div class="cards">${s.candidates.map((c) => card(s, c, true)).join('')}</div><h3 class="sub">Your band</h3>` : ''}
         <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>`;
     case 'charts':
       return chartsSection(s);
@@ -458,7 +459,7 @@ function hopefuls(s: GameState): string {
     if (s.members.length < MAX_MEMBERS) btns.push(`<button class="btn small ${same.length ? 'ghost' : ''}" data-do="hire" data-arg="${c.id}">Add</button>`);
     return `<li><div class="hope-who"><strong>${esc(c.name)}</strong><span>~${est} overall, ${c.age}, ${GENRE_LABEL[c.style].toLowerCase()}${known ? `, ${esc(known)}` : ''}</span></div><div class="hope-btns">${btns.join('')}</div></li>`;
   });
-  return `<div class="hopefuls"><h3>Hopefuls: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h3><ul>${rows.join('')}</ul><p class="hint">Full cards in <a href="#" data-do="tab" data-arg="band">The band</a> tab. Hopefuls leave if you place another ad.</p></div>`;
+  return `<div class="hopefuls"><h3>Hopefuls: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h3><ul>${rows.join('')}</ul><div class="hope-done"><button class="btn ghost small" data-do="dismiss">${s.candidates.length === 1 ? 'Send them home' : 'Send the rest home'}</button><span class="hint">Full cards in <a href="#" data-do="tab" data-arg="band">The band</a> tab.</span></div></div>`;
 }
 
 function reducedMotion(): boolean {

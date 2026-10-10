@@ -153,6 +153,18 @@ export function hire(state: GameState, candidateId: string, replaceId?: string):
   });
 }
 
+/** Close the auditions: whoever is left goes home. */
+export function dismissCandidates(state: GameState): GameState {
+  if (state.pending) throw new Error('Deal with the situation first.');
+  return mutate(state, (s) => {
+    if (!s.candidates.length) return;
+    const n = s.candidates.length;
+    s.candidates = [];
+    s.candidateRole = null;
+    log(s, n === 1 ? 'You thanked the last hopeful and sent them home.' : `You sent the other ${n} hopefuls home.`, 'neutral');
+  });
+}
+
 export function fire(state: GameState, memberId: string): GameState {
   if (state.pending) throw new Error('Deal with the situation first.');
   return mutate(state, (s) => removeMember(s, memberId, 'fired'));

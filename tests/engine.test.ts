@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, canAct, fire, first, hire, newGame } from '../src/game/engine';
+import { act, canAct, dismissCandidates, fire, first, hire, newGame } from '../src/game/engine';
 import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
@@ -161,6 +161,14 @@ describe('action choices', () => {
     const s2 = hire(s1, s1.candidates[0].id, oldDrummer.id);
     expect(s2.members.find((m) => m.role === 'drums')!.id).toBe(s1.candidates[0].id);
     expect(s2.members).toHaveLength(4);
+  });
+
+  it('auditions can be closed without hiring anyone', () => {
+    const s1 = settle(act(newGame(input), A('advertise', 'classified', { role: 'keys' })));
+    const s2 = dismissCandidates(s1);
+    expect(s2.candidates).toHaveLength(0);
+    expect(s2.candidateRole).toBeNull();
+    expect(s2.members).toHaveLength(s1.members.length);
   });
 
   it('a band without a drummer cannot gig', () => {

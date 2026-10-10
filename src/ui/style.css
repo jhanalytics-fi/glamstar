@@ -569,3 +569,7 @@ section + section { margin-top: 32px; }
 .ms-lineup .ms-kind { color: var(--lipstick); }
 .ms-drama .ms-kind { color: var(--bad); }
 @media (max-width: 520px) { .milestones li { grid-template-columns: minmax(0, 1fr); gap: 0; } }
+
+.hope-done { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; }
+.hope-done .hint { margin: 0; }
+.sub .btn { margin-left: 8px; vertical-align: middle; }
