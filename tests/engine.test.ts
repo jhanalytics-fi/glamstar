@@ -4,7 +4,7 @@ import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
-import { rollPotential } from '../src/game/characters';
+import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, rollPotential, seenRange } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
 import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
 
@@ -400,6 +400,81 @@ describe('potential and age', () => {
     }
     const after = s.members.find((m) => m.id === g.id);
     if (after) expect(after.hidden.potential).toBeLessThan(80);
+  });
+});
+
+describe('fair starts and getting to know the band', () => {
+  it('every starting trio is worth the same, whatever the seed', () => {
+    for (let seed = 1; seed <= 50; seed++) {
+      const mates = newGame({ ...input, seed }).members.slice(1);
+      const total = mates.reduce((a, m) => a + overall(m), 0);
+      expect(Math.abs(total - START_TOTAL_OVR)).toBeLessThanOrEqual(1);
+      const room = mates.reduce((a, m) => a + headroom(m), 0);
+      expect(Math.abs(room - START_TOTAL_HEADROOM)).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('starting bands still differ in shape', () => {
+    const spreads = new Set<number>();
+    for (let seed = 1; seed <= 20; seed++) {
+      const ovrs = newGame({ ...input, seed }).members.slice(1).map(overall);
+      spreads.add(Math.max(...ovrs) - Math.min(...ovrs));
+    }
+    expect(spreads.size).toBeGreaterThan(5);
+  });
+
+  it('you only see rough ranges for new bandmates, and the truth is inside them', () => {
+    const s = newGame(input);
+    for (const m of s.members.slice(1)) {
+      const [lo, hi] = seenRange(m, m.skill);
+      expect(hi - lo).toBeGreaterThan(10);
+      expect(lo).toBeLessThanOrEqual(m.skill);
+      expect(hi).toBeGreaterThanOrEqual(m.skill);
+    }
+    const [plo, phi] = seenRange(s.members[0], s.members[0].skill);
+    expect(plo).toBe(phi);
+  });
+
+  it('ranges narrow as you rehearse and gig together', () => {
+    let s = newGame(input);
+    for (let i = 0; i < 6; i++) s = step(s, A(i % 2 ? 'gig' : 'rehearse', i % 2 ? 'venue0' : 'regular'));
+    for (const m of s.members.filter((x) => !x.isPlayer && x.weeksInBand >= 6)) {
+      const [lo, hi] = seenRange(m, m.skill);
+      expect(hi - lo).toBeLessThanOrEqual(4);
+    }
+  });
+
+  it('private lessons improve the weakest player', () => {
+    const s0 = { ...newGame(input), money: 500 };
+    const weakest = [...s0.members].sort((a, b) => overall(a) - overall(b))[0];
+    weakest.hidden.potential = 90;
+    const s1 = act(s0, A('rehearse', 'lessons'));
+    expect(s1.members.find((m) => m.id === weakest.id)!.skill).toBeGreaterThan(weakest.skill);
+  });
+
+  it('a much better player mentors the others at rehearsal', () => {
+    let saw = false;
+    for (let seed = 1; seed <= 20 && !saw; seed++) {
+      const s0 = newGame({ ...input, seed });
+      s0.members[1].skill = 85;
+      for (const m of s0.members.slice(2)) { m.skill = 30; m.hidden.potential = 80; }
+      saw = act(s0, A('rehearse', 'regular')).log.some((l) => l.text.includes('picked up a few tricks'));
+    }
+    expect(saw).toBe(true);
+  });
+
+  it('every kind of week moves someone\'s stats sooner or later', () => {
+    const tries: Action[] = [A('rehearse', 'regular'), A('gig', 'venue0'), A('write', 'jam'), A('party', 'soho'), A('release', 'demo')];
+    for (const a of tries) {
+      let moved = false;
+      for (let seed = 1; seed <= 15 && !moved; seed++) {
+        const s0 = { ...newGame({ ...input, seed }), money: 1000 };
+        s0.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+        for (const m of s0.members) m.hidden.potential = 95;
+        moved = act(s0, a).log.some((l) => l.text.startsWith('Progress:'));
+      }
+      expect(moved, a.type).toBe(true);
+    }
   });
 });
 

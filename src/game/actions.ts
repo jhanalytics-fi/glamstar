@@ -1,7 +1,7 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
-import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, reveal, type Tier } from './characters';
-import { addAffinity, available, chemistry, forEachPair, missingForGig, performance } from './chemistry';
+import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
+import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, VENUES, songTitle } from './names';
 import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
@@ -82,6 +82,12 @@ function gigSpecs(s: GameState): Record<string, GigSpec> {
   return specs;
 }
 
+/** The weakest player present, by what you can see of them. */
+function lessonTarget(s: GameState): Musician | null {
+  const here = available(s);
+  return here.length ? [...here].sort((a, b) => overall(a) - overall(b))[0] : null;
+}
+
 export function actionOptions(s: GameState, type: ActionType): ActionOption[] {
   const opts = rawOptions(s, type);
   for (const o of opts) if (!o.locked && o.cost > 0 && s.money < o.cost) o.locked = `Costs £${o.cost}. You have £${s.money}.`;
@@ -120,6 +126,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'bootcamp', label: 'Boot camp week, no booze', cost: 0, hint: 'Much tighter and drier. Morale suffers.' },
         { id: 'coach', label: 'Hire a session pro to coach you', cost: 60, hint: 'Everyone plays better. Some will resent being taught.' },
         { id: 'stageshow', label: 'Work on the stage show', cost: 35, hint: 'Moves, poses and a smoke machine. Stage presence up.' },
+        { id: 'lessons', label: `Private lessons for ${lessonTarget(s) ? (lessonTarget(s)!.isPlayer ? 'yourself' : first(lessonTarget(s)!)) : 'the weakest player'}`, cost: 40, hint: 'Your weakest link gets a teacher. Proud players may take it badly.' },
       ];
     case 'write': {
       const hot = hotGenres(s.week)[0];
@@ -247,6 +254,7 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
   let gain = 6 + Math.round(chemistry(s).total / 25);
   if (option === 'bootcamp') gain = Math.round(gain * 1.8);
   if (option === 'coach' || option === 'stageshow') gain = Math.round(gain * 0.6);
+  if (option === 'lessons') gain = Math.round(gain * 0.4);
   for (const m of here) {
     if (!m.isPlayer && m.hidden.reliability < 40 && rng.chance(option === 'bootcamp' ? 0.25 : 0.45)) {
       log(s, `${first(m)} turned up two hours late, smelling of last night.`, 'bad');
@@ -284,6 +292,45 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       revealLog(s, b, 'ego', 1);
     }
   });
+  // Mentoring: the best player rubs off on the ones who are well behind.
+  const mentor = [...here].sort((a, b) => b.skill - a.skill)[0];
+  let mentored = false;
+  for (const m of here) {
+    if (m === mentor || mentor.skill - m.skill < 12) continue;
+    if (grow(m, 'skill', 1, rng, 0.35) && !mentored) {
+      mentored = true;
+      if (mentor.hidden.ego >= 70) {
+        addAffinity(s, m.id, mentor.id, -2);
+        log(s, `${subj(m, 'picked', 'picked')} up a few tricks from ${mentor.isPlayer ? 'you' : first(mentor)}, who was very smug about it.`, 'neutral');
+      } else {
+        addAffinity(s, m.id, mentor.id, 3);
+        log(s, `${subj(m, 'picked', 'picked')} up a few tricks from ${mentor.isPlayer ? 'you' : first(mentor)}.`, 'good');
+      }
+    }
+  }
+  // Playing together pulls tastes together, if they like you.
+  const me = player(s);
+  for (const m of here) {
+    if (!m.isPlayer && m.style !== me.style && getAffinity(s, m.id, me.id) > 25 && rng.chance(0.06)) {
+      m.style = me.style;
+      log(s, `${first(m)} is coming round to ${GENRE_LABEL[me.style].toLowerCase()}.`, 'good');
+    }
+  }
+  if (option === 'lessons') {
+    const t = lessonTarget(s);
+    if (t) {
+      grow(t, 'skill', 4, rng);
+      getToKnow(t, 30);
+      if (t.hidden.ego >= 70 && !t.isPlayer) {
+        adjust(t, 'mood', -6);
+        log(s, `${first(t)} took private lessons as an insult, then took them anyway.`, 'neutral');
+        revealLog(s, t, 'ego', 1);
+      } else {
+        adjust(t, 'mood', 4);
+        log(s, `${subj(t, 'had', 'had')} a week of private lessons with an old jazz teacher in Archway.`, 'good');
+      }
+    }
+  }
   if (option === 'coach') {
     log(s, `The session pro's verdict: ${here.map((m) => `${m.isPlayer ? 'you' : first(m)} ${m.isPlayer ? prospects(m).replace('has', 'have') : prospects(m)}`).join(', ')}.`, 'reveal');
   }
@@ -387,7 +434,13 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   }
   s.releases.push({ id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 });
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
-  for (const m of available(s)) adjust(m, 'energy', -8);
+  // Hearing yourself back on tape is humbling, and educational.
+  for (const m of available(s)) {
+    adjust(m, 'energy', -8);
+    grow(m, 'skill', 1, rng, 0.35);
+    grow(m, 'writing', 1, rng, 0.2);
+  }
+  s.tightness = clamp(s.tightness + 3, 0, 100);
   log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
 }
 
@@ -415,6 +468,10 @@ function party(s: GameState, rng: Rng, option: string): void {
     log(s, option === 'soho' ? 'Someone from the music press saw you. People are talking.' : 'Word gets round. People are talking about the band, if not the music.', 'good');
   }
   if (option === 'throw') s.flags.lastBigParty = s.week;
+  // Being seen in the right places sharpens the look.
+  if (option === 'soho' || option === 'throw') for (const m of here) if (rng.chance(0.3)) adjust(m, 'image', 1);
+  // You learn who people really are at four in the morning.
+  if (option === 'squat') for (const m of here) if (rng.chance(0.2)) grow(m, 'stage', 1, rng, 0.5);
   const risky = here.find((m) => m.hidden.vice >= 75 && m.habit >= 40);
   const aeChance = { cans: 0.03, squat: 0.25, soho: 0.35, throw: 0.35 }[option]!;
   if (risky && rng.chance(aeChance)) {
@@ -486,6 +543,7 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
     const tier: Tier = r < spec.pGood ? 'good' : r < spec.pGood + spec.pAvg ? 'average' : 'weak';
     const c = generateMusician(rng, `m${s.nextId++}`, role, tier, style, taken);
     taken.push(c.name, c.realName);
+    c.seen = option === 'poach' ? 60 : option === 'bar' ? 40 : 35;
     if (option === 'poach') {
       c.hidden.loyalty = rng.int(10, 40);
       c.hidden.ego = clamp(c.hidden.ego + 15, 1, 99);

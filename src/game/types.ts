@@ -36,6 +36,10 @@ export interface Musician {
   outWeeks: number;
   weeksInBand: number;
   blurb: string;
+  /** How well you know their visible stats, 0-100. Low = wide, misleading ranges. */
+  seen: number;
+  /** Fixed skew (-1..1) so a range's midpoint never gives the true value away. */
+  fog: number;
 }
 
 export type SongKind = 'standard' | 'ballad' | 'trend' | 'solo';

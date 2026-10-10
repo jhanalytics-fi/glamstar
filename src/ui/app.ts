@@ -1,4 +1,4 @@
-import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, overall, traitDisplay } from '../game/characters';
+import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
 import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
@@ -321,8 +321,14 @@ function logList(s: GameState, keep: (week: number) => boolean): string {
 }
 
 function card(s: GameState, m: Musician, candidate = false): string {
-  const ovr = overall(m);
+  // Everything shown is what you believe, not the truth, until you know them well.
+  const ovr = estimate(m, overall(m));
+  const fuzzy = seenRange(m, overall(m))[0] !== seenRange(m, overall(m))[1];
   const tier = ovr >= 58 ? 'gold' : ovr >= 45 ? 'silver' : 'bronze';
+  const stat = (v: number) => {
+    const [lo, hi] = seenRange(m, v);
+    return lo === hi ? String(v) : `<span class="range">${lo}-${hi}</span>`;
+  };
   const out = !candidate && !available(s).includes(m);
   const roleText = m.isPlayer ? `Vocals${m.doubles ? ` + ${ROLE_LABEL[m.doubles].toLowerCase()}` : ''}` : ROLE_LABEL[m.role];
   const traits = HIDDEN_TRAITS.map((t) => {
@@ -345,14 +351,14 @@ function card(s: GameState, m: Musician, candidate = false): string {
     <article class="card ${tier} ${out ? 'out' : ''}">
       <div class="card-in">
         <div class="card-head">
-          <div class="ovr">${ovr}<small>${roleText}</small></div>
+          <div class="ovr" ${fuzzy ? 'title="Your best guess. Play together more to know for sure."' : ''}>${fuzzy ? '<span class="approx">~</span>' : ''}${ovr}<small>${roleText}</small></div>
           <div class="who"><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong>${m.realName !== m.name && !m.name.includes('"') ? `<span class="real">${esc(m.realName)}</span>` : ''}<span>${m.age}, ${esc(m.from)}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
         </div>
         <dl class="attrs">
-          <div><dt>Skill</dt><dd>${m.skill}</dd></div>
-          <div><dt>Stage</dt><dd>${m.stage}</dd></div>
-          <div><dt>Image</dt><dd>${m.image}</dd></div>
-          <div><dt>Write</dt><dd>${m.writing}</dd></div>
+          <div><dt>Skill</dt><dd>${stat(m.skill)}</dd></div>
+          <div><dt>Stage</dt><dd>${stat(m.stage)}</dd></div>
+          <div><dt>Image</dt><dd>${stat(m.image)}</dd></div>
+          <div><dt>Write</dt><dd>${stat(m.writing)}</dd></div>
         </dl>
         <dl class="traits">${traits}</dl>
         ${candidate ? '' : `<div class="meters">${meter('Energy', m.energy)}${meter('Mood', m.mood)}${meter('Habit', m.habit, 'habit')}</div>`}

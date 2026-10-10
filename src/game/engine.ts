@@ -1,6 +1,6 @@
 import { Rng, clamp } from './rng';
-import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand, rollPotential } from './characters';
-import { addAffinity, forEachPair } from './chemistry';
+import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand, getToKnow, rollPotential } from './characters';
+import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
 import { optionLocked, perform, sellRecords } from './actions';
@@ -85,6 +85,8 @@ export function upgradeSave(s: GameState): GameState {
   for (const st of s.world.stars) st.age ??= 6;
   const rng = new Rng(s.rng);
   for (const m of [...s.members, ...s.candidates]) {
+    m.seen ??= 100;
+    m.fog ??= 0;
     if (m.hidden.potential === undefined) {
       m.hidden.potential = rollPotential(rng, Math.max(m.skill, m.stage, m.writing), m.age);
       m.known.potential = 0;
@@ -104,10 +106,33 @@ export function act(state: GameState, a: Action): GameState {
   const why = canAct(state, a);
   if (why) throw new Error(why);
   return mutate(state, (s, rng) => {
+    const before = new Map(s.members.map((m) => [m.id, { skill: m.skill, stage: m.stage, writing: m.writing, image: m.image }]));
     perform(s, rng, a);
+    for (const m of available(s)) getToKnow(m, KNOW_BY_ACTION[a.type]);
+    logProgress(s, before);
     if (a.type !== 'rehearse') s.tightness = clamp(s.tightness - 1, 0, 100);
     endOfWeek(s, rng);
   });
+}
+
+/** How much a week of each activity teaches you about your bandmates. */
+const KNOW_BY_ACTION: Record<Action['type'], number> = { rehearse: 18, gig: 14, release: 12, party: 12, write: 10, rest: 4, advertise: 3 };
+
+const STAT_LABEL = { skill: 'skill', stage: 'stage', writing: 'writing', image: 'image' } as const;
+
+/** One line telling the player who got better (or worse) this week. */
+function logProgress(s: GameState, before: Map<string, Record<keyof typeof STAT_LABEL, number>>): void {
+  const parts: string[] = [];
+  for (const m of s.members) {
+    const b = before.get(m.id);
+    if (!b) continue;
+    const ch = (Object.keys(STAT_LABEL) as (keyof typeof STAT_LABEL)[])
+      .map((k) => [k, m[k] - b[k]] as const)
+      .filter(([, d]) => d !== 0)
+      .map(([k, d]) => `${STAT_LABEL[k]} ${d > 0 ? '+' : ''}${d}`);
+    if (ch.length) parts.push(`${m.isPlayer ? 'you' : first(m)} ${ch.join(', ')}`);
+  }
+  if (parts.length) log(s, `Progress: ${parts.join('; ')}.`, 'good');
 }
 
 // ---------------------------------------------------------------- free actions
@@ -153,6 +178,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   for (const m of [...s.members]) {
     m.weeksInBand++;
+    getToKnow(m, 2);
     if (m.outWeeks > 0) m.outWeeks--;
     adjust(m, 'energy', 8);
     m.mood = clamp(Math.round(m.mood + (55 - m.mood) * 0.15), 0, 100);

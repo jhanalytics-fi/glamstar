@@ -33,6 +33,10 @@ Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the s
 4. Player picks a **background** that shapes starting stats (e.g. *Choirboy gone wrong*: vocals+, *Art school dropout*: image+ songwriting+, *Factory kid*: stamina+ reliability+).
 5. The game generates **three bandmates: guitar, bass, drums.** They are "mates from the pub": deliberately uneven, typically one good, one average, one weak, each with hidden traits. The band can gig from week 1.
 
+**No point rerolling.** Every starting trio is worth the same in total current ability and in total growth headroom; only the shape differs (one star and two passengers, or three steady pub players). On top of that, you only see rough, skewed ranges for your bandmates' visible stats at first. The ranges narrow as you rehearse, gig, record and party together, so a reroll tells you little.
+
+**Many ways to grow.** Rehearsals, gigs, songwriting, recording and nights out all nudge stats a little, within each musician's hidden potential. The best player mentors the weaker ones at rehearsal (a big ego makes it grudging). Private lessons focus on the weakest player. Bandmates who like you slowly come round to your sound. A weekly progress line shows who improved.
+
 Recruitment stays central even with a starting lineup: the classified ad ("Musicians Wanted" in the music weekly), word of mouth at gigs and poaching from rival bands are how you replace the weak link, add a lead guitarist or keyboardist, or fill a gap when someone quits or ends up in hospital.
 
 ## Character card

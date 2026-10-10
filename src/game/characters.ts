@@ -36,11 +36,11 @@ const BLURBS = [
   'Has a van. Nobody asks where the van came from.',
   'Learned everything from one live album, played at the wrong speed.',
   'Claims to have jammed with somebody famous once. Details vary.',
-  'Still lives with his mum, who irons his stage gear.',
-  'Got thrown out of three bands. Swears none of it was his fault.',
+  'Still lives with Mum, who irons the stage gear.',
+  'Got thrown out of three bands. Swears none of it was their fault.',
   'Quiet until the second pint, then the loudest person in Camden.',
   'Sleeps in the rehearsal room more than is strictly legal.',
-  'Has a girlfriend who hates the band and attends every gig.',
+  'Has a partner who hates the band and attends every gig.',
   'Plays brilliantly when nobody is watching.',
   'Spends the rent money on hairspray, without regret.',
   'Owns one pair of leather trousers and is rarely seen out of them.',
@@ -97,6 +97,8 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
     outWeeks: 0,
     weeksInBand: 0,
     blurb: rng.pick(BLURBS),
+    seen: 15,
+    fog: rng.next() * 2 - 1,
   };
 }
 
@@ -148,6 +150,8 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
     outWeeks: 0,
     weeksInBand: 0,
     blurb: BACKGROUNDS[input.background].text,
+    seen: 100,
+    fog: 0,
   };
   switch (input.background) {
     case 'choirboy': p.skill += 12; p.hidden.vice += 8; break;
@@ -169,9 +173,55 @@ export function generateStartingBand(rng: Rng, style: Genre, nextId: () => strin
   const tiers = rng.shuffle<Tier>(['good', 'average', 'weak']);
   const band: Musician[] = [];
   for (const [i, role] of roles.entries()) {
-    band.push(generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.flatMap((m) => [m.name, m.realName])]));
+    const m = generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.flatMap((x) => [x.name, x.realName])]);
+    for (let k = 0; k < 10 && band.some((x) => x.blurb === m.blurb); k++) m.blurb = rng.pick(BLURBS);
+    band.push(m);
   }
+  normaliseBand(band);
   return band;
+}
+
+/** Every starting trio is worth the same in total; only the shape differs. Rerolling changes style, not strength. */
+export const START_TOTAL_OVR = 138;
+export const START_TOTAL_HEADROOM = 36;
+const GROWABLE = ['skill', 'stage', 'writing'] as const;
+
+export function headroom(m: Musician): number {
+  return m.hidden.potential - Math.max(m.skill, m.stage);
+}
+
+function normaliseBand(band: Musician[]): void {
+  for (let i = 0; i < 600; i++) {
+    const total = band.reduce((a, m) => a + overall(m), 0);
+    if (Math.abs(total - START_TOTAL_OVR) <= 1) break;
+    const m = band[i % band.length];
+    const k = GROWABLE[Math.floor(i / band.length) % GROWABLE.length];
+    m[k] = clamp(m[k] + (total < START_TOTAL_OVR ? 1 : -1), 8, 92);
+  }
+  for (let i = 0; i < 600; i++) {
+    const total = band.reduce((a, m) => a + headroom(m), 0);
+    if (Math.abs(total - START_TOTAL_HEADROOM) <= 1) break;
+    const m = band[i % band.length];
+    const floor = Math.max(m.skill, m.stage);
+    m.hidden.potential = clamp(m.hidden.potential + (total < START_TOTAL_HEADROOM ? 1 : -1), floor, 99);
+  }
+}
+
+/** The range you believe a visible stat lies in. Exact once you know someone well. */
+export function seenRange(m: Musician, v: number): [number, number] {
+  const w = Math.round(((100 - m.seen) / 100) * 18);
+  if (w <= 1) return [v, v];
+  return [clamp(Math.round(v - w * (1 + m.fog)), 1, 99), clamp(Math.round(v + w * (1 - m.fog)), 1, 99)];
+}
+
+/** Your best guess at a stat: the middle of the range you believe in. */
+export function estimate(m: Musician, v: number): number {
+  const [lo, hi] = seenRange(m, v);
+  return Math.round((lo + hi) / 2);
+}
+
+export function getToKnow(m: Musician, amount: number): void {
+  m.seen = clamp(Math.round(m.seen + amount), 0, 100);
 }
 
 /** Overall rating shown in big type on the card. */
