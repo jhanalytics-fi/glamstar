@@ -2,9 +2,9 @@
 import { Rng, clamp } from './rng';
 import { addAffinity, available, forEachPair, getAffinity, performance } from './chemistry';
 import { PRESS, songTitle } from './names';
-import { addBuzz, adjust, beat, first, log, logEffects, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
+import { addBuzz, adjust, beat, first, grow, log, logEffects, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
-import type { GameState, Musician } from './types';
+import type { GameState, HiddenTrait, Musician } from './types';
 
 type Params = Record<string, string | number>;
 
@@ -39,6 +39,20 @@ function worstPair(s: GameState): [Musician, Musician] | null {
   });
   return worst;
 }
+
+type Stat = Parameters<typeof adjust>[1];
+const year = (s: GameState) => 1982 + Math.floor(s.week / 52);
+const isPurist = (m: Musician) => m.style === 'metal' || m.style === 'punk';
+const purists = (s: GameState) => s.members.filter(isPurist);
+const everyone = (s: GameState, k: Stat, d: number) => { for (const m of s.members) adjust(m, k, d); };
+const tighten = (s: GameState, d: number) => { s.tightness = clamp(s.tightness + d, 0, 100); };
+const addGear = (s: GameState, d: number) => { s.gear = clamp(s.gear + d, 0, 5); };
+const trait = (m: Musician, t: HiddenTrait, d: number) => { m.hidden[t] = clamp(m.hidden[t] + d, 1, 99); };
+/** True if the flag was never set, or was set at least `weeks` weeks ago. */
+const since = (s: GameState, flag: string, weeks: number) => s.flags[flag] === undefined || s.week - s.flags[flag] >= weeks;
+const bestUnreleased = (s: GameState) => [...s.songs].filter((x) => !x.released).sort((a, b) => b.quality - a.quality)[0];
+const song = (s: GameState, title: string | number) => s.songs.find((x) => x.title === title);
+const loudest = (s: GameState) => [...mates(s)].sort((a, b) => b.hidden.ego - a.hidden.ego)[0];
 
 const EVENTS: EventDef[] = [
   {
@@ -719,6 +733,1734 @@ const EVENTS: EventDef[] = [
       },
     ],
   },
+
+  // ================================================================ the band
+  {
+    id: 'straight_job',
+    weight: 2,
+    when: (s, rng) => {
+      const c = mates(s).filter((m) => m.weeksInBand >= 4 && !s.flags[`straight_${m.id}`]);
+      if (s.week < 8 || !c.length) return null;
+      const m = [...c].sort((a, b) => a.hidden.loyalty - b.hidden.loyalty)[0];
+      return {
+        m: m.id,
+        what: rng.pick([
+          'a place at a polytechnic to read quantity surveying',
+          'a trainee manager job at a carpet warehouse in Purley',
+          'an apprenticeship with an uncle who fits double glazing',
+          'a clerk job at the council, with luncheon vouchers',
+        ]),
+      };
+    },
+    title: (s, p) => `${nm(s, p.m)} has been offered a real life`,
+    text: (s, p) => `${nm(s, p.m)} has been offered ${p.what}. Their mum has already told the neighbours. They want to know if the band is "actually going anywhere".`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      const flag = (st: GameState) => { st.flags[`straight_${m.id}`] = st.week; };
+      return [
+        {
+          label: 'Talk them round',
+          hint: 'Your powers of persuasion against a pension scheme.',
+          resolve: (st, rng) => {
+            flag(st);
+            const x = mem(st, m.id);
+            if (rng.chance(0.3 + x.hidden.loyalty / 150 + player(st).stage / 300)) {
+              trait(x, 'loyalty', 6); adjust(x, 'mood', 6);
+              log(st, `You described the Odeum sold out and a gold disc on the wall. ${first(x)} turned the job down.`, 'good');
+            } else {
+              removeMember(st, x.id, 'quit');
+              log(st, `${x.name} took the job. They still come to gigs, in a tie.`, 'bad');
+            }
+          },
+        },
+        {
+          label: 'Offer a bigger cut',
+          hint: 'Money keeps them. The others will notice.',
+          cost: 60,
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            trait(x, 'loyalty', 12); adjust(x, 'mood', 6);
+            for (const o of mates(st)) if (o.id !== x.id) adjust(o, 'mood', -3);
+            log(st, `${first(x)} stays, on a bigger cut. The rest of the band did the maths out loud.`, 'neutral');
+          },
+        },
+        {
+          label: 'Suggest they do both',
+          hint: 'Days at the job, nights in the band. Something will give.',
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            adjust(x, 'energy', -15); adjust(x, 'mood', 4); trait(x, 'reliability', -6);
+            log(st, `${first(x)} took the job and kept the band. They now fall asleep in the van in a cardigan.`, 'neutral');
+          },
+        },
+        {
+          label: 'Wish them luck',
+          hint: 'A clean break. They might leave something behind.',
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            removeMember(st, x.id, 'quit');
+            addGear(st, 1);
+            log(st, `${x.name} left on good terms and gave the band their amp. "I won't be needing it in surveying."`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'ill_parent',
+    weight: 1,
+    when: (s, rng) => {
+      const c = mates(s).filter((m) => !s.flags[`ill_${m.id}`]);
+      if (s.week < 10 || !c.length) return null;
+      return { m: rng.pick(c).id, who: rng.pick(['mum', 'dad']) };
+    },
+    title: (s, p) => `${nm(s, p.m)}'s ${p.who} is in hospital`,
+    text: (s, p) => `${nm(s, p.m)}'s ${p.who} has been taken into hospital back in ${mem(s, p.m).from}. ${nm(s, p.m)} has gone very quiet and keeps looking at the payphone.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      const flag = (st: GameState) => { st.flags[`ill_${m.id}`] = st.week; };
+      return [
+        {
+          label: 'Send them home, with a whip-round',
+          hint: 'Two weeks without them. They will not forget it.',
+          cost: 30,
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, 2); trait(x, 'loyalty', 12); adjust(x, 'mood', 5);
+            addAffinity(st, x.id, 'p', 12);
+            log(st, `${first(x)} got the train to ${x.from} with the whip-round in an envelope. They rang on Sunday: the ${p.who} is on the mend.`, 'good');
+          },
+        },
+        {
+          label: 'Give them the week off',
+          hint: 'Kind, and the band loses a week together.',
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, 1); trait(x, 'loyalty', 6);
+            addAffinity(st, x.id, 'p', 6);
+            tighten(st, -3);
+            log(st, `${first(x)} went home for a week and came back looking ten years older but relieved.`, 'neutral');
+          },
+        },
+        {
+          label: 'Ask them to play this week first',
+          hint: 'The band stays sharp. It will cost you with them.',
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -10); trait(x, 'loyalty', -6);
+            addAffinity(st, x.id, 'p', -10);
+            tighten(st, 2);
+            log(st, `${first(x)} played, eyes on the door all night, then caught the first train in the morning. Nobody mentioned it again.`, 'bad');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'ex_returns',
+    weight: 2,
+    when: (s, rng) => {
+      const c = mates(s);
+      if (!c.length || s.lastGigWeek === null) return null;
+      return { m: rng.pick(c).id, ex: rng.pick(['Jackie', 'Dean', 'Lorna', 'Big Col', 'Paula', 'Vince']) };
+    },
+    title: (s, p) => `${nm(s, p.m)}'s ex is at the bar`,
+    text: (s, p) => `${p.ex}, who left ${nm(s, p.m)} for a man with a hot tub in Chigwell, is at the front of tonight's crowd. Waving.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Let them backstage',
+          hint: 'Could be a reunion. Could be a war.',
+          resolve: (st, rng) => {
+            const x = mem(st, m.id);
+            if (rng.chance(0.5)) { adjust(x, 'mood', 12); log(st, `${first(x)} and ${p.ex} talked till closing. ${first(x)} has been humming ever since.`, 'good'); }
+            else { adjust(x, 'mood', -12); adjust(x, 'energy', -10); log(st, `${p.ex} and ${first(x)} reopened every old wound in the corridor. The promoter asked you to keep it down.`, 'bad'); }
+          },
+        },
+        {
+          label: 'Get the bouncer to show them out',
+          hint: `${first(m)} may be secretly grateful. Or not.`,
+          resolve: (st) => {
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -4);
+            addAffinity(st, x.id, 'p', x.hidden.loyalty >= 50 ? 6 : -6);
+            log(st, `${p.ex} was escorted to the night bus. ${first(x)} watched from the stage door and said nothing.`, 'neutral');
+          },
+        },
+        {
+          label: 'Buy them a drink and listen',
+          hint: 'You will learn things about your bandmate.',
+          cost: 10,
+          resolve: (st) => {
+            const x = mem(st, m.id);
+            addAffinity(st, x.id, 'p', -4);
+            adjust(player(st), 'mood', -3);
+            revealLog(st, x, 'reliability', 1);
+            revealLog(st, x, 'loyalty', 1);
+            log(st, `${p.ex} talked for two hours. You now know far too much about ${first(x)}, and ${first(x)} knows you know.`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'guru',
+    weight: 1,
+    when: (s, rng) => {
+      const c = mates(s);
+      if (year(s) < 1983 || s.flags.guru || !c.length) return null;
+      return {
+        m: rng.pick(c).id,
+        guru: rng.pick(['a swami from Swindon called Baba Derek', 'a macrobiotic nutritionist with a ponytail', 'a crystal healer who used to sell photocopiers']),
+      };
+    },
+    title: (s, p) => `${nm(s, p.m)} has found enlightenment`,
+    text: (s, p) => `${nm(s, p.m)} has started following ${p.guru}. They eat brown rice, chant before soundchecks, and called your bass amp "spiritually loud".`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'The whole band tries it',
+          hint: 'Cleaner living. Grumpier band.',
+          cost: 20,
+          resolve: (st) => {
+            st.flags.guru = st.week;
+            for (const x of st.members) { adjust(x, 'habit', -8); adjust(x, 'energy', 5); adjust(x, 'mood', -6); }
+            adjust(mem(st, m.id), 'mood', 12);
+            log(st, 'A week of lentils and chanting. Nobody has been sick, and nobody has been happy.', 'neutral');
+          },
+        },
+        {
+          label: 'Live and let live',
+          hint: `Good for ${first(m)}. The incense will annoy the others.`,
+          resolve: (st) => {
+            st.flags.guru = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'habit', -6); adjust(x, 'mood', 6);
+            for (const o of mates(st)) if (o.id !== x.id) adjust(o, 'mood', -3);
+            log(st, `${first(x)} glows with inner peace. The van smells of sandalwood and lentils.`, 'neutral');
+          },
+        },
+        {
+          label: 'Take the mickey',
+          hint: 'The others will laugh. One of them will not.',
+          resolve: (st) => {
+            st.flags.guru = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -10);
+            addAffinity(st, x.id, 'p', -8);
+            for (const o of mates(st)) if (o.id !== x.id) adjust(o, 'mood', 4);
+            log(st, `You did twenty minutes as Baba Derek at soundcheck. ${first(x)} meditated through it, furiously.`, 'bad');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'band_name',
+    weight: 1,
+    when: (s, rng) => {
+      const c = mates(s).filter((m) => m.hidden.ego >= 60 && m.weeksInBand >= 6);
+      if (s.week < 20 || s.flags.renameAsked || !c.length) return null;
+      return { m: c[0].id, name: rng.pick(['Krystal Kathedral', 'Thee Velvet Mausoleum', 'Kaptain Leatherhead', 'Neon Sphinx', 'Wyld Kount']) };
+    },
+    title: (s, p) => `${nm(s, p.m)} wants a new band name`,
+    text: (s, p) => `${nm(s, p.m)} says ${s.bandName} "sounds like a building society" and wants to be called ${p.name}. They have already drawn the logo on their jacket.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Keep the name',
+          hint: 'The fans know it. The ego in question will sulk.',
+          resolve: (st) => {
+            st.flags.renameAsked = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -8); addAffinity(st, x.id, 'p', -6);
+            log(st, `${first(x)} is still wearing the ${p.name} jacket. Pointedly.`, 'bad');
+          },
+        },
+        {
+          label: 'Add an umlaut, as a compromise',
+          hint: 'Looks dangerous on posters. Confuses the record shops.',
+          resolve: (st) => {
+            st.flags.renameAsked = st.week; st.flags.umlaut = 1;
+            addBuzz(st, 3); st.fans = Math.max(0, st.fans - 5);
+            adjust(mem(st, m.id), 'mood', 4);
+            log(st, `The posters now have two dots over a vowel. Nobody knows how to pronounce it, which ${PRESS} called "very heavy".`, 'neutral');
+          },
+        },
+        {
+          label: 'Pay for a proper logo instead',
+          hint: 'Same name, sharper look. Everybody wins, except the bank balance.',
+          cost: 40,
+          resolve: (st) => {
+            st.flags.renameAsked = st.week;
+            adjust(mem(st, m.id), 'mood', 6);
+            everyone(st, 'image', 1);
+            log(st, 'An art student did the logo in chrome with lightning bolts. It looks like it could kill a man.', 'good');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'ritual',
+    weight: 1,
+    when: (s, rng) => {
+      const c = mates(s);
+      if (s.lastGigWeek === null || s.flags.ritual || !c.length) return null;
+      return {
+        m: rng.pick(c).id,
+        what: rng.pick([
+          'everyone touching a rubber chicken called Gerald',
+          'a pickled egg each, eaten in total silence',
+          'chanting the band name backwards in the gents',
+          'a lap of the venue car park, anticlockwise',
+        ]),
+      };
+    },
+    title: (s, p) => `${nm(s, p.m)}'s pre-gig ritual`,
+    text: (s, p) => `${nm(s, p.m)} now insists on ${p.what} before every show. Last time you skipped it, a string broke. ${nm(s, p.m)} has not let that go.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Humour them',
+          hint: 'Ridiculous, but the band walks on together.',
+          resolve: (st) => {
+            st.flags.ritual = 1;
+            tighten(st, 3); adjust(mem(st, m.id), 'mood', 5);
+            log(st, 'The ritual is now law. The band walks on stage oddly calm and smelling faintly of vinegar.', 'good');
+          },
+        },
+        {
+          label: 'Make it the band’s trademark',
+          hint: 'The fans will copy it. The purists will die inside.',
+          resolve: (st) => {
+            st.flags.ritual = 2;
+            addBuzz(st, 3); st.fans += 10;
+            for (const x of purists(st)) adjust(x, 'mood', -4);
+            log(st, 'Half the front row now does it too. A fanzine called it "pagan". Sales of pickled eggs are up.', 'good');
+          },
+        },
+        {
+          label: 'Ban it',
+          hint: 'Rock and roll is not a church. They will be rattled.',
+          resolve: (st) => {
+            st.flags.ritual = 3;
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -10); adjust(x, 'stage', -1); addAffinity(st, x.id, 'p', -5);
+            log(st, `No more rituals. ${first(x)} played the next gig like someone waiting for a piano to fall on them.`, 'bad');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'shoplift',
+    weight: 1,
+    when: (s, rng) => {
+      const c = mates(s).filter((m) => m.hidden.vice >= 60);
+      if (!c.length || !since(s, 'shoplift', 30)) return null;
+      return { m: rng.pick(c).id, item: rng.pick(['a can of hairspray and a Scotch egg', 'three packets of guitar strings', 'eyeliner and a pork pie', 'a giant tin of travel sweets']) };
+    },
+    title: (s, p) => `${nm(s, p.m)} has been nicked for shoplifting`,
+    text: (s, p) => `A store detective caught ${nm(s, p.m)} walking out with ${p.item} up their jumper. The manager will drop it for a £50 "donation" to the staff Christmas fund.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Pay the donation',
+          hint: 'Quiet and quick.',
+          cost: 50,
+          resolve: (st) => {
+            st.flags.shoplift = st.week;
+            const x = mem(st, m.id);
+            addAffinity(st, x.id, 'p', 6); adjust(x, 'mood', 2);
+            log(st, `You paid. The manager wished ${first(x)} a merry Christmas in a voice like a door slamming.`, 'neutral');
+          },
+        },
+        {
+          label: 'Let them face the magistrate',
+          hint: 'A week of court and shame. A small story.',
+          resolve: (st) => {
+            st.flags.shoplift = st.week;
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, 1); adjust(x, 'mood', -8); adjust(x, 'image', -2);
+            addBuzz(st, 2);
+            revealLog(st, x, 'vice', 1);
+            log(st, `${first(x)} was fined and bound over. The local paper printed their real name and their mum's street.`, 'bad');
+          },
+        },
+        {
+          label: 'Call it performance art in the press',
+          hint: 'Either genius or a second offence of bad taste.',
+          resolve: (st, rng) => {
+            st.flags.shoplift = st.week;
+            const x = mem(st, m.id);
+            if (rng.chance(0.5)) { addBuzz(st, 7); adjust(x, 'image', 2); log(st, `${PRESS} ran "Shoplifting as anti-consumerist statement". ${first(x)} is now an artist.`, 'good'); }
+            else { addBuzz(st, -3); adjust(x, 'image', -2); log(st, `${PRESS} ran "Band defends pork pie theft". It did not read as art.`, 'bad'); }
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'hair_disaster',
+    weight: 1,
+    when: (s, rng) => {
+      if (!since(s, 'hair', 40)) return null;
+      return {
+        m: rng.pick(s.members).id,
+        result: rng.pick(['bright orange', 'a perm like a startled poodle', 'a mullet the stylist called "architectural"', 'a sort of swamp green']),
+      };
+    },
+    title: (s, p) => (mem(s, p.m).isPlayer ? 'Your hair' : `${nm(s, p.m)}'s hair`),
+    text: (s, p) => `The night before the photo session, a hairdresser in Dalston has left ${mem(s, p.m).isPlayer ? 'you' : nm(s, p.m)} with ${p.result}. The rest of the band cannot look at it without crying.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Shave it all off',
+          hint: 'Bold. Might be a look.',
+          resolve: (st, rng) => {
+            st.flags.hair = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -5);
+            if (rng.chance(0.5)) { adjust(x, 'image', 3); log(st, 'Bald and furious is a look, it turns out. The photographer loved it.', 'good'); }
+            else { adjust(x, 'image', -3); log(st, 'Bald and furious, mostly furious. The photos look like a police line-up.', 'bad'); }
+          },
+        },
+        {
+          label: 'A hat for six weeks',
+          hint: 'Safe, sad and sweaty.',
+          resolve: (st) => {
+            st.flags.hair = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'mood', -6); adjust(x, 'image', -1);
+            log(st, 'One hat, worn indoors, on stage, in bed. Nobody is fooled.', 'neutral');
+          },
+        },
+        {
+          label: 'Own it',
+          hint: 'Confidence is ninety per cent of a hairstyle.',
+          resolve: (st, rng) => {
+            st.flags.hair = st.week;
+            const x = mem(st, m.id);
+            if (rng.chance(0.6)) { adjust(x, 'image', 3); addBuzz(st, 3); log(st, `${PRESS} called it "the haircut of the year". Two fans copied it already.`, 'good'); }
+            else { adjust(x, 'image', -2); addBuzz(st, 1); log(st, 'The photos came out. A dog barked at the poster.', 'bad'); }
+          },
+        },
+        {
+          label: 'Get it fixed in a proper salon',
+          hint: 'Mayfair prices. Back to normal.',
+          cost: 45,
+          resolve: (st) => {
+            st.flags.hair = st.week;
+            const x = mem(st, m.id);
+            adjust(x, 'image', 1); adjust(x, 'mood', 4);
+            log(st, 'A man called Laurent fixed it with a sigh and a bill.', 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'makeover',
+    weight: 2,
+    when: (s, rng) => (year(s) >= 1984 && s.fans >= 100 && !s.flags.makeover ? { who: rng.pick(['Tamsin from a King\'s Road boutique', 'a stylist called Jules who "did a pop video once"', 'Marco, image consultant, ex-hairdresser, ex-con']) } : null),
+    title: () => 'Time for a new look?',
+    text: (_s, p) => `${p.who} says the band looks "like a darts team". The future is perms, spandex, leopard print and eyeliner. Lots of eyeliner.`,
+    options: () => [
+      {
+        label: 'Full makeover',
+        hint: 'Everyone looks like a star. The purists will want to die.',
+        cost: 150,
+        resolve: (st) => {
+          st.flags.makeover = 1;
+          everyone(st, 'image', 5);
+          for (const x of st.members) adjust(x, 'mood', isPurist(x) ? -10 : 6);
+          st.fans += 30;
+          log(st, 'Perms, spandex, a leopard-print everything. You look like a burst sofa in the best possible way.', 'good');
+        },
+      },
+      {
+        label: 'Just the eyeliner',
+        hint: 'A toe in the water.',
+        cost: 30,
+        resolve: (st) => {
+          st.flags.makeover = 2;
+          everyone(st, 'image', 2);
+          for (const x of purists(st)) adjust(x, 'mood', -3);
+          log(st, 'A bit of eyeliner all round. Even the purists admit it hides the hangovers.', 'neutral');
+        },
+      },
+      {
+        label: 'No chance',
+        hint: 'Credibility over cheekbones.',
+        resolve: (st) => {
+          st.flags.makeover = 3;
+          for (const x of purists(st)) adjust(x, 'mood', 5);
+          addBuzz(st, -2);
+          log(st, 'You sent the stylist away. Denim and sweat it is.', 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'brawl',
+    weight: 2,
+    when: (s, rng) => (s.lastGigWeek !== null && s.fans >= 40 && mates(s).length ? { rival: pickRivalName(s.world, rng) } : null),
+    title: (_s, p) => `Trouble with ${p.rival}`,
+    text: (_s, p) => `${p.rival} have turned up at your gig, drunk, and their singer has just called your guitarist's mum a word that rhymes with "trollop".`,
+    options: (_s, p) => [
+      {
+        label: 'Wade in',
+        hint: 'Legends are born in pub car parks. So are black eyes.',
+        resolve: (st, rng) => {
+          st.flags.feud = st.week;
+          addBuzz(st, 6);
+          for (const x of mates(st)) adjust(x, 'energy', -10);
+          forEachPair(mates(st), (a, b) => addAffinity(st, a.id, b.id, 4));
+          const soft = [...mates(st)].sort((a, b) => a.hidden.stamina - b.hidden.stamina)[0];
+          if (soft && rng.chance(0.4)) {
+            soft.outWeeks = Math.max(soft.outWeeks, 1);
+            log(st, `A glorious punch-up. ${first(soft)} ended it in casualty with a cracked rib.`, 'bad');
+          } else log(st, `You chased ${p.rival} down Camden High Street. ${PRESS} has a photo.`, 'good');
+        },
+      },
+      {
+        label: 'Get your lot out of there',
+        hint: 'Sensible. The hotheads will call you soft.',
+        resolve: (st) => {
+          for (const x of mates(st)) if (x.hidden.ego >= 60) adjust(x, 'mood', -6);
+          addBuzz(st, -1);
+          log(st, `You marched the band to the van. ${p.rival} are telling everyone you ran.`, 'neutral');
+        },
+      },
+      {
+        label: 'Buy them a round',
+        hint: 'Peace in our time. The press likes a feud more.',
+        cost: 25,
+        resolve: (st) => {
+          delete st.flags.feud;
+          everyone(st, 'mood', 3); everyone(st, 'habit', 2);
+          addBuzz(st, -2);
+          log(st, `By last orders you and ${p.rival} were swapping phone numbers and grudges.`, 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'setlist_theft',
+    weight: 1,
+    when: (s, rng) => (s.fans >= 60 && since(s, 'setlistTheft', 40) ? { rival: pickRivalName(s.world, rng) } : null),
+    title: (_s, p) => `${p.rival} stole your closer`,
+    text: (_s, p) => `${p.rival} are ending their set with your encore trick: the fire extinguisher, the slow-motion jump and the "goodnight, London". Same week, same street.`,
+    options: (_s, p) => [
+      {
+        label: 'Write a better closer',
+        hint: 'Hard work, and the band gets sharper.',
+        resolve: (st) => {
+          st.flags.setlistTheft = st.week;
+          everyone(st, 'energy', -10); tighten(st, 4);
+          log(st, 'A week of rehearsing a new ending. It involves a confetti cannon and a key change.', 'good');
+        },
+      },
+      {
+        label: `Complain to ${PRESS}`,
+        hint: 'The letters page loves a squabble.',
+        resolve: (st) => {
+          st.flags.setlistTheft = st.week; st.flags.feud = st.week;
+          addBuzz(st, 4);
+          log(st, `"${p.rival} are thieves," you wrote. They wrote back. Then you wrote back. ${PRESS} is thrilled.`, 'good');
+        },
+      },
+      {
+        label: 'Nick their setlist back',
+        hint: 'Pinch their best bit. Could backfire.',
+        resolve: (st, rng) => {
+          st.flags.setlistTheft = st.week; st.flags.feud = st.week;
+          if (rng.chance(0.5)) { addBuzz(st, 5); st.fans += 15; log(st, `You stole their encore and did it better. ${p.rival} are livid.`, 'good'); }
+          else { addBuzz(st, -3); log(st, 'Their encore was rubbish on you too. The crowd noticed.', 'bad'); }
+        },
+      },
+    ],
+  },
+
+  // ================================================================ life on the road
+  {
+    id: 'euro_gig',
+    weight: 2,
+    when: (s, rng) => (s.fans >= 120 && since(s, 'euroGig', 26) ? { town: rng.pick(['Hamburg', 'Rotterdam', 'Eindhoven', 'Bremen', 'Utrecht']), club: rng.pick(['Club Kaput', 'the Zollhaus', 'De Lekke Band', 'the Kesselraum']) } : null),
+    title: (_s, p) => `A gig in ${p.town}`,
+    text: (_s, p) => `${p.club} in ${p.town} wants you for a Saturday. They pay in cash, feed you, and the crowd "goes absolutely crazy for English bands". Ferry tickets are on you.`,
+    options: (_s, p) => [
+      {
+        label: 'Book the ferry',
+        hint: 'Good money, hard miles.',
+        cost: 80,
+        resolve: (st, rng) => {
+          st.flags.euroGig = st.week;
+          st.money += 260; st.fans += 40; tighten(st, 5);
+          for (const x of st.members) { adjust(x, 'energy', -20); adjust(x, 'habit', 4); }
+          if (rng.chance(0.25)) { st.money -= 60; log(st, `${p.town} went wild. Customs at Harwich went wilder and kept £60 of the takings.`, 'neutral'); }
+          else log(st, `${p.town} went wild. They threw bratwurst. It was a compliment.`, 'good');
+        },
+      },
+      {
+        label: 'Go, and stay for the weekend',
+        hint: 'A legend of a weekend. Nobody comes back the same.',
+        cost: 120,
+        resolve: (st) => {
+          st.flags.euroGig = st.week;
+          st.money += 260; st.fans += 50; addBuzz(st, 3);
+          for (const x of st.members) { adjust(x, 'energy', -25); adjust(x, 'habit', 10); adjust(x, 'mood', 10); }
+          setVibe(st, 'trip');
+          beat(st, '04:10', `A club under a railway arch in ${p.town}. The strobe is in no hurry and neither are you.`);
+          log(st, 'Three days, one gig, no sleep. The van came home smelling of schnapps and regret.', 'neutral');
+        },
+      },
+      {
+        label: 'Decline',
+        hint: 'Saves the ferry fare. Everyone wanted to go.',
+        resolve: (st) => {
+          st.flags.euroGig = st.week;
+          everyone(st, 'mood', -3);
+          log(st, `You turned ${p.town} down. The band spent Saturday in the Crown & Gutter, sulking.`, 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'support_tour',
+    weight: 2,
+    when: (s, rng) => (s.fans >= 150 && s.buzz >= 25 && !s.flags.supportTour ? { act: rng.pick(['Sabre Royale', 'Hellcat Mary', 'The Velvet Juggernaut', 'Bastion']) } : null),
+    title: (_s, p) => `Support slot with ${p.act}`,
+    text: (_s, p) => `${p.act} are touring the country and need a support band. Their manager says the slot is yours for a £300 "buy-on". Or you can have the bottom of the bill for nothing and be treated accordingly.`,
+    options: (_s, p) => [
+      {
+        label: 'Pay the buy-on',
+        hint: 'Proper slot, proper crowds, a punishing month.',
+        cost: 300,
+        resolve: (st) => {
+          st.flags.supportTour = st.week;
+          st.fans += 180; addBuzz(st, 8); tighten(st, 6);
+          for (const x of st.members) { adjust(x, 'energy', -25); adjust(x, 'habit', 5); }
+          log(st, `Eighteen nights with ${p.act}. Half their crowd went home with your badge on.`, 'good');
+        },
+      },
+      {
+        label: 'Take the free slot',
+        hint: 'On stage before the doors open. Character-building.',
+        resolve: (st) => {
+          st.flags.supportTour = st.week;
+          st.fans += 70; tighten(st, 4);
+          for (const x of st.members) { adjust(x, 'energy', -20); adjust(x, 'mood', -8); }
+          log(st, `No soundcheck, no rider, no dressing room. ${p.act}'s roadies used your van as a toilet. Still: new fans.`, 'neutral');
+        },
+      },
+      {
+        label: 'Turn it down',
+        hint: 'You headline or nothing. Bold for a band your size.',
+        resolve: (st) => {
+          st.flags.supportTour = st.week;
+          addBuzz(st, -2); adjust(player(st), 'mood', 3);
+          log(st, `You told ${p.act}'s manager you only headline. He laughed for a long time.`, 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'last_orders',
+    weight: 2,
+    when: (s, rng) => {
+      const c = mates(s).filter((m) => m.habit >= 30 || m.hidden.vice >= 60);
+      if (s.flags.noVan || s.lastGigWeek === null || !c.length) return null;
+      return { m: rng.pick(c).id, town: rng.pick(['Kettering', 'Stoke', 'Basingstoke', 'Peterborough']) };
+    },
+    title: () => '"I\'m fine to drive"',
+    text: (s, p) => `After a gig in ${p.town}, ${nm(s, p.m)} jangles the van keys and says they have "only had six". It is ninety miles back to London. ${nm(s, p.m)} is not fine.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'Take the keys. Sleep in the van',
+          hint: 'Cold, cramped and alive.',
+          resolve: (st) => {
+            for (const x of st.members) { adjust(x, 'energy', -12); adjust(x, 'mood', -4); }
+            addAffinity(st, m.id, 'p', -3);
+            log(st, 'Four people, one sleeping bag, frost on the inside of the windscreen. Everyone made it home on Sunday.', 'neutral');
+          },
+        },
+        {
+          label: 'B&B for everyone',
+          hint: 'Proper beds and a fry-up.',
+          cost: 60,
+          resolve: (st) => {
+            everyone(st, 'energy', 5); everyone(st, 'mood', 4);
+            log(st, 'A B&B run by a woman called Mrs Tench who hates musicians and does a magnificent fried slice.', 'good');
+          },
+        },
+        {
+          label: 'You drive, on orange squash',
+          hint: 'You stay sober all night. Thankless, but the band owes you.',
+          resolve: (st) => {
+            const me = player(st);
+            adjust(me, 'energy', -15); adjust(me, 'mood', -3); adjust(me, 'habit', -2);
+            for (const x of mates(st)) addAffinity(st, x.id, 'p', 3);
+            log(st, `You drove home at fifty on the M1 while ${first(mem(st, m.id))} sang every song you hate.`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'squat',
+    weight: 1,
+    when: (s) => (s.week >= 6 && !s.flags.squat ? {} : null),
+    title: () => 'Bailiffs at the squat',
+    text: () => 'The rehearsal room is in a squatted warehouse in Hackney. The bailiffs arrive Thursday with a van, three Alsatians and a court order.',
+    options: () => [
+      {
+        label: 'Barricade the doors',
+        hint: 'A siege, a story, maybe a night in the cells.',
+        resolve: (st, rng) => {
+          st.flags.squat = st.week;
+          addBuzz(st, 6); st.fans += 10;
+          everyone(st, 'energy', -10);
+          const slow = [...mates(st)].sort((a, b) => a.hidden.stamina - b.hidden.stamina)[0];
+          if (slow && rng.chance(0.4)) {
+            slow.outWeeks = Math.max(slow.outWeeks, 1);
+            log(st, `The siege lasted nine hours. ${first(slow)} was carried out still holding a bass and spent a night at Stoke Newington nick.`, 'bad');
+          } else log(st, 'You held out for a day with a sofa and some feedback. The local news filmed it.', 'good');
+        },
+      },
+      {
+        label: 'Go quietly',
+        hint: 'No drama. No rehearsal room either for a while.',
+        resolve: (st) => {
+          st.flags.squat = st.week;
+          everyone(st, 'mood', -6); tighten(st, -4);
+          log(st, 'You loaded out in the rain. The bailiffs took the kettle.', 'neutral');
+        },
+      },
+      {
+        label: 'Farewell gig on the roof',
+        hint: 'Free, loud, possibly the best gig you ever play. The bailiffs may keep the PA.',
+        resolve: (st, rng) => {
+          st.flags.squat = st.week;
+          st.fans += 25; addBuzz(st, 4); everyone(st, 'energy', -10);
+          if (st.gear > 0 && rng.chance(0.3)) { addGear(st, -1); log(st, 'A roof gig over Hackney at sunset. The bailiffs kept the PA as "costs".', 'neutral'); }
+          else log(st, 'A roof gig over Hackney at sunset. Two hundred people in the street. The police waited politely till the encore.', 'good');
+        },
+      },
+    ],
+  },
+  {
+    id: 'noise',
+    weight: 1,
+    when: (s) => (s.week >= 4 && since(s, 'noise', 40) ? {} : null),
+    title: () => 'Environmental health',
+    text: () => 'A man from the council with a clipboard and a decibel meter says the rehearsals are registering "comparable to a jet engine" next door. Next door is a retired couple and a parrot.',
+    options: () => [
+      {
+        label: 'Egg boxes on every wall',
+        hint: 'Cheap soundproofing. Everyone is happier.',
+        cost: 25,
+        resolve: (st) => { st.flags.noise = st.week; everyone(st, 'mood', 2); log(st, 'The room is now lined with eight hundred egg boxes. The parrot has calmed down.', 'neutral'); },
+      },
+      {
+        label: 'Rehearse with the amps on two',
+        hint: 'Quiet rehearsals, better songs, a looser band.',
+        resolve: (st, rng) => {
+          st.flags.noise = st.week;
+          tighten(st, -3);
+          grow(player(st), 'writing', 3, rng);
+          log(st, 'A week of whispering rock. You wrote something gentle and then hated yourself.', 'neutral');
+        },
+      },
+      {
+        label: 'Ignore him',
+        hint: 'Rock and roll does not do clipboards.',
+        resolve: (st, rng) => {
+          st.flags.noise = st.week;
+          if (rng.chance(0.5)) { st.money -= 100; everyone(st, 'mood', -4); log(st, 'The council fined you £100. The parrot testified, in a sense.', 'bad'); }
+          else { addBuzz(st, 2); log(st, 'The neighbours got up a petition. The local paper ran "Rock Hell Next Door", with your band name spelt right.', 'good'); }
+        },
+      },
+      {
+        label: 'Invite him to a gig',
+        hint: 'Win him over, or confirm his worst fears.',
+        resolve: (st, rng) => {
+          st.flags.noise = st.week;
+          if (rng.chance(0.35)) { st.fans += 1; addBuzz(st, 1); log(st, 'He came, he headbanged, he dropped the complaint. You have one fan with a clipboard.', 'good'); }
+          else { st.money -= 50; log(st, 'He came, he measured, he fined you £50 on the spot.', 'bad'); }
+        },
+      },
+    ],
+  },
+  {
+    id: 'benefit',
+    weight: 2,
+    when: (s, rng) => {
+      const y = year(s);
+      if (y < 1984 || s.fans < 60 || s.flags[`benefit${y}`]) return null;
+      return { cause: y <= 1985 ? 'striking pit villages up north' : rng.pick(['a night shelter in King\'s Cross', 'a hospice in Hackney', 'a community centre about to lose its roof']) };
+    },
+    title: () => 'A benefit gig',
+    text: (_s, p) => `There is a benefit gig at the town hall for ${p.cause}. No fee, no rider, a good crowd and a lot of collection buckets.`,
+    options: () => [
+      {
+        label: 'Play for free',
+        hint: 'Good for the soul and the reputation. Knackering.',
+        resolve: (st) => {
+          st.flags[`benefit${year(st)}`] = 1;
+          st.fans += 35; addBuzz(st, 5);
+          for (const x of st.members) { adjust(x, 'energy', -12); adjust(x, 'mood', x.style === 'punk' ? 10 : 5); }
+          log(st, 'You played a blinder for a hall full of people who needed it. The buckets were heavy.', 'good');
+        },
+      },
+      {
+        label: 'Play, but keep the bar cut',
+        hint: 'Money in your pocket. People will talk.',
+        resolve: (st) => {
+          st.flags[`benefit${year(st)}`] = 1;
+          st.money += 40; st.fans += 20; addBuzz(st, -4);
+          log(st, `You took the bar cut. ${PRESS} found out. "Charity begins at the till," said the headline.`, 'bad');
+        },
+      },
+      {
+        label: 'Send a signed poster for the raffle',
+        hint: 'Easy. The politically minded will be disappointed.',
+        resolve: (st) => {
+          st.flags[`benefit${year(st)}`] = 1;
+          for (const x of mates(st)) if (x.style === 'punk' || x.hidden.loyalty >= 60) adjust(x, 'mood', -6);
+          addBuzz(st, -1);
+          log(st, 'Your poster raised £4. It was won by the caretaker.', 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'insurance',
+    weight: 1,
+    when: (s) => (s.gear >= 1 && !s.flags.insured && !s.flags.insuranceOffered ? {} : null),
+    title: () => 'The man from Allsafe Mutual',
+    text: () => 'A man in a mustard suit has cornered you at the bar with a brochure. "Musicians are robbed every day," he says. "Every single day."',
+    options: () => [
+      {
+        label: 'Buy the policy',
+        hint: 'Proper cover for the gear.',
+        cost: 60,
+        resolve: (st) => { st.flags.insuranceOffered = 1; st.flags.insured = 2; adjust(player(st), 'mood', 3); log(st, 'The gear is insured. The man in the mustard suit shook your hand for too long.', 'neutral'); },
+      },
+      {
+        label: 'Buy a cheaper policy off his mate',
+        hint: 'A quarter of the price. Hmm.',
+        cost: 15,
+        resolve: (st) => { st.flags.insuranceOffered = 1; st.flags.insured = 1; adjust(player(st), 'mood', 2); log(st, 'A man called Del sold you a policy on the back of a beer mat. It has a stamp on it, sort of.', 'neutral'); },
+      },
+      {
+        label: 'Show him the door',
+        hint: 'Nobody robs a band. Probably.',
+        resolve: (st) => { st.flags.insuranceOffered = 1; adjust(player(st), 'mood', 2); log(st, 'You told him musicians have nothing worth stealing. He looked at your guitar and said nothing.', 'neutral'); },
+      },
+    ],
+  },
+  {
+    id: 'kit_stolen',
+    weight: 2,
+    when: (s) => (s.gear >= 1 && s.lastGigWeek !== null && !s.flags.noVan && since(s, 'kitStolen', 30) ? {} : null),
+    title: () => 'The van has been done',
+    text: () => 'Someone jemmied the back of the van outside the gig. The drum kit, two amps and a tambourine are gone.',
+    options: (s) => {
+      const opts: EventOption[] = [];
+      if (s.flags.insured === 2) {
+        opts.push({
+          label: 'Claim on the insurance',
+          hint: 'This is what it was for.',
+          resolve: (st) => { st.flags.kitStolen = st.week; st.flags.insured = 0; st.money += 30; log(st, 'Allsafe Mutual paid up, plus a bit. Then cancelled the policy.', 'good'); },
+        });
+      } else if (s.flags.insured === 1) {
+        opts.push({
+          label: 'Claim on Del’s policy',
+          hint: 'Worth a try.',
+          resolve: (st) => { st.flags.kitStolen = st.week; st.flags.insured = 0; addGear(st, -1); adjust(player(st), 'mood', -6); log(st, 'The number on Del’s policy is a phone box in Deptford.', 'bad'); },
+        });
+      }
+      opts.push(
+        { label: 'Buy replacements', hint: 'Back in business straight away.', cost: 120, resolve: (st) => { st.flags.kitStolen = st.week; everyone(st, 'mood', -2); log(st, 'Replacements bought. The new tambourine is not as good.', 'neutral'); } },
+        { label: 'Borrow kit and make do', hint: 'Free. You will sound like it.', resolve: (st) => { st.flags.kitStolen = st.week; addGear(st, -1); tighten(st, -2); log(st, 'Borrowed drums and an amp held together with tape. It sounds like a shed falling over.', 'bad'); } },
+        {
+          label: 'Search the Sunday market',
+          hint: 'Stolen gear always turns up somewhere.',
+          resolve: (st, rng) => {
+            st.flags.kitStolen = st.week;
+            everyone(st, 'energy', -5);
+            if (rng.chance(0.35)) { st.money -= 20; log(st, 'Found your own kit on a stall in Brick Lane. Bought it back for £20. The stallholder was unrepentant.', 'good'); }
+            else { addGear(st, -1); log(st, 'Six hours at the market. You found a lot of drum kits. None of them yours.', 'bad'); }
+          },
+        },
+      );
+      return opts;
+    },
+  },
+  {
+    id: 'entourage',
+    weight: 1,
+    when: (s) => ((s.buzz >= 35 || s.fans >= 300) && since(s, 'entourage', 30) ? {} : null),
+    title: () => 'The hangers-on',
+    text: () => 'Nobody knows where they came from: a bloke in a fur coat, two art students, someone called Spanner. They are in the van, the dressing room and, increasingly, the rider.',
+    options: () => [
+      {
+        label: 'Let them stay',
+        hint: 'You look like stars. They drink like stars, on your money.',
+        resolve: (st) => {
+          st.flags.entourage = st.week;
+          addBuzz(st, 4); st.money -= 60;
+          for (const x of st.members) { adjust(x, 'habit', 5); adjust(x, 'mood', 4); }
+          log(st, 'The entourage is now part of the show. Spanner has started introducing the band.', 'neutral');
+        },
+      },
+      {
+        label: 'Clear them out',
+        hint: 'Back to basics. The big egos liked the attention.',
+        resolve: (st) => {
+          st.flags.entourage = st.week;
+          for (const x of st.members) { adjust(x, 'habit', -3); if (!x.isPlayer && x.hidden.ego >= 60) adjust(x, 'mood', -8); }
+          log(st, 'You turfed them out. Spanner took a cymbal as a souvenir.', 'neutral');
+        },
+      },
+      {
+        label: 'Put them to work on merch',
+        hint: 'Free labour. Watch the cash box.',
+        resolve: (st, rng) => {
+          st.flags.entourage = st.week;
+          if (rng.chance(0.3)) { st.money -= 80; log(st, 'The merch stall did a roaring trade. Then the man in the fur coat left with the cash box.', 'bad'); }
+          else { st.money += 40; st.fans += 10; log(st, 'The art students redesigned the T-shirts. They sold out.', 'good'); }
+        },
+      },
+    ],
+  },
+  {
+    id: 'promoter_stiff',
+    weight: 2,
+    when: (s, rng) => (s.lastGigWeek !== null && s.week - s.lastGigWeek <= 2 && s.fans >= 30 ? { who: rng.pick(['Lenny "Two Coats" Marsh', 'Big Ron Pilling', 'Desmond Fullalove']) } : null),
+    title: (_s, p) => `${p.who} won't pay`,
+    text: (_s, p) => `The promoter, ${p.who}, says the door "barely covered the electric" and offers you a voucher for his cousin's carpet shop.`,
+    options: (s, p) => {
+      const heavy = loudest(s);
+      return [
+        {
+          label: 'Lean on him',
+          hint: 'Get the band to stand very close to him.',
+          resolve: (st, rng) => {
+            if (rng.chance(0.5)) { st.money += 90; log(st, `${p.who} found £90 in a biscuit tin very quickly.`, 'good'); }
+            else { addBuzz(st, -2); everyone(st, 'mood', -4); log(st, `${p.who} called his own heavies. You left without the money and with a ban.`, 'bad'); }
+            if (heavy) revealLog(st, mem(st, heavy.id), 'ego', 1);
+          },
+        },
+        {
+          label: 'Take his PA amp as payment',
+          hint: 'Fair is fair. He will not book you again.',
+          resolve: (st) => {
+            st.flags.promoterBan = st.week;
+            addGear(st, 1); addBuzz(st, -1);
+            log(st, `You loaded ${p.who}'s amp into the van while he shouted about the police. He did not call them.`, 'neutral');
+          },
+        },
+        {
+          label: 'Let it go',
+          hint: 'Lose the fee, keep the contact.',
+          resolve: (st) => {
+            everyone(st, 'mood', -5); st.fans += 10;
+            log(st, `${p.who} promised you a Saturday slot "next time". Surprisingly, he meant it.`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'superfan',
+    weight: 1,
+    when: (s, rng) => {
+      const c = [...mates(s)].sort((a, b) => b.image - a.image)[0];
+      if (s.fans < 150 || s.flags.superfan || !c) return null;
+      return { m: c.id, fan: rng.pick(['Brenda from Crawley', 'Nigel, a trainee accountant', 'a woman who calls herself Lady Raven']) };
+    },
+    title: (_s, p) => `${p.fan} again`,
+    text: (s, p) => `${p.fan} has been to forty gigs in a row, knows where ${nm(s, p.m)} lives, and has started signing letters "your future spouse". ${nm(s, p.m)} is starting to check behind the curtains.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      return [
+        {
+          label: 'A kind but firm word',
+          hint: 'Clear boundaries. A tiny bit of bad feeling.',
+          resolve: (st) => {
+            st.flags.superfan = 1;
+            adjust(mem(st, m.id), 'mood', 5); st.fans = Math.max(0, st.fans - 2);
+            log(st, `You had a gentle chat with ${p.fan} over a cup of tea. The letters stopped. Mostly.`, 'neutral');
+          },
+        },
+        {
+          label: 'Make them fan club secretary',
+          hint: 'Channel the devotion. Possibly feed it.',
+          resolve: (st, rng) => {
+            st.flags.superfan = 2;
+            st.fans += 25; addBuzz(st, 2);
+            const x = mem(st, m.id);
+            if (rng.chance(0.3)) { adjust(x, 'mood', -10); log(st, `${p.fan} runs the best fan club in London, and sends ${first(x)} a newsletter every day.`, 'bad'); }
+            else { adjust(x, 'mood', -2); log(st, `${p.fan} has found a purpose. The newsletter is terrifyingly good.`, 'good'); }
+          },
+        },
+        {
+          label: 'Ring the police',
+          hint: `${first(m)} feels safe. Word gets round that you are stuck-up.`,
+          resolve: (st) => {
+            st.flags.superfan = 3;
+            adjust(mem(st, m.id), 'mood', 6); st.fans = Math.max(0, st.fans - 10); addBuzz(st, -1);
+            log(st, `A constable had a word with ${p.fan}. The fan club calls you "the Thought Police" now.`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'fan_club',
+    weight: 1,
+    when: (s) => (s.fans >= 250 && !s.flags.fanClub ? {} : null),
+    title: () => 'Civil war in the fan club',
+    text: () => 'Your fan club has split. Tina, who started it with a typewriter, says the new glossy "Inner Circle" run by a man from Watford is just selling badges. He says she is "living in 1982".',
+    options: () => [
+      {
+        label: 'Back Tina',
+        hint: 'Loyalty to the old guard.',
+        resolve: (st) => { st.flags.fanClub = 1; st.fans += 10; adjust(player(st), 'mood', 3); log(st, 'Tina is official. She cried and sent a fruit cake.', 'good'); },
+      },
+      {
+        label: 'Back the glossy one',
+        hint: 'There is money in badges. The old fans will mind.',
+        resolve: (st) => { st.flags.fanClub = 2; st.money += 60; st.fans = Math.max(0, st.fans - 10); addBuzz(st, 2); log(st, 'The Inner Circle is official. Your share of the badge money arrived in a jiffy bag.', 'neutral'); },
+      },
+      {
+        label: 'Peace summit in the pub',
+        hint: 'You pay for the drinks. Diplomacy is thirsty work.',
+        cost: 30,
+        resolve: (st, rng) => {
+          st.flags.fanClub = 3;
+          if (rng.chance(0.6)) { st.fans += 20; log(st, 'Tina and the man from Watford now run one club together. They are, worryingly, engaged.', 'good'); }
+          else { addBuzz(st, 3); log(st, `The summit ended with a pint thrown. ${PRESS} called it "the fan club wars".`, 'neutral'); }
+        },
+      },
+    ],
+  },
+
+  // ================================================================ the record industry
+  {
+    id: 'manager_offer',
+    weight: 3,
+    when: (s, rng) => (s.fans >= 80 && s.buzz >= 15 && !s.flags.manager ? { who: rng.pick(['Clive Sparrowhawk', 'Maurice "Mo" Lightfoot', 'Vera Pendleton-Shaw', 'Terry Glass of Glass Act Management']) } : null),
+    title: (_s, p) => `${p.who} wants to manage you`,
+    text: (_s, p) => `${p.who} has a sheepskin coat, a car phone and a contract. "Sign tonight and there is £250 in it for you. It's all standard, sweetheart. Nobody reads these."`,
+    options: (_s, p) => [
+      {
+        label: 'Sign on the spot',
+        hint: 'Cash now, connections, and a contract nobody read.',
+        resolve: (st) => {
+          st.flags.manager = 2; st.flags.managerWeek = st.week;
+          st.money += 250; addBuzz(st, 5);
+          log(st, `You signed with ${p.who} on the bonnet of a car. He called you "the next big thing" and drove off fast.`, 'good');
+        },
+      },
+      {
+        label: 'Get a solicitor to read it first',
+        hint: 'Smaller advance, fewer surprises.',
+        cost: 60,
+        resolve: (st) => {
+          st.flags.manager = 1; st.flags.managerWeek = st.week;
+          st.money += 100; addBuzz(st, 4);
+          log(st, `The solicitor found clause 14(b): ${p.who} would have owned half your songs, forever. Crossed out. You signed the rest.`, 'good');
+        },
+      },
+      {
+        label: 'Show him the door',
+        hint: 'You manage yourselves. Harder, but yours.',
+        resolve: (st) => {
+          st.flags.manager = 3;
+          adjust(player(st), 'mood', 4); addBuzz(st, -1);
+          log(st, `${p.who} left his card. It has three phone numbers on it, all crossed out.`, 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'manager_clause',
+    weight: 8,
+    when: (s) => (s.flags.manager === 2 && s.week - (s.flags.managerWeek ?? s.week) >= 4 ? {} : null),
+    title: () => 'Clause 14(b)',
+    text: () => 'A letter from your manager’s lawyer. Page nine, small print: he owns half your songwriting "in perpetuity, throughout the universe". He would like his share of everything, backdated.',
+    options: () => [
+      {
+        label: 'Buy your way out',
+        hint: 'Expensive freedom.',
+        cost: 250,
+        resolve: (st) => { st.flags.manager = 4; everyone(st, 'mood', 5); log(st, 'You bought the contract back. You are free, broke and wiser.', 'good'); },
+      },
+      {
+        label: 'Take him to court',
+        hint: 'Lawyers cost money. Winning costs more.',
+        cost: 80,
+        resolve: (st, rng) => {
+          if (rng.chance(0.45)) { st.flags.manager = 4; addBuzz(st, 5); log(st, `The judge called the contract "unconscionable" and ${PRESS} called it "a victory for rock".`, 'good'); }
+          else { st.flags.manager = 5; st.money -= 150; log(st, 'You lost. Costs awarded against you, and the clause stands.', 'bad'); }
+        },
+      },
+      {
+        label: 'Live with it',
+        hint: 'He takes his cut. You keep your evenings free of lawyers.',
+        resolve: (st) => {
+          st.flags.manager = 5;
+          const cut = clamp(Math.round(st.money * 0.2), 30, 200);
+          st.money -= cut; adjust(player(st), 'mood', -10);
+          log(st, `Your manager took £${cut} "on account". You will never see a royalty statement that makes sense.`, 'bad');
+        },
+      },
+    ],
+  },
+  {
+    id: 'ar_scout',
+    weight: 2,
+    when: (s, rng) => (s.buzz >= 20 && s.lastGigWeek !== null && s.week - s.lastGigWeek <= 2 && since(s, 'arScout', 20)
+      ? { label: rng.pick(['Monolith Phonographic', 'Plastic Lion Records', 'Gravel & Sons', 'Kingfisher Sound']) }
+      : null),
+    title: (_s, p) => `A&R from ${p.label}`,
+    text: (_s, p) => `There is a man in a satin tour jacket at the back of the gig, from ${p.label}. He is not tapping his foot. He is writing something down.`,
+    options: (s, p) => {
+      const demo = s.releases.some((r) => r.kind === 'demo');
+      return [
+        {
+          label: 'Buy him drinks all night',
+          hint: 'Charm offensive. Your liver pays as well.',
+          cost: 30,
+          resolve: (st, rng) => {
+            st.flags.arScout = st.week;
+            adjust(player(st), 'habit', 3);
+            if (rng.chance(0.6)) { addBuzz(st, 6); st.flags.arInterest = (st.flags.arInterest ?? 0) + 1; log(st, `By midnight he was calling you "my band". ${p.label} will be in touch, he says.`, 'good'); }
+            else { addBuzz(st, 1); log(st, 'He drank everything and woke up with no memory of you at all.', 'bad'); }
+          },
+        },
+        {
+          label: 'Play it cool',
+          hint: 'Mystique works. Or he walks.',
+          resolve: (st, rng) => {
+            st.flags.arScout = st.week;
+            if (rng.chance(0.4)) { addBuzz(st, 8); st.flags.arInterest = (st.flags.arInterest ?? 0) + 1; log(st, 'You ignored him completely. He rang the venue twice the next day asking for you.', 'good'); }
+            else { addBuzz(st, -1); log(st, `He left before the encore. ${p.label} signed a synth duo instead.`, 'bad'); }
+          },
+        },
+        {
+          label: demo ? 'Hand him the demo tape' : 'Hand him a live tape off the desk',
+          hint: demo ? 'Let the music do the talking.' : 'Rough, but it is something.',
+          resolve: (st) => {
+            st.flags.arScout = st.week;
+            addBuzz(st, demo ? 5 : 2); st.fans += demo ? 10 : 0;
+            log(st, demo ? 'He played the tape in his car. Someone at the label played it in the office.' : 'He took the tape. It was mostly crowd noise and a man shouting for the one about the van.', demo ? 'good' : 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'producer',
+    weight: 2,
+    when: (s, rng) => ((s.buzz >= 30 || s.releases.length >= 2) && bestUnreleased(s) && !s.flags.producer
+      ? { who: rng.pick(['Sir Ambrose Kettle', 'Dieter "The Wall" Voss', 'Lance Holloway, who made three number ones and a cult']) }
+      : null),
+    title: (_s, p) => `${String(p.who).split(',')[0]} will produce you`,
+    text: (_s, p) => `${p.who} heard you on the radio and would "love to get his hands on you". His fee is £400, cash, plus a case of a very specific Burgundy.`,
+    options: () => [
+      {
+        label: 'Pay the fee',
+        hint: 'Every unreleased song gets better. The band gets drilled.',
+        cost: 400,
+        resolve: (st) => {
+          st.flags.producer = 1;
+          for (const x of st.songs) if (!x.released) x.quality = clamp(x.quality + 6, 1, 99);
+          tighten(st, 4); everyone(st, 'mood', -3);
+          log(st, 'He made you play the same chorus ninety times. The songs sound enormous now.', 'good');
+        },
+      },
+      {
+        label: 'Offer him points instead of cash',
+        hint: 'No money down. He owns a slice of your future.',
+        resolve: (st) => {
+          st.flags.producer = 2; st.flags.producerPoints = 1;
+          for (const x of st.songs) if (!x.released) x.quality = clamp(x.quality + 3, 1, 99);
+          addBuzz(st, 3);
+          log(st, `He took points. ${PRESS} ran "Legendary producer signs up with unknowns". You may regret the percentages.`, 'neutral');
+        },
+      },
+      {
+        label: 'Produce it yourselves',
+        hint: 'Cheap, honest and a bit muddy.',
+        resolve: (st) => {
+          st.flags.producer = 3;
+          tighten(st, 2); adjust(player(st), 'mood', 3);
+          log(st, 'You produced it yourselves. The drums sound like a biscuit tin, but they are your biscuit tins.', 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'jingle',
+    weight: 2,
+    when: (s, rng) => (s.fans >= 100 && !s.flags.jingle ? { product: rng.pick(['Krunchos cheese puffs', 'Blaze-O oven cleaner', 'Fizzbomb cola', 'Tressmax Mega-Hold mousse']) } : null),
+    title: (_s, p) => `${p.product} want your song`,
+    text: (_s, p) => `An ad agency wants your best riff for a ${p.product} commercial. £350. The lyrics would be changed to "${String(p.product).split(' ')[0]}, ${String(p.product).split(' ')[0]}, crunch-crunch-crunch".`,
+    options: (_s, p) => [
+      {
+        label: 'Take the money',
+        hint: 'Pay the rent, lose some cred. The purists will be appalled.',
+        resolve: (st) => {
+          st.flags.jingle = 1;
+          st.money += 350; addBuzz(st, -6);
+          for (const x of purists(st)) adjust(x, 'mood', -8);
+          log(st, `Your riff now sells ${p.product} between the snooker. ${PRESS} ran a cartoon of you in a crisp packet.`, 'neutral');
+        },
+      },
+      {
+        label: 'Do it under a fake name',
+        hint: 'Less money. Pray nobody recognises the riff.',
+        resolve: (st, rng) => {
+          st.flags.jingle = 2;
+          st.money += 200;
+          if (rng.chance(0.35)) { addBuzz(st, -8); log(st, `A ${PRESS} reader recognised the riff. "Sell-outs in disguise" ran on page two.`, 'bad'); }
+          else log(st, 'You earned £200 as "The Crunch Collective". Nobody knows. Yet.', 'good');
+        },
+      },
+      {
+        label: 'Tell them where to stick it',
+        hint: 'Integrity is free. Rent is not.',
+        resolve: (st) => {
+          st.flags.jingle = 3;
+          addBuzz(st, 3);
+          for (const x of purists(st)) adjust(x, 'mood', 4);
+          log(st, `You told the agency what to do with their ${p.product}. You also told ${PRESS}.`, 'good');
+        },
+      },
+    ],
+  },
+  {
+    id: 'session_vox',
+    weight: 1,
+    when: (s) => (s.week >= 20 && bestUnreleased(s) && !s.flags.sessionVox ? { song: bestUnreleased(s).title } : null),
+    title: () => 'Backing vocals for a carpet warehouse',
+    text: (_s, p) => `A studio in Wardour Street needs voices for a radio jingle: "No deposit, no worries, Carpet King of Croydon". Payment: a free night of studio time to work on "${p.song}".`,
+    options: (s, p) => {
+      const voice = [...mates(s)].sort((a, b) => b.stage - a.stage)[0];
+      const opts: EventOption[] = [
+        {
+          label: 'Sing about carpets',
+          hint: 'A night in a real studio. The jingle will haunt you.',
+          resolve: (st) => {
+            st.flags.sessionVox = 1;
+            const x = song(st, p.song); if (x) x.quality = clamp(x.quality + 5, 1, 99);
+            everyone(st, 'mood', -3);
+            log(st, `"${p.song}" sounds twice as good. You will be humming "no deposit, no worries" on your deathbed.`, 'good');
+          },
+        },
+      ];
+      if (voice) {
+        opts.push({
+          label: `Send ${first(voice)} alone`,
+          hint: 'Less studio time. They will feel used.',
+          resolve: (st) => {
+            st.flags.sessionVox = 2;
+            const x = song(st, p.song); if (x) x.quality = clamp(x.quality + 3, 1, 99);
+            adjust(mem(st, voice.id), 'mood', -5); addAffinity(st, voice.id, 'p', -4);
+            log(st, `${first(voice)} sang about carpets for six hours, then spent the free hour on "${p.song}".`, 'neutral');
+          },
+        });
+      }
+      opts.push({
+        label: 'Ask for cash instead',
+        hint: 'A little money, no studio.',
+        resolve: (st) => { st.flags.sessionVox = 3; st.money += 60; log(st, 'The studio paid £60 for an afternoon of shag-pile harmonies.', 'neutral'); },
+      });
+      return opts;
+    },
+  },
+  {
+    id: 'bootleg',
+    weight: 1,
+    when: (s) => (s.fans >= 120 && s.lastGigWeek !== null && !s.flags.bootleg ? {} : null),
+    title: () => 'A bootleg is doing the rounds',
+    text: () => 'A cassette called "Live and Sweaty at the Rat Pit" is selling for £2 at record fairs. The sound is terrible. People are buying it anyway.',
+    options: () => [
+      {
+        label: 'Hunt down the bootlegger',
+        hint: 'Justice, and maybe his takings.',
+        resolve: (st, rng) => {
+          st.flags.bootleg = 1;
+          adjust(player(st), 'energy', -10);
+          if (rng.chance(0.5)) { st.money += 50; log(st, 'You found him at a fair in Kilburn and left with £50 and his remaining stock.', 'good'); }
+          else { addBuzz(st, -2); log(st, 'You chased the wrong man through a record fair. It was filmed.', 'bad'); }
+        },
+      },
+      {
+        label: 'Embrace it',
+        hint: 'Free publicity, no money.',
+        resolve: (st) => { st.flags.bootleg = 2; st.fans += 40; addBuzz(st, 3); log(st, `You told ${PRESS} bootlegs are "the people's records". The people agreed.`, 'good'); },
+      },
+      {
+        label: 'Release an official live tape',
+        hint: 'Beat them at their own game.',
+        cost: 40,
+        resolve: (st) => {
+          st.flags.bootleg = 3;
+          const take = clamp(Math.round(st.fans * 0.4), 30, 200);
+          st.money += take; addBuzz(st, 2);
+          log(st, `"Official Bootleg" sold £${take} worth at gigs. It sounds slightly less terrible.`, 'good');
+        },
+      },
+    ],
+  },
+  {
+    id: 'plagiarism',
+    weight: 1,
+    when: (s, rng) => {
+      if (s.songs.length < 2 || s.buzz < 20 || s.flags.plagiarism) return null;
+      const top = [...s.songs].sort((a, b) => b.quality - a.quality)[0];
+      return { song: top.title, who: rng.pick(['a cabaret organist from Margate', 'a retired folk singer called Pip', 'a jingle writer who once had a hit with a yoghurt advert']) };
+    },
+    title: (_s, p) => `"${p.song}" is stolen, says a solicitor`,
+    text: (_s, p) => `A solicitor's letter: ${p.who} claims the chorus of "${p.song}" is lifted note for note from a song they wrote in 1971. They want £150 or they go to court.`,
+    options: (s, p) => {
+      const writer = s.members.find((m) => m.id === song(s, p.song)?.writer);
+      return [
+        { label: 'Settle', hint: 'Make it go away.', cost: 150, resolve: (st) => { st.flags.plagiarism = 1; adjust(player(st), 'mood', -3); log(st, 'You paid. The letter said "without admission of liability", which means you are guilty.', 'neutral'); } },
+        {
+          label: 'Fight it',
+          hint: 'Win and look brilliant. Lose and pay twice.',
+          resolve: (st, rng) => {
+            st.flags.plagiarism = 2;
+            if (rng.chance(0.5)) { addBuzz(st, 6); log(st, `The court played both tunes. They are nothing alike. ${PRESS} loved the drama.`, 'good'); }
+            else { st.money -= 250; addBuzz(st, 2); log(st, 'The judge hummed both tunes. They were the same tune. £250 in costs.', 'bad'); }
+          },
+        },
+        {
+          label: 'Rewrite the chorus',
+          hint: `The song gets worse. ${writer && !writer.isPlayer ? `${first(writer)} will be hurt.` : 'Your pride will be hurt.'}`,
+          resolve: (st) => {
+            st.flags.plagiarism = 3;
+            const x = song(st, p.song); if (x) x.quality = clamp(x.quality - 6, 1, 99);
+            const w = writer ? st.members.find((m) => m.id === writer.id) : undefined;
+            adjust(w ?? player(st), 'mood', -6);
+            log(st, `"${p.song}" has a new chorus. It is fine. It is just fine.`, 'neutral');
+          },
+        },
+      ];
+    },
+  },
+  {
+    id: 'lost_master',
+    weight: 1,
+    when: (s) => (s.releases.length >= 1 && bestUnreleased(s) && since(s, 'lostMaster', 40) ? { song: bestUnreleased(s).title } : null),
+    title: () => 'The studio has lost your tape',
+    text: (_s, p) => `The studio has lost the multitrack of "${p.song}". The tape op thinks the cleaner "might have binned it". The cleaner thinks it was the tape op.`,
+    options: (_s, p) => [
+      {
+        label: 'Search the skips',
+        hint: 'A long night in the bins of Soho.',
+        resolve: (st, rng) => {
+          st.flags.lostMaster = st.week;
+          everyone(st, 'energy', -12);
+          const x = song(st, p.song);
+          if (rng.chance(0.5)) { if (x) x.quality = clamp(x.quality + 2, 1, 99); log(st, 'Found it under a pizza box. It has a stain on it. It sounds better, somehow.', 'good'); }
+          else { if (x) x.quality = clamp(x.quality - 5, 1, 99); log(st, `No tape. You will have to rebuild "${p.song}" from a cassette copy.`, 'bad'); }
+        },
+      },
+      {
+        label: 'Re-record it',
+        hint: 'Costs money. The band gets tighter doing it again.',
+        cost: 100,
+        resolve: (st) => { st.flags.lostMaster = st.week; tighten(st, 4); everyone(st, 'mood', -2); log(st, `You recorded "${p.song}" again in a day. It is tighter and angrier.`, 'neutral'); },
+      },
+      {
+        label: 'Threaten to sue the studio',
+        hint: 'They might pay up. They might throw you out.',
+        resolve: (st, rng) => {
+          st.flags.lostMaster = st.week;
+          if (rng.chance(0.4)) { st.money += 150; log(st, 'The studio settled for £150 to keep it quiet.', 'good'); }
+          else { st.money -= 60; log(st, 'The studio counter-claimed for "damage to the toilets". You owe them £60.', 'bad'); }
+        },
+      },
+    ],
+  },
+  {
+    id: 'label_party',
+    weight: 2,
+    when: (s, rng) => (s.buzz >= 30 && since(s, 'labelParty', 26) ? { label: rng.pick(['Monolith Phonographic', 'Plastic Lion Records', 'Gravel & Sons', 'Kingfisher Sound']) } : null),
+    title: (_s, p) => `${p.label} throws a party`,
+    text: (_s, p) => `You are on the guest list at ${p.label}'s launch party in a Mayfair hotel. The marketing director is cutting lines on a gold disc in the gents and offering them round like dinner mints.`,
+    options: (s) => [
+      {
+        label: 'Dive in',
+        hint: 'Rub shoulders with the industry. Your noses will remember.',
+        resolve: (st) => {
+          st.flags.labelParty = st.week;
+          for (const x of available(st)) { adjust(x, 'habit', (x.hidden.vice / 100) * 10 + 3); adjust(x, 'energy', 15); }
+          addBuzz(st, 5);
+          setVibe(st, 'trip');
+          beat(st, '01:40', 'You are explaining the future of rock to a man who owns a racehorse. He agrees with every word. So do you.');
+          const w = [...available(st)].sort((a, b) => b.hidden.vice - a.hidden.vice)[0];
+          if (w) revealLog(st, w, 'vice', 1);
+          log(st, 'You met everyone and remember none of it. Apparently you promised a double album.', 'neutral');
+        },
+      },
+      {
+        label: 'Stick to the free champagne',
+        hint: 'A good night, mostly legal.',
+        resolve: (st) => {
+          st.flags.labelParty = st.week;
+          everyone(st, 'habit', 3); everyone(st, 'mood', 6); addBuzz(st, 2);
+          log(st, 'Forty glasses of champagne between you, and a vol-au-vent in a pocket for later.', 'good');
+        },
+      },
+      {
+        label: 'Network, stone cold sober',
+        hint: 'The execs will remember you. You will be bored rigid.',
+        resolve: (st) => {
+          st.flags.labelParty = st.week;
+          st.flags.arInterest = (st.flags.arInterest ?? 0) + 1;
+          adjust(player(st), 'mood', -4);
+          for (const x of mates(st)) if (x.hidden.vice >= 60) adjust(x, 'mood', -4);
+          log(st, 'You talked distribution with a man in a cravat for an hour. He wrote your name in his leather organiser.', 'neutral');
+        },
+      },
+      {
+        label: 'Leave early',
+        hint: 'A good night’s sleep. The industry notices who stays.',
+        resolve: (st) => {
+          st.flags.labelParty = st.week;
+          everyone(st, 'energy', 10); addBuzz(st, -2);
+          log(st, `You left at ten. ${s.bandName} were "the ones who went home", said the diary column.`, 'neutral');
+        },
+      },
+    ],
+  },
+  {
+    id: 'brown_scare',
+    weight: 4,
+    when: (s) => {
+      const c = mates(s).filter((m) => m.habit >= 55 && m.hidden.vice >= 70 && !s.flags[`scare_${m.id}`]);
+      return c.length ? { m: c[0].id } : null;
+    },
+    title: (s, p) => `${nm(s, p.m)} has found something worse`,
+    text: (s, p) => `In the toilets after the gig, ${nm(s, p.m)} was nodding off over a square of tin foil. Someone from the support band "had some brown". ${nm(s, p.m)} swears it was only the once. Their eyes say otherwise.`,
+    options: (s, p) => {
+      const m = mem(s, p.m);
+      const flag = (st: GameState) => { st.flags[`scare_${m.id}`] = st.week; };
+      return [
+        {
+          label: 'The clinic, today',
+          hint: 'Three weeks out. The right thing.',
+          cost: 150,
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, 3); adjust(x, 'habit', -40); adjust(x, 'mood', -8); trait(x, 'vice', -10);
+            addAffinity(st, x.id, 'p', 6);
+            log(st, `${first(x)} went into a clinic in Surrey. Grey, shaky, furious, and alive.`, 'neutral');
+          },
+        },
+        {
+          label: 'A band intervention',
+          hint: 'Everyone in one room, telling the truth. It will be ugly.',
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            adjust(x, 'habit', -20); adjust(x, 'mood', -10);
+            for (const o of st.members) if (o.id !== x.id) addAffinity(st, o.id, x.id, 5);
+            tighten(st, -2);
+            revealLog(st, x, 'vice', 2);
+            log(st, `Five hours in the rehearsal room. ${first(x)} threw a chair, then cried, then flushed the rest.`, 'neutral');
+          },
+        },
+        {
+          label: 'Take them home to their family',
+          hint: `Two weeks in ${m.from}. Gentle, and effective.`,
+          resolve: (st) => {
+            flag(st);
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, 2); adjust(x, 'habit', -25); adjust(x, 'mood', -4);
+            log(st, `You drove ${first(x)} home to ${x.from}. Their family met you at the door and did not ask questions.`, 'neutral');
+          },
+        },
+        {
+          label: 'Look the other way',
+          hint: 'Not your business. It might become everyone’s.',
+          resolve: (st, rng) => {
+            flag(st);
+            const x = mem(st, m.id);
+            adjust(x, 'habit', 12); trait(x, 'vice', 5);
+            if (rng.chance(0.4)) { x.outWeeks = Math.max(x.outWeeks, 3); st.money -= 60; log(st, `${first(x)} was found blue in the van and rushed to A&E. They pulled through. Nobody looks at you the same way.`, 'bad'); }
+            else log(st, `${first(x)} is "fine". ${first(x)} is very thin and very quiet.`, 'bad');
+          },
+        },
+      ];
+    },
+  },
+
+  // ================================================================ media and image
+  {
+    id: 'pirate_radio',
+    weight: 2,
+    when: (s, rng) => (s.fans >= 30 && !s.flags.pirate ? { station: rng.pick(['Radio Concrete', 'Tower Block FM', 'Radio Free Peckham', 'Radio Barge 247']) } : null),
+    title: (_s, p) => `${p.station} wants you`,
+    text: (_s, p) => `${p.station} broadcasts from a transmitter on top of a council tower block, staffed by two DJs and a man who watches for the authorities. They want you on air.`,
+    options: (_s, p) => [
+      {
+        label: 'Play live on the roof',
+        hint: 'A legendary broadcast, if the authorities stay away.',
+        resolve: (st, rng) => {
+          st.flags.pirate = 1;
+          everyone(st, 'energy', -8);
+          if (performance(st) + rng.int(-12, 12) >= 45) { addBuzz(st, 8); st.fans += 40; log(st, `You played eleven floors up in the wind. Half of south London heard it.`, 'good'); }
+          else { addBuzz(st, 2); log(st, 'The wind took the vocals somewhere over Lewisham.', 'neutral'); }
+          if (st.gear > 0 && rng.chance(0.25)) { addGear(st, -1); log(st, 'Then the authorities raided and confiscated an amp along with the transmitter.', 'bad'); }
+        },
+      },
+      {
+        label: 'Give them the tape',
+        hint: 'Easy airplay.',
+        resolve: (st) => { st.flags.pirate = 2; addBuzz(st, 3); st.fans += 15; log(st, `${p.station} played your tape between a reggae dub and an advert for a minicab firm.`, 'good'); },
+      },
+      {
+        label: 'Pay for heavy rotation',
+        hint: 'A bribe in a carrier bag.',
+        cost: 25,
+        resolve: (st) => { st.flags.pirate = 3; addBuzz(st, 4); st.fans += 30; log(st, `${p.station} played you every hour for a week. The DJ now calls you "the guv'nors".`, 'good'); },
+      },
+    ],
+  },
+  {
+    id: 'fanzine',
+    weight: 2,
+    when: (s, rng) => (s.fans >= 20 && s.fans <= 1500 && since(s, 'fanzine', 20) ? { zine: rng.pick(['Spit & Polish', 'Leather Lungs', 'Feedback Loop', 'Gob Gazette']) } : null),
+    title: (_s, p) => `${p.zine} wants an interview`,
+    text: (_s, p) => `${p.zine} is a photocopied fanzine run by a bloke from the dole office with a typewriter and strong opinions. Print run: 300, if the library copier holds out.`,
+    options: (s, p) => {
+      const t = loudest(s);
+      const opts: EventOption[] = [
+        { label: 'A proper interview', hint: 'Small, loyal audience.', resolve: (st) => { st.flags.fanzine = st.week; st.fans += 15; addBuzz(st, 2); adjust(player(st), 'energy', -5); log(st, `Four pages in ${p.zine}, including your favourite cheese. The real fans appreciate it.`, 'good'); } },
+        {
+          label: 'Make it completely surreal',
+          hint: 'Cult status or confusion.',
+          resolve: (st, rng) => {
+            st.flags.fanzine = st.week;
+            if (rng.chance(0.6)) { addBuzz(st, 5); st.fans += 10; log(st, 'You answered every question as a medieval monk. It is being passed round art schools.', 'good'); }
+            else { addBuzz(st, -1); adjust(player(st), 'mood', 4); log(st, 'Nobody understood a word. You had a lovely time.', 'neutral'); }
+          },
+        },
+      ];
+      if (t) {
+        opts.push({
+          label: `Let ${first(t)} do it`,
+          hint: 'They will love it. What they say is another matter.',
+          resolve: (st, rng) => {
+            st.flags.fanzine = st.week;
+            const x = mem(st, t.id);
+            adjust(x, 'mood', 6); st.fans += 10;
+            if (rng.chance(0.4)) { addAffinity(st, x.id, 'p', -6); log(st, `${first(x)} described the band as "me and some session players". The others have read it.`, 'bad'); }
+            else log(st, `${first(x)} was charming and only slightly libellous.`, 'good');
+          },
+        });
+      }
+      opts.push({ label: 'No time for fanzines', hint: 'They will remember the snub.', resolve: (st) => { st.flags.fanzine = st.week; addBuzz(st, -1); st.fans = Math.max(0, st.fans - 3); log(st, `${p.zine} ran a blank page with your name on it. "Too big for us now."`, 'neutral'); } });
+      return opts;
+    },
+  },
+  {
+    id: 'photoshoot',
+    weight: 2,
+    when: (s, rng) => (s.buzz >= 15 && since(s, 'photoshoot', 30)
+      ? { what: rng.pick(['the smoke machine set the photographer\'s fringe alight', 'the hired python escaped into the studio ceiling', 'the tide came in during the cliff shoot in Dorset', 'the dry ice turned everybody faintly blue']) }
+      : null),
+    title: () => 'The photo shoot',
+    text: (_s, p) => `${PRESS} sent a photographer for the band shoot, and ${p.what}. There are three usable frames, all of them chaos.`,
+    options: () => [
+      { label: 'Reshoot properly', hint: 'Money spent, good photos.', cost: 60, resolve: (st) => { st.flags.photoshoot = st.week; everyone(st, 'image', 2); log(st, 'The reshoot went fine. Moody, backlit, everybody looking slightly to the left.', 'good'); } },
+      {
+        label: 'Use the disaster shots',
+        hint: 'Chaos sells. Sometimes.',
+        resolve: (st, rng) => {
+          st.flags.photoshoot = st.week;
+          if (rng.chance(0.6)) { addBuzz(st, 7); log(st, 'The chaos photo ran across two pages. "The most dangerous band in London."', 'good'); }
+          else { addBuzz(st, 1); everyone(st, 'image', -1); log(st, 'The photo ran small. Everyone looks like they have been in a fire, because they have.', 'bad'); }
+        },
+      },
+      { label: 'Send in an old pub snapshot', hint: 'Free. Not flattering.', resolve: (st) => { st.flags.photoshoot = st.week; addBuzz(st, -2); adjust(player(st), 'image', -1); log(st, 'They used a pub snapshot. You have red eyes and a Scotch egg.', 'neutral'); } },
+    ],
+  },
+  {
+    id: 'talent_show',
+    weight: 1,
+    when: (s) => (s.fans <= 800 && s.buzz <= 60 && !s.flags.talentShow ? {} : null),
+    title: () => 'Spotlight Search with Des Lyle',
+    text: () => 'Prime-time talent show Spotlight Search wants a "proper rock group" between a ventriloquist and a family of clog dancers. Winner gets £250 and a variety tour of seaside piers.',
+    options: () => [
+      {
+        label: 'Enter, play it straight',
+        hint: 'Millions of viewers. Your credibility will not survive a win.',
+        resolve: (st, rng) => {
+          st.flags.talentShow = 1;
+          if (performance(st) + rng.int(-15, 15) >= 55) { st.money += 250; st.fans += 150; addBuzz(st, -4); log(st, `You won. Des Lyle put his arm round you. Your mum has the tape. ${PRESS} has disowned you.`, 'good'); }
+          else { st.fans += 40; addBuzz(st, -6); everyone(st, 'mood', -8); log(st, 'You lost to the ventriloquist. The dummy was nicer about it than you were.', 'bad'); }
+        },
+      },
+      {
+        label: 'Enter and take the mickey',
+        hint: 'Instant notoriety. No pier tour for you.',
+        resolve: (st) => { st.flags.talentShow = 2; addBuzz(st, 8); st.fans += 30; everyone(st, 'mood', 5); log(st, 'You played the theme tune at double speed and called Des Lyle "Grandad". Complaints to the channel: 412.', 'good'); },
+      },
+      {
+        label: 'Decline',
+        hint: 'Talent shows are for clog dancers.',
+        resolve: (st) => { st.flags.talentShow = 3; for (const x of purists(st)) adjust(x, 'mood', 4); adjust(player(st), 'mood', 1); log(st, 'You turned Spotlight Search down. The clog dancers won.', 'neutral'); },
+      },
+    ],
+  },
+  {
+    id: 'tabloid_sting',
+    weight: 2,
+    when: (s) => (s.buzz >= 40 && !s.flags.sting && mates(s).length ? {} : null),
+    title: () => 'A Belgian record mogul',
+    text: () => 'A man claiming to be a Belgian record mogul has invited you to his hotel suite. He has champagne, a suspicious plant pot and a lot of questions about drugs. His accent keeps slipping to Romford.',
+    options: (s) => {
+      const target = loudest(s);
+      const opts: EventOption[] = [
+        {
+          label: 'Brag outrageously',
+          hint: 'The Sunday Scorcher will love it. So will the kids.',
+          resolve: (st) => {
+            st.flags.sting = 1;
+            addBuzz(st, 10); adjust(player(st), 'image', 2); st.fans += 20;
+            log(st, '"ROCK BEAST\'S ORGY OF EXCESS" ran on Sunday. Most of it you made up. Your mum has rung twice.', 'good');
+          },
+        },
+        { label: 'Smell a rat and leave', hint: 'Safe. A wasted evening.', resolve: (st) => { st.flags.sting = 2; adjust(player(st), 'mood', 3); log(st, 'You took the champagne and left. The plant pot was ticking.', 'neutral'); } },
+      ];
+      if (target) {
+        opts.push({
+          label: `Feed him a story about ${first(target)}`,
+          hint: 'Good copy. Bad friendship.',
+          resolve: (st) => {
+            st.flags.sting = 3;
+            const x = mem(st, target.id);
+            addBuzz(st, 6); adjust(x, 'mood', -10); addAffinity(st, x.id, 'p', -12);
+            log(st, `The Sunday Scorcher ran "${first(x)}'s Secret Shame". ${first(x)} knows exactly who the source was.`, 'bad');
+          },
+        });
+      }
+      opts.push({
+        label: 'Sting the stinger',
+        hint: 'Tape him taping you. Risky.',
+        resolve: (st, rng) => {
+          st.flags.sting = 4;
+          if (rng.chance(0.45)) { addBuzz(st, 12); log(st, `${PRESS} printed your tape of the "mogul" asking for drugs in a Romford accent. You are folk heroes.`, 'good'); }
+          else { st.money -= 100; addBuzz(st, 2); log(st, 'The paper threatened to sue. Your solicitor charged £100 to say "probably best not".', 'bad'); }
+        },
+      });
+      return opts;
+    },
+  },
+  {
+    id: 'video',
+    weight: 3,
+    when: (s) => (year(s) >= 1984 && s.fans >= 150 && !s.flags.video ? {} : null),
+    title: () => 'Rock on the telly, all day long',
+    text: () => 'Word from New York: a cable channel plays rock videos twenty-four hours a day, and the Americans are going mad for British bands with hair. Everybody needs a video. Nobody can afford one.',
+    options: () => [
+      {
+        label: 'A proper video with a director',
+        hint: 'Expensive. Wind machines, a castle, a white horse.',
+        cost: 500,
+        resolve: (st) => {
+          st.flags.video = 1;
+          st.fans += 200; addBuzz(st, 10); everyone(st, 'image', 2);
+          log(st, 'A castle, a wind machine, a white horse and a woman in a ruined wedding dress. The Americans are interested.', 'good');
+        },
+      },
+      {
+        label: 'DIY in a quarry with a smoke machine',
+        hint: 'Cheap, cold and a gamble.',
+        cost: 80,
+        resolve: (st, rng) => {
+          st.flags.video = 2;
+          everyone(st, 'energy', -10);
+          if (rng.chance(0.5)) { st.fans += 80; addBuzz(st, 5); log(st, 'Smoke, a quarry and a borrowed motorbike. It looks a lot more expensive than it was.', 'good'); }
+          else { addBuzz(st, -2); log(st, `${PRESS} printed stills of you lost in fog, captioned "Where are they now?"`, 'bad'); }
+        },
+      },
+      {
+        label: 'Videos are for posers',
+        hint: 'The purists cheer. The future does not wait.',
+        resolve: (st) => { st.flags.video = 3; for (const x of purists(st)) adjust(x, 'mood', 5); addBuzz(st, -3); log(st, 'No video. The band that refused the camera. Very principled, very invisible.', 'neutral'); },
+      },
+    ],
+  },
+  {
+    id: 'xmas_single',
+    weight: 4,
+    when: (s) => {
+      const wk = s.week % 52;
+      return wk >= 40 && wk <= 46 && s.fans >= 80 && !s.flags[`xmasSingle${year(s)}`] ? {} : null;
+    },
+    title: () => 'A Christmas single?',
+    text: () => 'Everybody is doing a Christmas record. Sleigh bells, a pub choir, a key change. The money can be silly. So can the shame.',
+    options: () => [
+      {
+        label: 'A novelty stomper',
+        hint: 'Sleigh bells on a power chord. The purists will hate it.',
+        cost: 40,
+        resolve: (st, rng) => {
+          st.flags[`xmasSingle${year(st)}`] = 1;
+          const t = rng.pick(['Santa’s Got a Leather Jacket', 'Rudolph Rides Tonight', 'Mistletoe Mayhem']);
+          st.songs.push({ title: t, quality: rng.int(30, 55), writer: 'p', kind: 'trend', genre: player(st).style, released: false });
+          for (const x of st.members) adjust(x, 'mood', isPurist(x) ? -8 : 3);
+          log(st, `"${t}" is ready, sleigh bells and all. It is awful. It might sell.`, 'neutral');
+        },
+      },
+      {
+        label: 'A sincere power ballad',
+        hint: 'Snow, heartbreak and a choir. Depends on your songwriting.',
+        cost: 40,
+        resolve: (st, rng) => {
+          st.flags[`xmasSingle${year(st)}`] = 2;
+          const me = player(st);
+          const t = rng.pick(['Snow on the Amplifier', 'Last Bus Home on Christmas Eve', 'Frozen Hearts of London']);
+          const q = clamp(Math.round(me.writing * 0.9 + rng.int(-8, 10)), 1, 99);
+          st.songs.push({ title: t, quality: q, writer: 'p', kind: 'ballad', genre: me.style, released: false });
+          adjust(me, 'mood', 3);
+          log(st, `"${t}" (${q}) is in the can. The choir was the pub darts team.`, q >= 50 ? 'good' : 'neutral');
+        },
+      },
+      {
+        label: 'Over our dead bodies',
+        hint: 'Christmas is for wimps.',
+        resolve: (st) => { st.flags[`xmasSingle${year(st)}`] = 3; for (const x of purists(st)) adjust(x, 'mood', 5); addBuzz(st, -1); log(st, 'No Christmas single. The band had a moment of pride and then a mince pie.', 'neutral'); },
+      },
+    ],
+  },
 ];
 
 // ---------------------------------------------------------------- news (no choice)
@@ -766,6 +2508,182 @@ function news(s: GameState, rng: Rng): void {
       if (!rockers.length || s.week > 104) return false;
       for (const m of rockers) adjust(m, 'mood', -4);
       log(s, 'The charts are wall-to-wall synths and frilly shirts. The rockers in the band are depressed.', 'neutral');
+      return true;
+    },
+    () => {
+      if (s.buzz < 10) return false;
+      addBuzz(s, 1);
+      log(s, `A ${PRESS} letter-writer from Hull called you "the sound of a skip on fire". You have it framed.`, 'good');
+      return true;
+    },
+    () => {
+      if (s.flags.noVan) return false;
+      s.money -= 15;
+      log(s, 'The van got a parking ticket outside the rehearsal room. The warden was humming your chorus. £15.', 'bad');
+      return true;
+    },
+    () => {
+      if (s.fans < 40) return false;
+      s.fans += 5; addBuzz(s, 1);
+      log(s, `Someone has spray-painted ${s.bandName.toUpperCase()} on a railway bridge in Kentish Town. Spelt right, too.`, 'good');
+      return true;
+    },
+    () => {
+      for (const m of s.members) adjust(m, 'energy', 6);
+      log(s, 'A power cut killed rehearsals for two days. Everyone slept. Nobody admits to enjoying it.', 'neutral');
+      return true;
+    },
+    () => {
+      if (s.fans < 60) return false;
+      for (const m of s.members) adjust(m, 'mood', 3);
+      log(s, `The chippy on the corner has named a pie after ${s.bandName}. It is mostly gravy.`, 'good');
+      return true;
+    },
+    () => {
+      if (!ms.length) return false;
+      const m = rng.pick(ms);
+      adjust(m, 'mood', 4); adjust(m, 'image', -1);
+      log(s, `${first(m)}'s nan knitted the whole band jumpers with the logo on. ${first(m)} wore theirs on stage, and meant it.`, 'neutral');
+      return true;
+    },
+    () => {
+      s.money -= 20;
+      log(s, 'The gas bill arrived. Somebody had been running the fan heater all week to dry their leathers. £20.', 'bad');
+      return true;
+    },
+    () => {
+      const m = rng.pick(s.members);
+      s.money += 20;
+      log(s, `${m.isPlayer ? 'You' : first(m)} found a £20 note in an old leather jacket. The band ate well that night.`, 'good');
+      return true;
+    },
+    () => {
+      const glam = s.members.filter((m) => m.style === 'glam');
+      if (year(s) < 1985 || !glam.length) return false;
+      for (const m of glam) adjust(m, 'mood', -4);
+      log(s, 'The chemist on the high street has run out of extra-hold hairspray. Rumour says a band from Slough bought the lot.', 'neutral');
+      return true;
+    },
+    () => {
+      if (!s.releases.some((r) => r.kind !== 'demo')) return false;
+      s.fans += 8;
+      for (const m of s.members) adjust(m, 'mood', 3);
+      log(s, 'Your record is on the jukebox at the Crown & Gutter, between a crooner and a disco medley. It gets played twice a night.', 'good');
+      return true;
+    },
+    () => {
+      s.money -= 30;
+      log(s, 'A burst pipe flooded the rehearsal room. Two leads and a fuzz pedal drowned. £30.', 'bad');
+      return true;
+    },
+    () => {
+      if (!ms.length) return false;
+      const m = rng.pick(ms);
+      const g = grow(m, 'skill', 2, rng);
+      if (!g) return false;
+      log(s, `${first(m)} has been learning scales from a library book in the bath. It shows.`, 'good');
+      return true;
+    },
+    () => {
+      if (s.fans < 30) return false;
+      const rival = pickRivalName(s.world, rng);
+      s.fans += 15;
+      log(s, `${rival} have split up over "musical differences" and a car. Some of their fans have drifted your way.`, 'good');
+      return true;
+    },
+    () => {
+      if (!ms.length) return false;
+      for (const m of s.members) adjust(m, 'mood', -2);
+      log(s, `${first(rng.pick(ms))} came back from the music shop with a keytar. The band held an emergency meeting.`, 'neutral');
+      return true;
+    },
+    () => {
+      const metal = s.members.filter((m) => m.style === 'metal' || m.style === 'hardrock');
+      if (!metal.length) return false;
+      addBuzz(s, 1);
+      for (const m of metal) adjust(m, 'mood', 4);
+      log(s, 'The evening news ran a report on "the menace of heavy rock". The metalheads in the band watched it twice.', 'neutral');
+      return true;
+    },
+    () => {
+      if (s.buzz < 25) return false;
+      addBuzz(s, 3);
+      log(s, `A Sunday paper asked "Is rock music rotting the nation?" and used your photo to illustrate it. Thank you very much.`, 'good');
+      return true;
+    },
+    () => {
+      if (!ms.length) return false;
+      const m = rng.pick(ms);
+      adjust(m, 'energy', -8); adjust(m, 'mood', -4);
+      log(s, `The dole office called ${first(m)} in to discuss "career prospects". They said "rock star". The clerk wrote "unemployed".`, 'neutral');
+      return true;
+    },
+    () => {
+      const m = rng.pick(s.members);
+      if (m.outWeeks > 0) return false;
+      adjust(m, 'energy', -15);
+      log(s, `${m.isPlayer ? 'You have' : `${first(m)} has`} a stinking cold and has been gargling whisky and honey. Mostly whisky.`, 'bad');
+      return true;
+    },
+    () => {
+      if (s.lastGigWeek === null) return false;
+      for (const m of s.members) { adjust(m, 'habit', 2); adjust(m, 'mood', 3); }
+      log(s, 'A brewery rep left a crate of free beer at the stage door. It did not see Tuesday.', 'neutral');
+      return true;
+    },
+    () => {
+      if (!ms.length || s.lastGigWeek === null) return false;
+      const m = rng.pick(ms);
+      adjust(m, 'image', -1); addBuzz(s, 1);
+      log(s, `${first(m)}'s leather trousers split on stage during the big jump. The front row will never forget it.`, 'neutral');
+      return true;
+    },
+    () => {
+      if (s.fans < 200) return false;
+      for (const m of s.members) adjust(m, 'mood', 5);
+      log(s, `A fan has had the ${s.bandName} logo tattooed on their forearm. Spelt nearly right.`, 'good');
+      return true;
+    },
+    () => {
+      s.tightness = clamp(s.tightness + 2, 0, 100);
+      log(s, 'A synth duo at number one told a magazine that "guitars are finished". The band rehearsed twice as loud out of spite.', 'good');
+      return true;
+    },
+    () => {
+      if (s.fans < 80) return false;
+      addBuzz(s, 1);
+      log(s, 'Your handwritten setlist sold for £3 at a record fair in Camden. The buyer asked for the coffee stain to be authenticated.', 'neutral');
+      return true;
+    },
+    () => {
+      if (s.flags.noVan) return false;
+      for (const m of s.members) adjust(m, 'energy', -5);
+      log(s, 'A cold snap froze the van solid. Everyone pushed it down the hill. It started at the bottom, next to the pub.', 'neutral');
+      return true;
+    },
+    () => {
+      if (!s.flags.feud) return false;
+      addBuzz(s, 2);
+      log(s, `The feud rumbles on in the ${PRESS} letters page. Somebody wrote in signed "a disgusted roadie".`, 'neutral');
+      return true;
+    },
+    () => {
+      if (!ms.length) return false;
+      const m = rng.pick(ms);
+      adjust(m, 'mood', 6); adjust(m, 'habit', 3);
+      log(s, `${first(m)} won £40 on a horse called Feedback and spent £41 celebrating it.`, 'neutral');
+      return true;
+    },
+    () => {
+      if (s.flags.manager !== 1 && s.flags.manager !== 2) return false;
+      addBuzz(s, 2);
+      log(s, 'Your manager got you a mention on a breakfast radio show. You were described as "lively".', 'good');
+      return true;
+    },
+    () => {
+      if (s.fans < 100) return false;
+      s.money += 25;
+      log(s, 'The T-shirts have been bootlegged at the market. You sold your own cheaper next door and made £25.', 'good');
       return true;
     },
   ];

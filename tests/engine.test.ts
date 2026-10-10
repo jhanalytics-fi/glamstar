@@ -208,7 +208,7 @@ describe('records', () => {
 
 describe('choice events', () => {
   function richState(seed: number): GameState {
-    const s = { ...newGame({ ...input, seed }), money: 2000, fans: 150, buzz: 40, lastGigWeek: 0, week: 49 };
+    const s = { ...newGame({ ...input, seed }), money: 2000, fans: 300, buzz: 40, lastGigWeek: 48, week: 49, gear: 2 };
     s.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
     s.releases = [{ id: 'd', kind: 'demo', title: 'S1', quality: 40, appeal: 1, week: 0, sold: 0, lastWeek: 0 }];
     s.flags = { lastBigParty: 49, noVan: 0 };
@@ -218,12 +218,24 @@ describe('choice events', () => {
     return s;
   }
 
+  /** Per-event setup for situations that need a later year, a season or a follow-up flag. */
+  const later = (s: GameState, week: number) => { s.week = week; s.lastGigWeek = week - 1; s.flags.lastBigParty = week; };
+  const SETUP: Record<string, (s: GameState) => void> = {
+    transit: (s) => { s.flags.noVan = 1; },
+    guru: (s) => later(s, 153),
+    makeover: (s) => later(s, 153),
+    benefit: (s) => later(s, 153),
+    video: (s) => later(s, 153),
+    xmas_single: (s) => later(s, 95),
+    manager_clause: (s) => { s.flags.manager = 2; s.flags.managerWeek = 40; },
+  };
+
   it('every event can fire and every response resolves cleanly', () => {
     for (const id of EVENT_IDS) {
       let tried = false;
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
-        if (id === 'transit') s.flags.noVan = 1;
+        SETUP[id]?.(s);
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;
@@ -239,6 +251,25 @@ describe('choice events', () => {
       }
       expect(tried, `event ${id} never became eligible`).toBe(true);
     }
+  });
+
+  it('stolen gear pays out only on a proper policy', () => {
+    for (const [insured, label] of [[2, /insurance/], [1, /Del/]] as const) {
+      const s = richState(1);
+      s.flags.insured = insured;
+      const forced = forceEvent(s, 'kit_stolen');
+      const i = viewPending(forced)!.options.findIndex((o) => label.test(o.label));
+      expect(i).toBeGreaterThanOrEqual(0);
+      const after = resolvePending(forced, i);
+      expect(after.flags.insured).toBe(0);
+      if (insured === 2) expect(after.gear).toBe(s.gear);
+      else expect(after.gear).toBe(s.gear - 1);
+    }
+  });
+
+  it('has a wide, uniquely named set of situations', () => {
+    expect(EVENT_IDS.length).toBeGreaterThanOrEqual(45);
+    expect(new Set(EVENT_IDS).size).toBe(EVENT_IDS.length);
   });
 
   it('a pending situation blocks the week until answered', () => {
