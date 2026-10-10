@@ -2,7 +2,7 @@ import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, overall, t
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { DEADLINE_WEEK, MAX_MEMBERS, WIN_BUZZ, WIN_FANS, act, canAct, dateLabel, fire, first, hire, newGame } from '../game/engine';
 import { Rng } from '../game/rng';
-import { bandName, bestVenue } from '../game/names';
+import { bandName, bestVenue, stageName } from '../game/names';
 import type { Action, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 const SAVE_KEY = 'glamstar.save.v1';
@@ -12,6 +12,7 @@ const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 let state: GameState | null = load();
 let draft: NewGameInput = {
   name: '',
+  stageName: '',
   instrument: 'none',
   bandName: bandName(new Rng(Date.now() % 100000)),
   background: 'artschool',
@@ -25,7 +26,13 @@ function load(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
-    return s.version === 1 ? s : null;
+    if (s.version !== 1) return null;
+    // Saves from before real names existed.
+    for (const m of [...s.members, ...s.candidates]) {
+      m.realName ??= m.name;
+      m.from ??= 'London';
+    }
+    return s;
   } catch {
     return null;
   }
@@ -45,6 +52,7 @@ export function mount(root: HTMLElement): void {
   root.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement;
     if (t.name === 'name') draft.name = t.value;
+    if (t.name === 'stageName') draft.stageName = t.value;
     if (t.name === 'bandName') draft.bandName = t.value;
   });
   root.addEventListener('change', (e) => {
@@ -65,9 +73,10 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'instrument': draft.instrument = arg as PlayerInstrument; break;
       case 'background': draft.background = arg as Background; break;
       case 'style': draft.style = arg as Genre; break;
+      case 'genStage': draft.stageName = stageName(new Rng(Math.floor(Math.random() * 1e9))); break;
       case 'genBand': draft.bandName = bandName(new Rng(Math.floor(Math.random() * 1e9))); break;
       case 'start':
-        if (!draft.name.trim()) { error = 'Give yourself a name first.'; break; }
+        if (!draft.name.trim()) { error = 'Enter your real name first. Your stage name is optional.'; break; }
         state = newGame(draft);
         break;
       case 'act': {
@@ -112,10 +121,20 @@ function renderCreate(): string {
     <h1 class="logo">GLAMSTAR</h1>
     <p class="tagline">London, January 1982. You have a voice, three mates from the pub and a band name scribbled on a beer mat.</p>
     <div class="create">
-      <div class="field">
-        <label for="name">Your name</label>
-        <input class="text" id="name" name="name" value="${esc(draft.name)}" placeholder="e.g. Johnny Vain" autocomplete="off" />
+      <div class="names">
+        <div class="field">
+          <label for="name">Real name</label>
+          <input class="text" id="name" name="name" value="${esc(draft.name)}" placeholder="e.g. John Whitaker" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="stageName">Known as</label>
+          <div class="row">
+            <input class="text" id="stageName" name="stageName" value="${esc(draft.stageName ?? '')}" placeholder="e.g. Johnny Vain" autocomplete="off" />
+            <button class="btn ghost" data-do="genStage">Suggest</button>
+          </div>
+        </div>
       </div>
+      <p class="hint names-hint">The crowd chants your stage name. Contracts, landlords and gossip columns use the real one.</p>
       <div class="field">
         <span class="label">You sing lead. Do you also play?</span>
         <div class="chips">
@@ -251,7 +270,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
       <div class="card-in">
         <div class="card-head">
           <div class="ovr">${ovr}<small>${roleText}</small></div>
-          <div class="who"><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong><span>${m.age}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
+          <div class="who"><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong>${m.realName !== m.name && !m.name.includes('"') ? `<span class="real">${esc(m.realName)}</span>` : ''}<span>${m.age}, ${esc(m.from)}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
         </div>
         <dl class="attrs">
           <div><dt>Skill</dt><dd>${m.skill}</dd></div>

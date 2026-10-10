@@ -83,6 +83,8 @@ button, input, select { font: inherit; color: inherit; }
 }
 
 .row { display: flex; gap: 8px; }
+.names { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.create .names-hint { margin-top: -18px; }
 .row .text { flex: 1; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -223,7 +225,8 @@ section + section { margin-top: 32px; }
 
 .who { min-width: 0; }
 .who strong { display: block; font-weight: 600; font-size: 1.05rem; line-height: 1.2; }
-.who span { color: var(--muted); font-size: 0.9rem; }
+.who span { display: block; color: var(--muted); font-size: 0.9rem; }
+.who .real { font-style: italic; }
 
 .attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; margin: 0; }
 .attrs dt { font-family: var(--cond); font-size: 0.85rem; color: var(--muted); }

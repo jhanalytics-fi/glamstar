@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, canAct, fire, hire, newGame } from '../src/game/engine';
+import { act, canAct, fire, first, hire, newGame } from '../src/game/engine';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
 import { bandName, isBlocked } from '../src/game/names';
@@ -115,6 +115,33 @@ describe('chemistry', () => {
     feud.members.forEach((m, i) => { m.skill = 75; m.stage = 70; m.style = styles[i]; m.mood = 25; m.hidden.ego = 90; });
     for (const k of Object.keys(feud.affinity)) feud.affinity[k] = -70;
     expect(performance(tight)).toBeGreaterThan(performance(feud));
+  });
+});
+
+describe('real and stage names', () => {
+  it('keeps the real name and shows the stage name', () => {
+    const s = newGame({ ...input, name: 'John Whitaker', stageName: 'Johnny Vain' });
+    expect(s.members[0].name).toBe('Johnny Vain');
+    expect(s.members[0].realName).toBe('John Whitaker');
+  });
+
+  it('falls back to the real name when there is no stage name', () => {
+    const s = newGame({ ...input, name: 'John Whitaker' });
+    expect(s.members[0].name).toBe('John Whitaker');
+  });
+
+  it('gives some bandmates stage names over many games', () => {
+    let staged = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      staged += newGame({ ...input, seed }).members.filter((m) => !m.isPlayer && m.name !== m.realName).length;
+    }
+    expect(staged).toBeGreaterThan(10);
+  });
+
+  it('uses the nickname as the short name', () => {
+    const s = newGame(input);
+    const m = { ...s.members[1], name: 'Dave "Razor" Price' };
+    expect(first(m)).toBe('Razor');
   });
 });
 

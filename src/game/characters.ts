@@ -1,5 +1,5 @@
 import { Rng, clamp } from './rng';
-import { personName } from './names';
+import { hometown, knownAs, personName } from './names';
 import type { Background, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
 
 export const HIDDEN_TRAITS: HiddenTrait[] = ['ego', 'reliability', 'vice', 'stamina', 'loyalty'];
@@ -63,6 +63,7 @@ function genreNear(rng: Rng, base: Genre): Genre {
 
 export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = []): Musician {
   const mean = TIER_MEAN[tier];
+  const real = personName(rng, takenNames);
   const hidden = {
     ego: rng.int(10, 95),
     reliability: rng.int(10, 95),
@@ -74,7 +75,9 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
   if (tier === 'good' && rng.chance(0.5)) hidden.ego = clamp(hidden.ego + 20, 1, 99);
   return {
     id,
-    name: personName(rng, takenNames),
+    name: knownAs(rng, real),
+    realName: real,
+    from: hometown(rng),
     age: rng.int(18, 29),
     role,
     isPlayer: false,
@@ -101,7 +104,9 @@ function unknownTraits(): Record<HiddenTrait, Knowledge> {
 export function createPlayer(rng: Rng, input: NewGameInput): Musician {
   const p: Musician = {
     id: 'p',
-    name: input.name.trim() || 'Nobody',
+    name: input.stageName?.trim() || input.name.trim() || 'Nobody',
+    realName: input.name.trim() || 'Nobody',
+    from: hometown(rng),
     age: 20,
     role: 'vocals',
     doubles: input.instrument === 'none' ? undefined : input.instrument,
@@ -146,7 +151,7 @@ export function generateStartingBand(rng: Rng, style: Genre, nextId: () => strin
   const tiers = rng.shuffle<Tier>(['good', 'average', 'weak']);
   const band: Musician[] = [];
   for (const [i, role] of roles.entries()) {
-    band.push(generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.map((m) => m.name)]));
+    band.push(generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.flatMap((m) => [m.name, m.realName])]));
   }
   return band;
 }

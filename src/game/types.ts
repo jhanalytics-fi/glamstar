@@ -8,7 +8,12 @@ export type Background = 'choirboy' | 'artschool' | 'factory' | 'posh';
 
 export interface Musician {
   id: string;
+  /** Known-as name shown everywhere, e.g. "Johnny Vain". */
   name: string;
+  /** Name on the birth certificate, the contract and the charge sheet. */
+  realName: string;
+  /** Hometown, for the tabloids. */
+  from: string;
   age: number;
   role: Role;
   /** Player can double on an instrument; bandmates may too. */
@@ -66,7 +71,10 @@ export interface GameState {
 }
 
 export interface NewGameInput {
+  /** Real name. */
   name: string;
+  /** Known-as name; falls back to the real name. */
+  stageName?: string;
   instrument: PlayerInstrument;
   bandName: string;
   background: Background;

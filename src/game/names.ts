@@ -44,7 +44,51 @@ export function isBlocked(name: string): boolean {
   return BLOCKLIST.has(n);
 }
 
-/** Generates a name whose first name is not in `taken`, so the log never mixes up two Daves. */
+const GLAM_FIRST = [
+  'Johnny', 'Nikki', 'Vinnie', 'Stevie', 'Rikki', 'Tommy', 'Misty', 'Roxy', 'Lizzy', 'Jet', 'Dee', 'Bobby',
+  'Sammy', 'Candy', 'Jackie', 'Danny', 'Cherry', 'Lola', 'Frankie', 'Jimmy', 'Suzy', 'Angel', 'Kitty', 'Rocky',
+];
+const GLAM_LAST = [
+  'Vain', 'Rivers', 'Blade', 'Venom', 'Steel', 'Diamond', 'Rocket', 'Saint', 'Thunder', 'Wilde', 'Velvet',
+  'Storm', 'Kane', 'Valentine', 'Fury', 'Shade', 'Lace', 'Sinclair', 'Lovelace', 'Chrome', 'Danger', 'Cobra',
+  'Heartbreak', 'Leather', 'Malone', 'Vegas', 'Royale', 'Dagger',
+];
+const TOWNS = [
+  'Croydon', 'Dagenham', 'Slough', 'Luton', 'Basildon', 'Wolverhampton', 'Swindon', 'Rotherham', 'Ipswich',
+  'Stevenage', 'Walsall', 'Barnsley', 'Reading', 'Grimsby', 'Bromley', 'Harlow', 'Dundee', 'Cardiff', 'Belfast',
+];
+
+/** Real stage names the generator must never produce. */
+const STAGE_BLOCKLIST = new Set(
+  ['nikki sixx', 'vince neil', 'tommy lee', 'johnny rotten', 'sid vicious', 'billy idol', 'jimmy page', 'johnny thunders',
+   'stiv bators', 'rikki rockett', 'tommy thunder', 'kim wilde', 'johnny vain', 'misty rivers'],
+);
+
+export function hometown(rng: Rng): string {
+  return rng.pick(TOWNS);
+}
+
+/** An invented showbiz name, e.g. "Nikki Valentine". */
+export function stageName(rng: Rng): string {
+  for (let i = 0; i < 20; i++) {
+    const n = rng.chance(0.15) ? rng.pick(GLAM_LAST) : `${rng.pick(GLAM_FIRST)} ${rng.pick(GLAM_LAST)}`;
+    if (!STAGE_BLOCKLIST.has(n.toLowerCase())) return n;
+  }
+  return 'Kid Nobody';
+}
+
+/** Known-as name for a generated musician: a full stage name, a nickname, or just their real name. */
+export function knownAs(rng: Rng, real: string): string {
+  const r = rng.next();
+  if (r < 0.4) return stageName(rng);
+  if (r < 0.7) {
+    const [f, ...rest] = real.split(' ');
+    return `${f} "${rng.pick(NICK)}" ${rest.join(' ')}`;
+  }
+  return real;
+}
+
+/** Generates a real name whose first and last names are not in `taken`, so the log never mixes up two Daves. */
 export function personName(rng: Rng, taken: Iterable<string> = []): string {
   const names = [...taken];
   const used = new Set(names.map((n) => n.split(' ')[0]));
@@ -53,7 +97,7 @@ export function personName(rng: Rng, taken: Iterable<string> = []): string {
   const freeLast = LAST.filter((l) => !usedLast.has(l));
   const first = rng.pick(free.length ? free : FIRST);
   const last = rng.pick(freeLast.length ? freeLast : LAST);
-  return rng.chance(0.3) ? `${first} "${rng.pick(NICK)}" ${last}` : `${first} ${last}`;
+  return `${first} ${last}`;
 }
 
 export function bandName(rng: Rng): string {

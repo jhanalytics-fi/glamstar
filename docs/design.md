@@ -27,7 +27,7 @@ Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the s
 
 ## Game start
 
-1. Player enters their **name** and **stage name** (optional).
+1. Player enters their **real name** and an optional **known-as (stage) name**, Football Manager style. The stage name is shown everywhere; contracts, landlords and gossip columns use the real name, and a tabloid exposé of a real name and hometown hurts image.
 2. Player is always the **lead vocalist and frontperson**. They can also play: nothing, rhythm guitar or keyboards.
 3. Player picks a **band name** (typed or generated).
 4. Player picks a **background** that shapes starting stats (e.g. *Choirboy gone wrong*: vocals+, *Art school dropout*: image+ songwriting+, *Factory kid*: stamina+ reliability+).
@@ -37,7 +37,7 @@ Recruitment stays central even with a starting lineup: the classified ad ("Music
 
 ## Character card
 
-Every musician has a FIFA-style card. Values are 1-99.
+Every musician has a FIFA-style card. Values are 1-99. Each also has a real name, a hometown and a known-as name, which is a full stage name ("Nikki Valentine"), a nickname (Dave "Razor" Price) or just the real name.
 
 **Visible from the start (or after one audition)**
 

@@ -25,7 +25,7 @@ export function newGame(input: NewGameInput): GameState {
   let nextId = 1;
   const id = () => `m${nextId++}`;
   const player = createPlayer(rng, input);
-  const mates = generateStartingBand(rng, input.style, id, player.name);
+  const mates = generateStartingBand(rng, input.style, id, player.realName);
   const s: GameState = {
     version: 1,
     rng: 0,
@@ -64,8 +64,10 @@ function revealLog(s: GameState, m: Musician, t: HiddenTrait, level: 1 | 2): voi
   }
 }
 
+/** Short name for the log: the nickname if there is one, else the first word of the known-as name. */
 export function first(m: Musician): string {
-  return m.name.split(' ')[0];
+  const nick = m.name.match(/"([^"]+)"/);
+  return nick ? nick[1] : m.name.split(' ')[0];
 }
 
 function player(s: GameState): Musician {
@@ -246,7 +248,7 @@ function advertise(s: GameState, rng: Rng, role: Role): void {
   s.candidates = [0, 1, 2].map(() => {
     const r = rng.next();
     const tier: Tier = r < pGood ? 'good' : r < pGood + 0.45 ? 'average' : 'weak';
-    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, player(s).style, s.members.map((m) => m.name));
+    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, player(s).style, s.members.flatMap((m) => [m.name, m.realName]));
     const t = rng.pick(HIDDEN_TRAITS);
     reveal(c, t, 1);
     return c;
@@ -406,6 +408,16 @@ function randomEvent(s: GameState, rng: Rng): void {
       if (s.lastGigWeek === null || s.week - s.lastGigWeek > 1) return false;
       s.buzz = clamp(s.buzz + 5, 0, 100);
       log(s, `A ${PRESS} stringer mentioned you in the gig guide. Small print, but print.`, 'good');
+      return true;
+    },
+    () => {
+      const exposed = s.members.filter((m) => m.name !== m.realName && !m.name.includes('"'));
+      if (s.buzz < 20 || !exposed.length) return false;
+      const m = rng.pick(exposed);
+      s.buzz = clamp(s.buzz + 3, 0, 100);
+      m.mood = clamp(m.mood - 8, 0, 100);
+      m.image = clamp(m.image - 2, 1, 99);
+      log(s, `${PRESS} gossip column: "${m.name} is really ${m.realName} from ${m.from}." ${m.isPlayer ? 'Your mum is delighted. You are not.' : `${first(m)} is mortified.`}`, 'bad');
       return true;
     },
     () => {
