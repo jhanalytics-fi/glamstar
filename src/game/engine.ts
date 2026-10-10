@@ -6,7 +6,7 @@ import { advanceWorld, createWorld, heatCurve } from './world';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
-import { adjust, beat, first, log, logEffects, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
+import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
@@ -59,6 +59,7 @@ export function newGame(input: NewGameInput): GameState {
     pending: null,
     scene: null,
     tour: null,
+    milestones: [],
   };
   s.world = createWorld(rng, s.bandName);
   advanceWorld(s.world, rng, 0, { bandName: s.bandName, fans: 0, buzz: 0 });
@@ -66,6 +67,7 @@ export function newGame(input: NewGameInput): GameState {
   openScene(s, 'start', `London, ${dateLabel(0)}`, 'quiet');
   log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
   log(s, 'You have a rehearsal room above a kebab shop, a handful of covers and no original songs.', 'neutral');
+  milestone(s, 'career', `${s.bandName} formed in London: ${[player, ...mates].map((m) => m.name).join(', ')}.`);
   beat(s, undefined, 'First week. What does the band do?');
   s.scene!.recording = false;
   s.rng = rng.state;
@@ -86,6 +88,7 @@ export function upgradeSave(s: GameState): GameState {
   s.pending ??= null;
   s.scene ??= null;
   s.tour ??= null;
+  s.milestones ??= [];
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;
@@ -146,6 +149,7 @@ export function hire(state: GameState, candidateId: string, replaceId?: string):
     for (const m of s.members) addAffinity(s, m.id, c.id, rng.int(-10, 20));
     s.members.push(c);
     log(s, `${c.name} joins ${s.bandName} on ${ROLE_LABEL[c.role].toLowerCase()}.`, 'good');
+    milestone(s, 'lineup', `${c.name} joined on ${ROLE_LABEL[c.role].toLowerCase()}.`);
   });
 }
 
@@ -198,6 +202,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
       m.habit = 45;
       s.money -= 60;
       log(s, `${m.isPlayer ? 'You collapsed' : `${first(m)} collapsed`} backstage. Three weeks in the clinic.`, 'bad');
+      milestone(s, 'drama', `${m.isPlayer ? 'You' : m.name} spent three weeks in the clinic.`);
       revealLog(s, m, 'vice', 2);
     }
 
@@ -213,7 +218,10 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   rollEvents(s, rng);
 
-  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records })) log(s, n.text, n.tone);
+  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records })) {
+    log(s, n.text, n.tone);
+    if (n.milestone) milestone(s, 'chart', n.text);
+  }
 
   s.week++;
   checkOver(s);
@@ -240,10 +248,12 @@ function checkOver(s: GameState): void {
   // Milestones: the story goes on.
   if (!s.flags.labelCalling && s.fans >= LABEL_FANS && s.buzz >= LABEL_BUZZ) {
     s.flags.labelCalling = s.week;
+    milestone(s, 'career', 'The record labels started calling.');
     log(s, `Milestone: an A&R man from Blackhat Records wants to "do lunch". The labels have noticed ${s.bandName}.`, 'good');
   }
   if (!s.flags.chartedNational && s.world.peaks.uk !== undefined) {
     s.flags.chartedNational = s.week;
+    milestone(s, 'career', 'First record in the National Top 40.');
     log(s, `Milestone: a record in the National Top 40 with no label behind it. Every A&R man in London wants to buy you lunch.`, 'good');
   }
   if (s.money < BROKE_LIMIT && !s.tour) {

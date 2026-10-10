@@ -2,7 +2,7 @@
 // Cities and countries are real; venues are invented so nothing real gets trashed.
 import { Rng, clamp } from './rng';
 import { available, missingForGig, performance } from './chemistry';
-import { addBuzz, adjust, beat, first, grow, log, player, revealLog, setVibe } from './helpers';
+import { addBuzz, adjust, beat, first, grow, log, milestone, player, revealLog, setVibe } from './helpers';
 import { trend } from './world';
 import type { GameState, Musician, TourPolicy, TourStop } from './types';
 
@@ -305,6 +305,7 @@ export function endTour(s: GameState, abandoned: boolean): void {
     `${abandoned ? 'Tour abandoned' : 'Tour over'}: ${tour.gigsPlayed} gigs, ${tour.people.toLocaleString('en-GB')} people, fans ${tour.fansGained >= 0 ? '+' : ''}${tour.fansGained}, money ${net >= 0 ? '+' : '-'}£${Math.abs(net).toLocaleString('en-GB')}. ${wrecked >= 2 ? 'The band comes home in pieces.' : 'Home, tired but tighter than ever.'}`,
     tour.fansGained > 0 ? 'good' : 'neutral',
   );
+  milestone(s, 'tour', `${abandoned ? 'Abandoned' : 'Finished'} the ${t.name}: ${tour.gigsPlayed} gigs, ${tour.people.toLocaleString('en-GB')} people.`);
   s.tour = null;
 }
 

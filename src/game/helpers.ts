@@ -2,7 +2,7 @@
 import { Rng, clamp } from './rng';
 import { reveal } from './characters';
 import { addAffinity, getAffinity } from './chemistry';
-import type { Beat, EffectChip, GameState, HiddenTrait, LogEntry, Musician, Scene, Vibe } from './types';
+import type { Beat, EffectChip, GameState, HiddenTrait, LogEntry, MilestoneKind, Musician, Scene, Vibe } from './types';
 
 export type Snapshot = ReturnType<typeof snapshot>;
 
@@ -68,6 +68,7 @@ export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | '
     }
   }
   for (const k of Object.keys(s.affinity)) if (k.split('|').includes(id)) delete s.affinity[k];
+  milestone(s, 'lineup', how === 'fired' ? `${m.name} was fired.` : how === 'quit' ? `${m.name} quit the band.` : `${m.name} left for another band.`);
   if (how === 'fired') log(s, `You fired ${m.name}. ${m.hidden.ego >= 70 ? 'Took the good amp on the way out.' : 'Took it better than expected.'}`, 'bad');
 }
 
@@ -174,4 +175,9 @@ export function beat(s: GameState, time: string | undefined, text: string, tone:
 
 export function setVibe(s: GameState, vibe: Vibe): void {
   if (s.scene?.recording) s.scene.vibe = vibe;
+}
+
+/** Record a career highlight for the History tab. */
+export function milestone(s: GameState, kind: MilestoneKind, text: string): void {
+  (s.milestones ??= []).push({ week: s.week, kind, text });
 }

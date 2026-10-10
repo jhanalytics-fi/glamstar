@@ -28,6 +28,8 @@ The player picks the tier, the length and how the band behaves on the road (part
 
 ## Timeline and milestones
 
+The ultimate goal is rock immortality. Instead of one fixed goal, the action zone always shows the next rung of a 21-step ladder (first songs, first gig, London chart, tours, National and World hits, stadiums, number one in the world). The History tab opens on Milestones: band formation, first gig, releases, line-up changes, chart entries and peaks, tours, the clinic. "Everything" shows the full log.
+
 The game runs to the end of 1991. 1,000 fans with 55 buzz, or a record in the National Top 40, are milestones that get the labels calling; the game carries on. It ends when you go broke, lose the whole band for three months, or the decade ends.
 
 ## Screen layout: the action zone

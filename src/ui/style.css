@@ -552,3 +552,20 @@ section + section { margin-top: 32px; }
 .hint.warn { color: var(--nicotine); }
 
 @media (max-width: 520px) { .beat { grid-template-columns: 5.2em minmax(0, 1fr); font-size: 0.97rem; } }
+
+/* ---------------------------------------------------------------- goal and milestones */
+
+.goal-line { margin: 16px 0 0; display: grid; gap: 2px; padding: 10px 12px; border-left: 3px solid var(--lipstick); background: rgba(255, 61, 139, 0.06); border-radius: 0 8px 8px 0; }
+.goal-step { font-family: var(--cond); font-weight: 600; color: var(--muted); font-size: 0.9rem; }
+.goal-line strong { font-weight: 600; }
+
+.panel .chips { margin-bottom: 12px; }
+.milestones { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.milestones li { display: grid; grid-template-columns: 7.5em 5em minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.ms-when { font-family: var(--cond); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ms-kind { font-family: var(--cond); font-weight: 700; font-size: 0.85rem; color: var(--chrome); }
+.ms-release .ms-kind { color: var(--nicotine); }
+.ms-chart .ms-kind { color: var(--good); }
+.ms-lineup .ms-kind { color: var(--lipstick); }
+.ms-drama .ms-kind { color: var(--bad); }
+@media (max-width: 520px) { .milestones li { grid-template-columns: minmax(0, 1fr); gap: 0; } }

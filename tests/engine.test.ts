@@ -4,6 +4,7 @@ import { actionOptions } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
+import { nextGoal } from '../src/game/goals';
 import { startTour } from '../src/game/tour';
 import { TOUR_EVENT_IDS } from '../src/game/tourEvents';
 import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, reveal, rollPotential, seenRange, traitDisplay } from '../src/game/characters';
@@ -590,6 +591,31 @@ describe('nobody available', () => {
       for (const m of s0.members) m.outWeeks = 2;
       expect(() => act(s0, a)).not.toThrow();
     }
+  });
+});
+
+describe('milestones and the road to immortality', () => {
+  it('a new band starts with a formation milestone and the first rung', () => {
+    const s = newGame(input);
+    expect(s.milestones[0].text).toContain('formed in London');
+    expect(nextGoal(s).step).toBe(0);
+  });
+
+  it('first gig, releases and line-up changes become milestones', () => {
+    let s = { ...newGame(input), money: 1000 };
+    s = act(s, A('gig', 'venue0'));
+    expect(s.milestones.some((m) => m.text.startsWith('First gig'))).toBe(true);
+    const s2 = { ...newGame(input), money: 1000 };
+    s2.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    expect(act(s2, A('release', 'demo')).milestones.some((m) => m.kind === 'release')).toBe(true);
+    const s3 = fire(newGame(input), newGame(input).members[1].id);
+    expect(s3.milestones.some((m) => m.kind === 'lineup')).toBe(true);
+  });
+
+  it('the goal moves up the ladder as you achieve things', () => {
+    const s = newGame(input);
+    s.songs = [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    expect(nextGoal(s).text).toBe('Play your first gig');
   });
 });
 

@@ -150,6 +150,16 @@ export interface GameState {
   scene: Scene | null;
   /** The tour in progress, if any. */
   tour: Tour | null;
+  /** The career highlights: releases, line-up changes, chart moments, tours. */
+  milestones: Milestone[];
+}
+
+export type MilestoneKind = 'career' | 'release' | 'lineup' | 'chart' | 'tour' | 'drama';
+
+export interface Milestone {
+  week: number;
+  kind: MilestoneKind;
+  text: string;
 }
 
 export interface NewGameInput {

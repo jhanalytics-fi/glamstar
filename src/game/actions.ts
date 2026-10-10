@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
-import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
+import { addBuzz, adjust, first, grow, log, milestone, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
@@ -247,6 +247,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   s.money += pay;
   s.fans = Math.max(0, s.fans + fanDelta);
   addBuzz(s, Math.max(0, (perf - 45) / 5) + crowd / 60 + g.buzzBonus);
+  if (s.lastGigWeek === null) milestone(s, 'career', `First gig: ${g.venue}, ${crowd} people.`);
   s.lastGigWeek = s.week;
   const verdict = perf >= 75 ? 'Storming.' : perf >= 55 ? 'A solid night.' : perf >= 40 ? 'Ropey.' : 'A shambles.';
   log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
@@ -470,6 +471,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
     for (const x of songs) x.released = true;
   }
   s.releases.push({ id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 });
+  milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ' on Kebab Shop Records'}.`);
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
   for (const m of available(s)) {

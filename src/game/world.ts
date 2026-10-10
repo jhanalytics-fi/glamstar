@@ -140,6 +140,8 @@ export interface PlayerChartInput {
 export interface ChartNews {
   text: string;
   tone: 'good' | 'bad' | 'neutral';
+  /** Worth keeping in the career highlights. */
+  milestone?: boolean;
 }
 
 /** Advance the outside world by one week and recompute every chart. Returns news worth logging. */
@@ -215,9 +217,9 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
   const me = w.charts.london.find((e) => e.isPlayer);
   if (me) {
     const prevPeak = w.peaks.london;
-    if (prevPeak === undefined) news.push({ text: `${player.bandName} entered the ${CHART_NAME.london} at #${me.pos}!`, tone: 'good' });
+    if (prevPeak === undefined) news.push({ text: `${player.bandName} entered the ${CHART_NAME.london} at #${me.pos}!`, tone: 'good', milestone: true });
     else if (me.pos < prevPeak && (me.pos <= 10 || me.pos === 1)) {
-      news.push({ text: me.pos === 1 ? `Number one on the ${CHART_NAME.london}. London is yours.` : `New peak: #${me.pos} on the ${CHART_NAME.london}.`, tone: 'good' });
+      news.push({ text: me.pos === 1 ? `Number one on the ${CHART_NAME.london}. London is yours.` : `New peak: #${me.pos} on the ${CHART_NAME.london}.`, tone: 'good', milestone: me.pos === 1 || me.pos === 10 });
     }
     w.peaks.london = Math.min(prevPeak ?? Infinity, me.pos);
   }
@@ -225,8 +227,8 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
     const mine = w.charts[c].filter((e) => e.isPlayer).sort((a, b) => a.pos - b.pos)[0];
     if (!mine) continue;
     const prevPeak = w.peaks[c];
-    if (prevPeak === undefined) news.push({ text: `"${mine.title}" entered the ${CHART_NAME[c]} at #${mine.pos}!`, tone: 'good' });
-    else if (mine.pos < prevPeak && mine.pos <= 10) news.push({ text: `"${mine.title}" climbed to #${mine.pos} on the ${CHART_NAME[c]}.`, tone: 'good' });
+    if (prevPeak === undefined) news.push({ text: `"${mine.title}" entered the ${CHART_NAME[c]} at #${mine.pos}!`, tone: 'good', milestone: true });
+    else if (mine.pos < prevPeak && mine.pos <= 10) news.push({ text: `"${mine.title}" climbed to #${mine.pos} on the ${CHART_NAME[c]}.`, tone: 'good', milestone: true });
     w.peaks[c] = Math.min(prevPeak ?? Infinity, mine.pos);
   }
   return news;

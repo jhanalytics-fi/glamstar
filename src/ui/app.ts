@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { DEADLINE_WEEK, LABEL_BUZZ, LABEL_FANS, MAX_MEMBERS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { DEADLINE_WEEK, MAX_MEMBERS, act, dateLabel, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -11,6 +11,7 @@ import type { TourPolicy } from '../game/types';
 import type { ActionType, Background, Beat, EffectChip, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
+import { nextGoal } from '../game/goals';
 
 const SAVE_KEY = 'glamstar.save.v1';
 const DEBUG_KEY = 'glamstar.debug';
@@ -31,6 +32,7 @@ let chartTab: ChartId = 'london';
 let chartAll = false;
 let openAction: ActionType | null = null;
 let panelTab: PanelTab = 'band';
+let historyView: 'milestones' | 'all' = 'milestones';
 /** Scene already played back, so re-renders don't replay it. */
 let playedScene: number | null = null;
 let armedFire: string | null = null;
@@ -137,6 +139,7 @@ function onClick(e: Event, root: HTMLElement): void {
         break;
       case 'chart': chartTab = arg as ChartId; chartAll = false; break;
       case 'tab': panelTab = arg as PanelTab; break;
+      case 'historyView': historyView = arg as 'milestones' | 'all'; break;
       case 'skip': playedScene = state?.scene?.id ?? null; break;
       case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
@@ -284,8 +287,10 @@ function panelBody(s: GameState): string {
       return chartsSection(s);
     case 'records':
       return recordsSection(s) || '<p class="hint">No songs yet. Write some.</p>';
-    case 'history':
-      return logList(s, () => true);
+    case 'history': {
+      const views = `<div class="chips">${(['milestones', 'all'] as const).map((v) => `<button class="chip" data-do="historyView" data-arg="${v}" aria-pressed="${historyView === v}">${v === 'milestones' ? 'Milestones' : 'Everything'}</button>`).join('')}</div>`;
+      return views + (historyView === 'milestones' ? milestoneList(s) : logList(s, () => true));
+    }
   }
 }
 
@@ -373,7 +378,13 @@ function nextBlock(s: GameState): string {
       ${types.map((t) => `<button class="tile ${t === 'tour' && tourShut ? 'shut' : ''}" data-do="open" data-arg="${t}" aria-expanded="${open === t}"><strong>${ACTION_LABEL[t]}</strong><span>${esc(subs[t])}</span></button>`).join('')}
     </div>
     ${open === 'tour' ? tourSetup(s, opts) : open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
-    <p class="hint goal">${s.flags.labelCalling || s.flags.chartedNational ? 'The labels know your name. Now make it big before the decade ends.' : `Get the labels calling: ${LABEL_FANS} fans and ${LABEL_BUZZ} buzz, or a record in the National Top 40. The game runs to the end of 1991.`}</p>`;
+    ${goalLine(s)}`;
+}
+
+/** The next rung on the road to rock immortality. */
+function goalLine(s: GameState): string {
+  const g = nextGoal(s);
+  return `<p class="goal-line"><span class="goal-step">Road to rock immortality, ${g.step} of ${g.total}</span><strong>Next: ${esc(g.text)}</strong></p>`;
 }
 
 function tourSub(s: GameState): string {
@@ -514,6 +525,16 @@ function recordsSection(s: GameState): string {
       ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${kind[r.kind]}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
       <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
     </section>`;
+}
+
+const MILESTONE_LABEL: Record<string, string> = { career: 'Career', release: 'Record', lineup: 'Line-up', chart: 'Charts', tour: 'Tour', drama: 'Drama' };
+
+function milestoneList(s: GameState): string {
+  const items = [...(s.milestones ?? [])].reverse();
+  if (!items.length) return '<p class="hint">Nothing worth remembering yet. Give it time.</p>';
+  return `<ol class="milestones">${items
+    .map((m) => `<li class="ms-${m.kind}"><span class="ms-when">${dateLabel(m.week)}</span><span class="ms-kind">${MILESTONE_LABEL[m.kind]}</span><span class="ms-text">${esc(m.text)}</span></li>`)
+    .join('')}</ol>`;
 }
 
 function logList(s: GameState, keep: (week: number) => boolean): string {
