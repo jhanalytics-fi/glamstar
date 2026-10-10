@@ -112,8 +112,6 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'open':
         openAction = openAction === arg ? null : (arg as ActionType);
         tourTier = null;
-        // Opening a choice folds last week's report so the options stay near the top.
-        if (openAction && state?.scene) collapsedScene = state.scene.id;
         break;
       case 'fold': collapsedScene = state?.scene?.id ?? null; break;
       case 'unfold': collapsedScene = null; break;
@@ -207,12 +205,8 @@ function playback(root: HTMLElement): void {
     z.classList.remove('playing');
     z.querySelector('.skip')?.remove();
     z.querySelector('.fold')?.removeAttribute('hidden');
-    // A situation is waiting: fold the report so the question is in view.
-    if (state?.pending) {
-      collapsedScene = id;
-      render(root);
-      bringIntoView(root.querySelector('.event'));
-    }
+    // A situation is waiting: bring it into view, but leave the report as it is.
+    if (state?.pending) bringIntoView(root.querySelector('.event'));
   }, last + 300));
 }
 
