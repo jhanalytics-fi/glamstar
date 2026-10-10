@@ -294,7 +294,7 @@ function renderGame(s: GameState): string {
         <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
         <div><dt>${tip('Fans', 'fans')}</dt><dd>${s.fans}</dd></div>
         <div><dt>${tip('Buzz', 'buzz')}</dt><dd>${s.buzz}</dd></div>
-        <div title="Style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.egoPenalty ? `, egos -${chem.egoPenalty}` : ''}"><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
+        <div title="Style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.knownEgoPenalty ? `, egos -${chem.knownEgoPenalty}` : ''}"><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
         <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
         <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${pos ? `#${pos}` : '-'}</dd></div>
       </dl>
@@ -401,8 +401,8 @@ function chemPanel(s: GameState): string {
     <div class="chem">
       <svg viewBox="0 0 ${W} ${H}" class="chemweb" role="img" aria-label="Band chemistry links">${lines}${nodes}</svg>
       <div class="chemside">
-        <div class="chemtotal"><span>Team chemistry</span><b>${chem.total}</b></div>
-        <div class="chemparts">${part('Taste', chem.style, 'chemistry')}${part('Relationships', chem.affinity, 'chemistry')}${part('Mood', chem.mood, 'chemistry')}${chem.egoPenalty ? `<div class="bad"><span>Egos</span><b>-${chem.egoPenalty}</b></div>` : ''}</div>
+        <div class="chemtotal"><span>Band chemistry</span><b>${chem.total}</b></div>
+        <div class="chemparts">${part('Taste', chem.style, 'chemistry')}${part('Relationships', chem.affinity, 'chemistry')}${part('Mood', chem.mood, 'chemistry')}${chem.knownEgoPenalty ? `<div class="bad"><span>Egos</span><b>-${chem.knownEgoPenalty}</b></div>` : ''}</div>
         <ul class="chemlinks">${rows}</ul>
         <p class="hint">Green links lift the whole band, red ones drag it down. Parties, time together and shared success mend links; feuds and big egos break them.</p>
       </div>

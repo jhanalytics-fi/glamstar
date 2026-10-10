@@ -200,4 +200,4 @@ Balance is checked with `npm run sim` (300 seeded runs with a simple bot). Curre
 
 ## Chemistry screen
 
-The band tab ends with a FIFA-style chemistry web. Every pair of members is a link scored 0-100 from taste match (40%) and how they get on (60%), minus 25 for an ego clash once both big egos are known. Links are green (65+), amber (45-64) or red. Each member gets a score (their links 70%, their mood 30%) and 0-3 chemistry dots. Beside it: team chemistry with its parts and the links listed worst first, each with a plain-words reason.
+The band tab ends with a FIFA-style chemistry web. Every pair of members is a link scored 0-100 from taste match (40%) and how they get on (60%), minus 25 for an ego clash once both big egos are known. Links are green (65+), amber (45-64) or red. Each member gets a score (their links 70%, their mood 30%) and 0-3 chemistry dots. Beside it: band chemistry with its parts (the ego penalty shows only for egos the player has a feel for) and the links listed worst first, each with a plain-words reason.

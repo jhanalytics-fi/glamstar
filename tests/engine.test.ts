@@ -805,3 +805,17 @@ describe('chemistry links', () => {
     expect(l.tone).toBe('bad');
   });
 });
+
+describe('chemistry fog', () => {
+  it('ego penalty is shown only for egos you have a feel for', async () => {
+    const { chemistry } = await import('../src/game/chemistry');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 4 });
+    const mates = s.members.filter((m) => !m.isPlayer);
+    for (const m of s.members) m.hidden.ego = 10;
+    for (const m of mates.slice(0, 2)) { m.hidden.ego = 90; m.known.ego = 0; }
+    expect(chemistry(s).egoPenalty).toBeGreaterThan(0);
+    expect(chemistry(s).knownEgoPenalty).toBe(0);
+    for (const m of mates.slice(0, 2)) m.known.ego = 1;
+    expect(chemistry(s).knownEgoPenalty).toBe(chemistry(s).egoPenalty);
+  });
+});

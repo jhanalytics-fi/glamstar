@@ -38,19 +38,23 @@ export interface ChemistryBreakdown {
   affinity: number;
   mood: number;
   egoPenalty: number;
+  /** The part of the ego penalty the player can see: only egos they have a feel for. */
+  knownEgoPenalty: number;
 }
 
 export function chemistry(s: GameState): ChemistryBreakdown {
   const ms = s.members;
-  if (ms.length < 2) return { total: 50, style: 50, affinity: 50, mood: 50, egoPenalty: 0 };
+  if (ms.length < 2) return { total: 50, style: 50, affinity: 50, mood: 50, egoPenalty: 0, knownEgoPenalty: 0 };
   const ps = pairs(ms);
   const style = (ps.reduce((acc, [a, b]) => acc + COMPAT[a.style][b.style], 0) / ps.length) * 100;
   const affinity = (ps.reduce((acc, [a, b]) => acc + getAffinity(s, a.id, b.id), 0) / ps.length + 100) / 2;
   const mood = ms.reduce((acc, m) => acc + m.mood, 0) / ms.length;
   const bigEgos = ms.filter((m) => m.hidden.ego >= 70).length;
   const egoPenalty = Math.max(0, bigEgos - 1) * 12;
+  const knownBig = ms.filter((m) => m.hidden.ego >= 70 && (m.isPlayer || m.known.ego >= 1)).length;
+  const knownEgoPenalty = Math.max(0, knownBig - 1) * 12;
   const total = clamp(Math.round(style * 0.3 + affinity * 0.4 + mood * 0.3 - egoPenalty), 0, 100);
-  return { total, style: Math.round(style), affinity: Math.round(affinity), mood: Math.round(mood), egoPenalty };
+  return { total, style: Math.round(style), affinity: Math.round(affinity), mood: Math.round(mood), egoPenalty, knownEgoPenalty };
 }
 
 /** Members who can actually play this week. */
