@@ -13,6 +13,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
   let s: GameState = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: (['choirboy', 'artschool', 'factory', 'posh'] as const)[seed % 4], style: 'glam', seed });
   let events = 0;
   let tours = 0;
+  let lastTourEnd = -99;
   let maxTier = '-';
   while (!s.over) {
     while (s.pending) {
@@ -36,14 +37,22 @@ for (let seed = 1; seed <= RUNS; seed++) {
     const unreleased = s.songs.filter((x) => !x.released).length;
     let a: Action;
     if (s.tour) {
+      if (s.tour.week + 1 >= s.tour.weeks) lastTourEnd = s.week + 1;
       const worn = s.members.filter((m) => m.energy < 15).length >= 2;
       s = act(s, { type: 'tour', option: worn ? 'abandon' : 'continue:steady' });
       continue;
     }
     const tiers = actionOptions(s, 'tour').filter((o) => !o.locked);
-    if (tiers.length && s.members.every((m) => m.energy >= 70) && !roleMiss && s.week % 6 === 0) {
+    // Tour every few months once promoters will have you: rest up first, then go.
+    const due = s.week - lastTourEnd >= 10;
+    if (tiers.length && due && !roleMiss && s.members.some((m) => m.energy < 60)) {
+      s = act(s, { type: 'rest', option: 'sleep' });
+      continue;
+    }
+    if (tiers.length && due && !roleMiss) {
       s = act(s, { type: 'tour', option: tiers[tiers.length - 1].id });
       tours++;
+      lastTourEnd = s.week + 99; // set properly when the tour ends
       maxTier = tiers[tiers.length - 1].id;
       continue;
     }
