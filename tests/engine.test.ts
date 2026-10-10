@@ -781,3 +781,13 @@ describe('touring', () => {
     }
   });
 });
+
+describe('report headline', () => {
+  it('rehearsal headline shows the tightness change, with the new level underneath', () => {
+    const s0 = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 5 });
+    const s1 = act(s0, { type: 'rehearse', option: 'regular' });
+    const t = s1.scene?.stats?.find((x) => x.label === 'Tightness');
+    expect(t?.value).toBe(`${s1.tightness - s0.tightness >= 0 ? '+' : ''}${s1.tightness - s0.tightness}`);
+    expect(t?.sub).toBe(`now ${s1.tightness}`);
+  });
+});

@@ -387,8 +387,11 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
   if (option === 'coach') {
     log(s, `The session pro's verdict: ${here.map((m) => `${m.isPlayer ? 'you' : first(m)} ${m.isPlayer ? prospects(m).replace('has', 'have') : prospects(m)}`).join(', ')}.`, 'reveal');
   }
+  const before = s.tightness;
   s.tightness = clamp(s.tightness + gain, 0, 100);
-  headline(s, 'Tightness', String(s.tightness));
+  const d = s.tightness - before;
+  // The change is the news; the new level goes underneath, like the money tile.
+  headline(s, 'Tightness', `${d >= 0 ? '+' : ''}${d}`, `now ${s.tightness}`);
   const what: Record<string, string> = {
     regular: 'Rehearsal',
     bootcamp: 'Boot camp week. Nobody drank, everybody suffered',

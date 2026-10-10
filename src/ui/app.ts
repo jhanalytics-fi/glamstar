@@ -405,7 +405,7 @@ function zone(s: GameState): string {
 function headlineRow(sc: Scene, at: number): string {
   const tiles: string[] = [];
   if (sc.verdict) tiles.push(`<div class="hl verdict ${sc.verdict.tone}"><span>Verdict</span><b>${esc(sc.verdict.text)}</b></div>`);
-  for (const st of sc.stats ?? []) tiles.push(`<div class="hl"><span>${esc(st.label)}</span><b>${esc(st.value)}</b></div>`);
+  for (const st of sc.stats ?? []) tiles.push(`<div class="hl${/^\+[1-9]/.test(st.value) ? ' good' : /^-[1-9]/.test(st.value) ? ' bad' : ''}"><span>${esc(st.label)}</span><b>${esc(st.value)}</b>${st.sub ? `<small>${esc(st.sub)}</small>` : ''}</div>`);
   for (const e of sc.effects.filter((x) => x.who === null && ['money', 'fans', 'buzz'].includes(x.stat))) {
     const val = e.stat === 'money' ? `${e.delta > 0 ? '+' : '-'}£${Math.abs(e.delta).toLocaleString('en-GB')}` : `${e.delta > 0 ? '+' : ''}${e.delta.toLocaleString('en-GB')}`;
     tiles.push(`<div class="hl ${e.delta > 0 ? 'good' : 'bad'}"><span>${e.stat === 'money' ? 'Money' : e.stat === 'fans' ? 'Fans' : 'Buzz'}</span><b>${val}</b></div>`);

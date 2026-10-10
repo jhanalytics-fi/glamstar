@@ -188,6 +188,6 @@ export function verdict(s: GameState, text: string, tone: Beat['tone']): void {
 }
 
 /** A key figure for the report headline. */
-export function headline(s: GameState, label: string, value: string): void {
-  if (s.scene?.recording) (s.scene.stats ??= []).push({ label, value });
+export function headline(s: GameState, label: string, value: string, sub?: string): void {
+  if (s.scene?.recording) (s.scene.stats ??= []).push(sub ? { label, value, sub } : { label, value });
 }

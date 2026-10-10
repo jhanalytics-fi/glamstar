@@ -603,6 +603,7 @@ section + section { margin-top: 32px; }
 .hl { display: grid; gap: 0; padding: 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); min-width: 72px; }
 .hl span { font-family: var(--cond); font-weight: 600; font-size: 0.82rem; color: var(--muted); }
 .hl b { font-family: var(--display); font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.hl small { font-family: var(--cond); font-size: 0.8rem; color: var(--muted); }
 .hl.good b { color: var(--good); }
 .hl.bad b { color: var(--bad); }
 .hl.verdict { background: rgba(255, 61, 139, 0.14); }
