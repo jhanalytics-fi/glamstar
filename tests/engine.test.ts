@@ -380,6 +380,15 @@ describe('charts', () => {
     }
   });
 
+  it('charts already have history when the game starts', () => {
+    const s = newGame(input);
+    for (const c of ['london', 'uk', 'world'] as const) {
+      const weeks = new Set(s.world.charts[c].map((e) => e.weeks));
+      expect(weeks.size).toBeGreaterThan(3);
+      expect(s.world.charts[c].some((e) => e.last !== null)).toBe(true);
+    }
+  });
+
   it('a popular band enters the London chart', () => {
     let s = newGame(input);
     expect(s.world.charts.london.some((e) => e.isPlayer)).toBe(false);
