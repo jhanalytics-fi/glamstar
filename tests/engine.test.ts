@@ -791,3 +791,17 @@ describe('report headline', () => {
     expect(t?.sub).toBe(`now ${s1.tightness}`);
   });
 });
+
+describe('chemistry links', () => {
+  it('rates every pair, and a feud turns a link red', async () => {
+    const { chemistryLinks, addAffinity } = await import('../src/game/chemistry');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 9 });
+    const { links, members } = chemistryLinks(s);
+    expect(links).toHaveLength((s.members.length * (s.members.length - 1)) / 2);
+    expect(members.every((m) => m.dots >= 0 && m.dots <= 3)).toBe(true);
+    const [a, b] = s.members;
+    addAffinity(s, a.id, b.id, -200);
+    const l = chemistryLinks(s).links.find((x) => [x.a, x.b].includes(a.id) && [x.a, x.b].includes(b.id))!;
+    expect(l.tone).toBe('bad');
+  });
+});

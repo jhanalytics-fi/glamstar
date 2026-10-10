@@ -95,3 +95,49 @@ export function avgQuality(s: GameState): number {
   const t = topSongs(s);
   return t.length ? t.reduce((a, x) => a + x.quality, 0) / t.length : 0;
 }
+
+export interface ChemLink {
+  a: string;
+  b: string;
+  /** 0-100: how well these two work together. */
+  score: number;
+  /** 0-100 musical taste match. */
+  style: number;
+  /** -100..100 how they get on. */
+  affinity: number;
+  /** Both have big egos, and you know it. */
+  clash: boolean;
+  tone: 'good' | 'ok' | 'bad';
+}
+
+export interface ChemMember {
+  id: string;
+  score: number;
+  /** FIFA-style 0-3 chemistry dots. */
+  dots: 0 | 1 | 2 | 3;
+}
+
+const toneOf = (v: number): ChemLink['tone'] => (v >= 65 ? 'good' : v >= 45 ? 'ok' : 'bad');
+
+/**
+ * Pair-by-pair chemistry for the band screen, FIFA team-chemistry style. Only uses what the
+ * player can know: an ego clash shows once both egos are at least roughly known.
+ */
+export function chemistryLinks(s: GameState): { links: ChemLink[]; members: ChemMember[] } {
+  const big = (m: Musician) => m.hidden.ego >= 70 && (m.isPlayer || m.known.ego >= 1);
+  const links = pairs(s.members).map(([a, b]) => {
+    const style = Math.round(COMPAT[a.style][b.style] * 100);
+    const affinity = getAffinity(s, a.id, b.id);
+    const clash = big(a) && big(b);
+    const score = clamp(Math.round(style * 0.4 + ((affinity + 100) / 2) * 0.6 - (clash ? 25 : 0)), 0, 100);
+    return { a: a.id, b: b.id, score, style, affinity, clash, tone: toneOf(score) };
+  });
+  const members = s.members.map((m) => {
+    const mine = links.filter((l) => l.a === m.id || l.b === m.id);
+    const avg = mine.length ? mine.reduce((acc, l) => acc + l.score, 0) / mine.length : 50;
+    const score = clamp(Math.round(avg * 0.7 + m.mood * 0.3), 0, 100);
+    const dots = (score >= 75 ? 3 : score >= 55 ? 2 : score >= 35 ? 1 : 0) as ChemMember['dots'];
+    return { id: m.id, score, dots };
+  });
+  return { links, members };
+}

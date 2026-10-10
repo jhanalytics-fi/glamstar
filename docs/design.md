@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.2)
+## Prototype status (v0.3)
 
 Playable in the browser. Implemented:
 
@@ -197,3 +197,7 @@ Playable in the browser. Implemented:
 - The game runs to the end of 1991; label interest is a milestone. Going below -£250 ends the game.
 
 Balance is checked with `npm run sim` (300 seeded runs with a simple bot). Current bot: about 90% wins, around week 56. Expect harder tuning once labels and touring add their own pressure.
+
+## Chemistry screen
+
+The band tab ends with a FIFA-style chemistry web. Every pair of members is a link scored 0-100 from taste match (40%) and how they get on (60%), minus 25 for an ego clash once both big egos are known. Links are green (65+), amber (45-64) or red. Each member gets a score (their links 70%, their mood 30%) and 0-3 chemistry dots. Beside it: team chemistry with its parts and the links listed worst first, each with a plain-words reason.

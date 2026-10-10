@@ -1,5 +1,5 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
-import { available, chemistry, getAffinity, missingForGig } from '../game/chemistry';
+import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
 import { DEADLINE_WEEK, MAX_MEMBERS, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
@@ -352,7 +352,8 @@ function panelBody(s: GameState): string {
     case 'band':
       return `
         ${s.candidates.length ? `<h3 class="sub">Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()} <button class="btn ghost small" data-do="dismiss">Send them home</button></h3><div class="cards">${s.candidates.map((c) => card(s, c, true)).join('')}</div><h3 class="sub">Your band</h3>` : ''}
-        <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>`;
+        <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>
+        ${chemPanel(s)}`;
     case 'charts':
       return chartsSection(s);
     case 'records':
@@ -362,6 +363,50 @@ function panelBody(s: GameState): string {
       return views + (historyView === 'milestones' ? milestoneList(s) : logList(s, () => true));
     }
   }
+}
+
+const getOn = (v: number) => (v >= 40 ? 'close mates' : v >= 10 ? 'get on' : v > -10 ? 'no strong feelings' : v > -40 ? 'tense' : "can't stand each other");
+const taste = (v: number) => (v >= 80 ? 'same taste' : v >= 50 ? 'tastes fit' : 'tastes clash');
+
+/** FIFA-style team chemistry: the band as a web of links, green, amber or red. */
+function chemPanel(s: GameState): string {
+  if (s.members.length < 2) return '';
+  const chem = chemistry(s);
+  const { links, members } = chemistryLinks(s);
+  const byId = new Map(s.members.map((m) => [m.id, m]));
+  const n = s.members.length;
+  const W = 420, H = 320, cx = W / 2, cy = H / 2 - 6, r = Math.min(W, H) / 2 - 52;
+  const pos = new Map(s.members.map((m, i) => {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    return [m.id, { x: cx + r * 1.25 * Math.cos(a), y: cy + r * Math.sin(a) }];
+  }));
+  const name = (id: string) => { const m = byId.get(id)!; return m.isPlayer ? 'You' : first(m); };
+  const why = (l: (typeof links)[number]) => `${taste(l.style)}, ${getOn(l.affinity)}${l.clash ? ', ego clash' : ''}`;
+  const lines = links.map((l) => {
+    const p = pos.get(l.a)!, q = pos.get(l.b)!;
+    return `<line class="cl ${l.tone}" x1="${p.x.toFixed(1)}" y1="${p.y.toFixed(1)}" x2="${q.x.toFixed(1)}" y2="${q.y.toFixed(1)}"><title>${esc(`${name(l.a)} & ${name(l.b)}: ${l.score} (${why(l)})`)}</title></line>`;
+  }).join('');
+  const nodes = members.map((cm) => {
+    const p = pos.get(cm.id)!;
+    const m = byId.get(cm.id)!;
+    const tone = cm.dots >= 2 ? 'good' : cm.dots === 1 ? 'ok' : 'bad';
+    const dots = [0, 1, 2].map((i) => `<circle cx="${(p.x - 12 + i * 12).toFixed(1)}" cy="${(p.y + 50).toFixed(1)}" r="4" class="cd ${i < cm.dots ? tone : 'off'}"/>`).join('');
+    return `<g><title>${esc(`${name(cm.id)}: chemistry ${cm.score}, mood ${m.mood}`)}</title><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="20" class="cn ${tone}"/><text x="${p.x.toFixed(1)}" y="${(p.y + 5).toFixed(1)}" class="cs">${cm.score}</text><text x="${p.x.toFixed(1)}" y="${(p.y + 38).toFixed(1)}" class="ct">${esc(name(cm.id))}</text>${dots}</g>`;
+  }).join('');
+  const rows = [...links].sort((x, y) => x.score - y.score).map((l) =>
+    `<li class="${l.tone}"><span class="lk">${esc(name(l.a))} & ${esc(name(l.b))}</span><b>${l.score}</b><span class="why">${esc(why(l))}</span></li>`).join('');
+  const part = (label: string, v: number, k: string) => `<div><span>${tip(label, k)}</span><b>${v}</b></div>`;
+  return `
+    <h3 class="sub">Chemistry</h3>
+    <div class="chem">
+      <svg viewBox="0 0 ${W} ${H}" class="chemweb" role="img" aria-label="Band chemistry links">${lines}${nodes}</svg>
+      <div class="chemside">
+        <div class="chemtotal"><span>Team chemistry</span><b>${chem.total}</b></div>
+        <div class="chemparts">${part('Taste', chem.style, 'chemistry')}${part('Relationships', chem.affinity, 'chemistry')}${part('Mood', chem.mood, 'chemistry')}${chem.egoPenalty ? `<div class="bad"><span>Egos</span><b>-${chem.egoPenalty}</b></div>` : ''}</div>
+        <ul class="chemlinks">${rows}</ul>
+        <p class="hint">Green links lift the whole band, red ones drag it down. Parties, time together and shared success mend links; feuds and big egos break them.</p>
+      </div>
+    </div>`;
 }
 
 const KIND_LABEL: Record<string, string> = {

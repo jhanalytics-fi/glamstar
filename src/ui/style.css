@@ -623,3 +623,28 @@ section + section { margin-top: 32px; }
   .headline.enter .hl:nth-child(5) { animation-delay: 480ms; }
   @keyframes score-in { from { opacity: 0; transform: scale(0.7); } to { opacity: 1; transform: none; } }
 }
+
+/* Band chemistry web, FIFA style */
+.chem { display: grid; gap: 12px; margin-top: 8px; }
+.chemweb { width: 100%; max-width: 440px; height: auto; justify-self: center; }
+.chemweb .cl { stroke-width: 4; stroke-linecap: round; opacity: 0.85; }
+.chemweb .cl.good { stroke: var(--good); }
+.chemweb .cl.ok { stroke: var(--nicotine); stroke-dasharray: 10 6; }
+.chemweb .cl.bad { stroke: var(--bad); stroke-dasharray: 3 7; }
+.chemweb .cn { fill: #1a0f1f; stroke-width: 3; }
+.chemweb .cn.good { stroke: var(--good); } .chemweb .cn.ok { stroke: var(--nicotine); } .chemweb .cn.bad { stroke: var(--bad); }
+.chemweb .cs { fill: #fff; font: 800 14px var(--display); text-anchor: middle; }
+.chemweb .ct { fill: var(--muted); font: 600 13px var(--cond); text-anchor: middle; paint-order: stroke; stroke: #1a0f1f; stroke-width: 5px; }
+.chemweb .cd.good { fill: var(--good); } .chemweb .cd.ok { fill: var(--nicotine); } .chemweb .cd.bad { fill: var(--bad); } .chemweb .cd.off { fill: rgba(255,255,255,0.15); }
+.chemtotal { display: flex; align-items: baseline; gap: 12px; }
+.chemtotal span { font-family: var(--cond); font-weight: 600; color: var(--muted); }
+.chemtotal b { font-family: var(--display); font-size: 2rem; }
+.chemparts { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 12px; }
+.chemparts div { padding: 4px 10px; border-radius: 8px; background: rgba(255,255,255,0.06); display: grid; }
+.chemparts span { font-family: var(--cond); font-size: 0.8rem; color: var(--muted); }
+.chemparts .bad b { color: var(--bad); }
+.chemlinks { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.chemlinks li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 6px 10px; border-left: 4px solid; border-radius: 6px; background: rgba(255,255,255,0.04); }
+.chemlinks li.good { border-color: var(--good); } .chemlinks li.ok { border-color: var(--nicotine); } .chemlinks li.bad { border-color: var(--bad); }
+.chemlinks .lk { font-weight: 600; }
+.chemlinks .why { grid-column: 1 / -1; font-size: 0.85rem; color: var(--muted); }
