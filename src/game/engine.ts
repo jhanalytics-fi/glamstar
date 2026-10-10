@@ -68,6 +68,12 @@ export function newGame(input: NewGameInput): GameState {
   openScene(s, 'start', `London, ${dateLabel(0)}`, 'quiet');
   log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
   log(s, 'You have a rehearsal room above a kebab shop, a handful of covers and no original songs.', 'neutral');
+  // Core fans: family, flatmates and whoever owes you a favour. They never leave.
+  const core = rng.int(8, 14);
+  s.fans = core;
+  s.flags.coreFans = core;
+  const mum = rng.pick(mates);
+  log(s, `Your fan base: your mum, ${first(mum)}'s sister, two flatmates and a bloke from the pub who calls you "the lads". ${core} people, all of them on the guest list.`, 'neutral');
   milestone(s, 'career', `${s.bandName} formed in London: ${[player, ...mates].map((m) => m.name).join(', ')}.`);
   beat(s, undefined, 'First week. What does the band do?');
   s.scene!.recording = false;
@@ -178,6 +184,24 @@ export function fire(state: GameState, memberId: string): GameState {
 
 // ---------------------------------------------------------------- week end
 
+/** Weeks without a gig, tour or release before casual fans start drifting away. */
+export const FAN_FADE_AFTER = 6;
+
+/** Out of sight, out of mind: an idle band loses casual fans, never the core ones. */
+function fadeFans(s: GameState): void {
+  if (s.tour) return;
+  const lastRelease = s.releases.reduce((a, r) => Math.max(a, r.week), -99);
+  const lastSeen = Math.max(s.lastGigWeek ?? -99, lastRelease, s.flags.lastTourWeek ?? -99, 0);
+  const idle = s.week - lastSeen;
+  if (idle < FAN_FADE_AFTER) return;
+  const core = s.flags.coreFans ?? 0;
+  const casual = s.fans - core;
+  if (casual <= 0) return;
+  const loss = Math.max(1, Math.round(casual * 0.02));
+  s.fans -= Math.min(loss, casual);
+  if (idle === FAN_FADE_AFTER || idle % 8 === 0) log(s, `${idle} weeks without a gig or a record. Casual fans are finding other bands.`, 'bad');
+}
+
 function endOfWeek(s: GameState, rng: Rng): void {
   const cost = 10 + s.members.length * 6 + (s.flags.rentUp ?? 0);
   s.money -= cost;
@@ -186,6 +210,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
     log(s, `Rent and food cost £${cost}. You are £${-s.money} in the red.`, 'bad');
   }
   s.buzz = clamp(s.buzz - Math.ceil(s.buzz * 0.06), 0, 100);
+  fadeFans(s);
   if (s.money < 50) {
     // Skint: everyone picks up shifts somewhere.
     s.money += 8 * s.members.length;

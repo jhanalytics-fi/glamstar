@@ -289,6 +289,7 @@ function roadLine(s: GameState, rng: Rng, t: TourTier): void {
 /** Tour over, by schedule or by pulling the plug. */
 export function endTour(s: GameState, abandoned: boolean): void {
   const tour = s.tour!;
+  s.flags.lastTourWeek = s.week;
   const t = tierById(tour.tier)!;
   s.flags[`toured_${t.region}`] = (s.flags[`toured_${t.region}`] ?? 0) + 1;
   const net = s.money - tour.startMoney;

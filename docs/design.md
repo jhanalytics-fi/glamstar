@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.3)
+## Prototype status (v0.4)
 
 Playable in the browser. Implemented:
 
@@ -201,3 +201,7 @@ Balance is checked with `npm run sim` (300 seeded runs with a simple bot). Curre
 ## Chemistry screen
 
 The band tab ends with a FIFA-style chemistry web. Every pair of members is a link scored 0-100 from taste match (40%) and how they get on (60%), minus 25 for an ego clash once both big egos are known. Links are green (65+), amber (45-64) or red. Each member gets a score (their links 70%, their mood 30%) and 0-3 chemistry dots. Beside it: band chemistry with its parts (the ego penalty shows only for egos the player has a feel for) and the links listed worst first, each with a plain-words reason.
+
+## Core fans and fading
+
+Every band starts with 8-14 core fans: family, flatmates and the pub. They never leave. Everyone above that is a casual fan: after 6 weeks with no gig, tour or release, casual fans drift away at 2% a week (at least one), with a reminder in the log when it starts and every 8 weeks after.

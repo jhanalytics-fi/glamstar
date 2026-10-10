@@ -729,13 +729,14 @@ describe('touring', () => {
   });
 
   it('a tour plays several gigs a week in real cities and locks other actions', () => {
-    const s = act(ready(300), A('tour', 'clubs', { weeks: 3, policy: 'steady' }));
+    const played = act(ready(300), A('tour', 'clubs', { weeks: 3, policy: 'steady' }));
+    const s = settle(played);
     expect(s.tour).not.toBeNull();
     expect(s.tour!.week).toBe(1);
     expect(s.tour!.gigsPlayed).toBe(5);
     expect(s.tour!.route).toHaveLength(15);
     expect(canAct(s, REST)).toMatch(/on tour/);
-    expect(s.scene!.beats.filter((b) => /people/.test(b.text)).length).toBeGreaterThanOrEqual(5);
+    expect(played.scene!.beats.filter((b) => /people/.test(b.text)).length).toBeGreaterThanOrEqual(5);
   });
 
   it('the tour ends by itself after the chosen weeks', () => {
@@ -817,5 +818,21 @@ describe('chemistry fog', () => {
     expect(chemistry(s).knownEgoPenalty).toBe(0);
     for (const m of mates.slice(0, 2)) m.known.ego = 1;
     expect(chemistry(s).knownEgoPenalty).toBe(chemistry(s).egoPenalty);
+  });
+});
+
+describe('fans', () => {
+  it('start with a few core fans who never drift away', () => {
+    let s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 12 });
+    const core = s.flags.coreFans;
+    expect(core).toBeGreaterThanOrEqual(8);
+    expect(s.fans).toBe(core);
+    s = { ...s, fans: core + 200 };
+    for (let i = 0; i < 30 && !s.over; i++) {
+      while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
+      s = act(s, { type: 'rest', option: 'sleep' });
+    }
+    expect(s.fans).toBeLessThan(core + 200);
+    expect(s.fans).toBeGreaterThanOrEqual(core);
   });
 });
