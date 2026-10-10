@@ -2,7 +2,7 @@
 import { Rng, clamp } from './rng';
 import { addAffinity, available, forEachPair, getAffinity, performance } from './chemistry';
 import { PRESS, songTitle } from './names';
-import { addBuzz, adjust, first, log, logEffects, mutate, player, removeMember, revealLog, snapshot, subj } from './helpers';
+import { addBuzz, adjust, beat, first, log, logEffects, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
 import type { GameState, Musician } from './types';
 
@@ -259,6 +259,8 @@ const EVENTS: EventDef[] = [
             adjust(m, 'habit', (m.hidden.vice / 100) * 15 + 3);
           }
           const w = [...available(st)].sort((a, b) => b.hidden.vice - a.hidden.vice)[0];
+          setVibe(st, 'trip');
+          beat(st, '23:10', 'The room tilts. The bass amp is talking to you. It has opinions.');
           revealLog(st, w, 'vice', 1);
           log(st, 'The band was buzzing all week. Nobody slept. Sniffy has your phone number now.', 'neutral');
         },
@@ -271,6 +273,8 @@ const EVENTS: EventDef[] = [
           const me = player(st);
           adjust(me, 'energy', 35);
           adjust(me, 'habit', 12);
+          setVibe(st, 'trip');
+          beat(st, '02:30', 'The street lights are humming your chorus. In harmony.');
           log(st, 'You felt like a god for six hours, and like death for two days.', 'neutral');
         },
       },
@@ -826,10 +830,14 @@ export function resolvePending(state: GameState, index: number): GameState {
   return mutate(state, (s, rng) => {
     const p = s.pending!;
     const opt = optionsFor(s)[index];
+    const d = def(p.def);
+    openScene(s, 'event', d.title(s, p.params), 'drama');
+    beat(s, undefined, `You chose: ${opt.label}.`);
     const before = snapshot(s);
     s.money -= opt.cost ?? 0;
     opt.resolve(s, rng, p.params);
     logEffects(s, before);
+    s.scene!.recording = false;
     s.pending = null;
   });
 }

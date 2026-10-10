@@ -2,12 +2,13 @@
 import { Rng, clamp } from './rng';
 import { reveal } from './characters';
 import { addAffinity, getAffinity } from './chemistry';
-import type { GameState, HiddenTrait, LogEntry, Musician } from './types';
+import type { Beat, EffectChip, GameState, HiddenTrait, LogEntry, Musician, Scene, Vibe } from './types';
 
 export type Snapshot = ReturnType<typeof snapshot>;
 
 export function log(s: GameState, text: string, tone: LogEntry['tone'] = 'neutral', hidden?: string): void {
   s.log.push(hidden ? { week: s.week, text, tone, hidden } : { week: s.week, text, tone });
+  if (s.scene?.recording && tone !== 'fx') s.scene.beats.push({ text, tone, late: s.scene.late || undefined });
   if (s.log.length > 200) s.log.splice(0, s.log.length - 200);
 }
 
@@ -125,8 +126,17 @@ const fmt = (d: number) => (d > 0 ? `+${d}` : String(d));
  */
 export function logEffects(s: GameState, before: Snapshot, opts: { skipRoutine?: boolean } = {}): void {
   const band: string[] = [];
-  if (s.money !== before.money) band.push(`money ${s.money > before.money ? '+' : '-'}£${Math.abs(s.money - before.money)}`);
-  for (const k of ['fans', 'buzz', 'tightness', 'gear'] as const) if (s[k] !== before[k]) band.push(`${k} ${fmt(s[k] - before[k])}`);
+  const chips: EffectChip[] = [];
+  if (s.money !== before.money) {
+    band.push(`money ${s.money > before.money ? '+' : '-'}£${Math.abs(s.money - before.money)}`);
+    chips.push({ who: null, stat: 'money', delta: s.money - before.money });
+  }
+  for (const k of ['fans', 'buzz', 'tightness', 'gear'] as const) {
+    if (s[k] !== before[k]) {
+      band.push(`${k} ${fmt(s[k] - before[k])}`);
+      chips.push({ who: null, stat: k, delta: s[k] - before[k] });
+    }
+  }
   const people: string[] = [];
   const secret: string[] = [];
   for (const m of s.members) {
@@ -136,10 +146,32 @@ export function logEffects(s: GameState, before: Snapshot, opts: { skipRoutine?:
     const vis = VISIBLE.filter((k) => m[k] !== b[k] && !(opts.skipRoutine && (k === 'energy' || k === 'mood' || k === 'habit')))
       .map((k) => `${k} ${fmt(m[k] - b[k])}`);
     if (vis.length) people.push(`${who}: ${vis.join(', ')}`);
+    for (const k of VISIBLE) if (m[k] !== b[k]) chips.push({ who, stat: k, delta: m[k] - b[k] });
     const hid = HIDDEN.filter((k) => m.hidden[k] !== b[k]).map((k) => `${k} ${fmt(m.hidden[k] - b[k])}`);
     if (hid.length) secret.push(`${who}: ${hid.join(', ')}`);
   }
   for (const [id] of before.members) if (!s.members.some((m) => m.id === id)) people.push('one member gone');
   const text = [band.join(', '), people.join('; ')].filter(Boolean).join('. ');
-  if (text || secret.length) log(s, text ? `Effects: ${text}.` : 'Effects: nothing you can see.', 'fx', secret.length ? `Hidden: ${secret.join('; ')}.` : undefined);
+  const hidden = secret.length ? `Hidden: ${secret.join('; ')}.` : undefined;
+  if (s.scene?.recording && !s.scene.late) {
+    s.scene.effects = chips;
+    s.scene.hidden = hidden;
+  }
+  if (text || secret.length) log(s, text ? `Effects: ${text}.` : 'Effects: nothing you can see.', 'fx', hidden);
+}
+
+// ---------------------------------------------------------------- scenes
+
+/** Start recording a new scene for the action zone. */
+export function openScene(s: GameState, kind: Scene['kind'], title: string, vibe: Vibe = 'normal'): void {
+  s.scene = { id: s.nextId++, kind, title, vibe, beats: [], effects: [], recording: true, late: false };
+}
+
+/** A line of commentary that only lives in the action zone, not the history log. */
+export function beat(s: GameState, time: string | undefined, text: string, tone: Beat['tone'] = 'neutral'): void {
+  if (s.scene?.recording) s.scene.beats.push({ time, text, tone, late: s.scene.late || undefined });
+}
+
+export function setVibe(s: GameState, vibe: Vibe): void {
+  if (s.scene?.recording) s.scene.vibe = vibe;
 }

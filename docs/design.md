@@ -10,6 +10,14 @@ The game is text- and card-driven, not an action game. Depth comes from people, 
 
 Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the setting and the mechanics, handled with satirical bite. Adult themes are fine; explicit sexual content stays off-screen.
 
+## Screen layout: the action zone
+
+The player's eyes stay on one place. The left (top on phones) is the **action zone**: a screen that plays back the week line by line like a match report, with clock times ("21:35 Stevie owns the room..."), then the effects as coloured chips (band, then each member), then anything that happened later in the week, and finally "What now?" with the next choices in the same place. Situations that need an answer appear right there too, as do audition hopefuls. Any click skips the playback.
+
+The zone has moods: stage lights sweep behind a gig, a wasted gig sways, and a heavy night out goes on a trip (colours swirl, lines wobble). Reduced-motion settings turn all of this off.
+
+The band, the charts, songs and records, and the full history live in tabs beside (or below) the zone.
+
 ## Transparency
 
 - Every stat, trait and header figure explains itself on hover or keyboard focus.

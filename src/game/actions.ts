@@ -5,6 +5,7 @@ import { addAffinity, available, chemistry, forEachPair, getAffinity, missingFor
 import { PRESS, VENUES, songTitle } from './names';
 import { addBuzz, adjust, first, grow, log, player, prospects, revealLog, signed, subj } from './helpers';
 import { hotGenres, trend } from './world';
+import { gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { Action, ActionType, GameState, Genre, Musician, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -199,14 +200,13 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   const wasted = new Set<string>();
   for (const m of available(s)) {
     const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
-    if (rng.chance(p * 0.6)) {
-      wasted.add(m.id);
-      log(s, m.isPlayer ? 'You were too far gone to remember the second verse.' : `${first(m)} was too wasted to play straight.`, 'bad');
-      revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
-    }
+    if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
   const perf = performance(s, wasted);
   const crowd = clamp(g.crowd(s, rng), 6, g.capacity);
+  const wastedMembers = available(s).filter((m) => wasted.has(m.id));
+  gigCommentary(s, rng, { venue: g.venue, crowd, capacity: g.capacity, perf, wasted: wastedMembers });
+  for (const m of wastedMembers) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
   const pay = g.fee + Math.round(crowd * 2 * g.door);
   const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
   const raw = ((crowd * (perf - 42)) / 90) * g.fanMult;
@@ -251,6 +251,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
 
 function rehearse(s: GameState, rng: Rng, option: string): void {
   const here = available(s);
+  rehearsalCommentary(s, option);
   let gain = 6 + Math.round(chemistry(s).total / 25);
   if (option === 'bootcamp') gain = Math.round(gain * 1.8);
   if (option === 'coach' || option === 'stageshow') gain = Math.round(gain * 0.6);
@@ -355,6 +356,7 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
 
 function write(s: GameState, rng: Rng, option: string): void {
   const here = available(s);
+  writingCommentary(s, rng, option);
   const me = player(s);
   const writers = [...here].sort((a, b) => b.writing - a.writing);
   const best = writers[0];
@@ -420,6 +422,7 @@ export const RELEASE_SONGS: Record<ReleaseKind, number> = { demo: 3, single: 2, 
 const RELEASE_LABEL: Record<ReleaseKind, string> = { demo: 'demo tape', single: '7" single', ep: '12" EP', album: 'album' };
 
 function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
+  releaseCommentary(s, kind);
   const pool = kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
   const studio = kind === 'demo' ? -8 : kind === 'single' ? 0 : 3;
@@ -460,6 +463,7 @@ function party(s: GameState, rng: Rng, option: string): void {
     soho: `A night in the Soho clubs. ${subj(wildest, 'were', 'was')} spotted dancing on a table at three a.m.`,
     throw: `${s.bandName} threw a party. Half of Camden came, the other half heard it.`,
   };
+  partyCommentary(s, rng, option, wildest);
   log(s, text[option], 'neutral');
   if (option !== 'cans') revealLog(s, wildest, 'vice', 1);
   const buzzChance = { cans: 0.03, squat: 0.2, soho: 0.45, throw: 1 }[option]!;
@@ -483,6 +487,7 @@ function party(s: GameState, rng: Rng, option: string): void {
 }
 
 function rest(s: GameState, rng: Rng, option: string): void {
+  restCommentary(s, option);
   for (const m of s.members) {
     switch (option) {
       case 'sleep':

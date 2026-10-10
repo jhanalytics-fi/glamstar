@@ -6,7 +6,7 @@ import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
 import { bandName, bestVenue, stageName } from '../game/names';
-import type { ActionType, Background, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, EffectChip, GameState, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
 
@@ -28,6 +28,9 @@ let adRole: Role = 'guitar';
 let chartTab: ChartId = 'london';
 let chartAll = false;
 let openAction: ActionType | null = null;
+let panelTab: PanelTab = 'band';
+/** Scene already played back, so re-renders don't replay it. */
+let playedScene: number | null = null;
 let armedFire: string | null = null;
 /** Development aid: shows true values and hidden changes. */
 let debug = (() => { try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; } })();
@@ -71,6 +74,7 @@ export function mount(root: HTMLElement): void {
     const t = e.target as HTMLSelectElement;
     if (t.name === 'adRole') { adRole = t.value as Role; render(root); }
   });
+  playedScene = state?.scene?.id ?? null;
   render(root);
 }
 
@@ -80,6 +84,8 @@ function onClick(e: Event, root: HTMLElement): void {
   if (el.tagName === 'A') e.preventDefault();
   const { do: what, arg, arg2 } = el.dataset;
   error = '';
+  // Any interaction finishes the playback of the current scene.
+  playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
   try {
     switch (what) {
@@ -105,6 +111,8 @@ function onClick(e: Event, root: HTMLElement): void {
         else armedFire = arg!;
         break;
       case 'chart': chartTab = arg as ChartId; chartAll = false; break;
+      case 'tab': panelTab = arg as PanelTab; break;
+      case 'skip': playedScene = state?.scene?.id ?? null; break;
       case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
       case 'debug':
@@ -118,10 +126,40 @@ function onClick(e: Event, root: HTMLElement): void {
   save();
   render(root);
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
+  // Keep the eyes on the action zone after a decision.
+  if (what === 'choose' || what === 'respond' || what === 'hire') {
+    const z = document.getElementById('zone');
+    if (z && z.getBoundingClientRect().top < 0) z.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }
 }
 
+let timers: number[] = [];
+
 function render(root: HTMLElement): void {
+  for (const t of timers) window.clearTimeout(t);
+  timers = [];
   root.innerHTML = state ? renderGame(state) : renderCreate();
+  playback(root);
+}
+
+/** Reveal the scene line by line, like a match report coming in. */
+function playback(root: HTMLElement): void {
+  const z = root.querySelector<HTMLElement>('#zone.playing');
+  if (!z) return;
+  const parts = [...z.querySelectorAll<HTMLElement>('[data-d]')];
+  for (const el of parts) el.classList.add('wait');
+  let last = 0;
+  for (const el of parts) {
+    const ms = Number(el.dataset.d) * 1000;
+    last = Math.max(last, ms);
+    timers.push(window.setTimeout(() => { el.classList.remove('wait'); el.classList.add('enter'); }, ms));
+  }
+  const id = state?.scene?.id ?? null;
+  timers.push(window.setTimeout(() => {
+    playedScene = id;
+    z.classList.remove('playing');
+    z.querySelector('.skip')?.remove();
+  }, last + 300));
 }
 
 // ---------------------------------------------------------------- creation
@@ -181,60 +219,151 @@ function renderCreate(): string {
 
 function renderGame(s: GameState): string {
   const chem = chemistry(s);
-  const missing = missingForGig(s);
+  const pos = playerPosition(s.world, 'london');
   return `
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
         <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
       </div>
-      <div>
-        <dl class="stats">
-          <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
-          <div><dt>${tip('Fans', 'fans')}</dt><dd>${s.fans}</dd></div>
-          <div><dt>${tip('Buzz', 'buzz')}</dt><dd>${s.buzz}</dd></div>
-          <div><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
-          <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
-          <div><dt>${tip('Songs', 'songs')}</dt><dd>${s.songs.length}</dd></div>
-          <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${(() => { const p = playerPosition(s.world, 'london'); return p ? `#${p}` : 'Not yet'; })()}</dd></div>
-        </dl>
-        <p class="chem-detail">Chemistry: style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.egoPenalty ? `, egos -${chem.egoPenalty}` : ''}</p>
-      </div>
+      <dl class="stats">
+        <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
+        <div><dt>${tip('Fans', 'fans')}</dt><dd>${s.fans}</dd></div>
+        <div><dt>${tip('Buzz', 'buzz')}</dt><dd>${s.buzz}</dd></div>
+        <div title="Style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.egoPenalty ? `, egos -${chem.egoPenalty}` : ''}"><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
+        <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
+        <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${pos ? `#${pos}` : '-'}</dd></div>
+      </dl>
     </header>
-    ${s.over ? `<div class="over"><h2>${s.over.won ? 'You made it. Sort of.' : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>` : ''}
-    <div class="board">
-      <div class="band">
-        <section>
-          <h2>The band</h2>
-          <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>
-        </section>
-        ${chartsSection(s)}
-        ${recordsSection(s)}
-        ${s.candidates.length ? `
-        <section>
-          <h2>Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h2>
-          <div class="cards">${s.candidates.map((c) => card(s, c, true)).join('')}</div>
-        </section>` : ''}
-      </div>
-      <section class="turn">
-        <h2>${s.week === 0 ? 'The story so far' : 'Last week'}</h2>
-        ${logList(s, (w) => w >= s.week - 1)}
-        ${eventCard(s)}
-        <h2 class="next">This week</h2>
-        ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
-        <div class="actions">
-          ${actionRow(s, 'gig', missing.length ? `Need ${missing.join(' and ')}.` : `Best you can headline: ${bestVenue(s.fans).name}.`)}
-          ${actionRow(s, 'rehearse', 'Get tighter. Egos may collide.')}
-          ${actionRow(s, 'write', s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'} so far.` : 'You only have covers.')}
-          ${actionRow(s, 'release', s.releases.length ? `${s.releases.length} release${s.releases.length === 1 ? '' : 's'} so far.` : 'Put your songs on tape or vinyl.')}
-          ${actionRow(s, 'party', 'Good for morale, bad for livers.')}
-          ${actionRow(s, 'rest', 'Recover energy and dry out a bit.')}
-          ${actionRow(s, 'advertise', 'Replace someone or add a player.')}
+    <div class="layout">
+      ${zone(s)}
+      <aside class="panel">
+        <div class="tabs" role="tablist">
+          ${(['band', 'charts', 'records', 'history'] as PanelTab[]).map((t) => `<button role="tab" class="tab" data-do="tab" data-arg="${t}" aria-selected="${panelTab === t}">${PANEL_LABEL[t]}${t === 'band' && s.candidates.length ? ' <span class="dot" aria-label="auditions waiting"></span>' : ''}</button>`).join('')}
         </div>
-        <p class="hint">Goal before the end of 1983: ${WIN_FANS} fans and ${WIN_BUZZ} buzz, or a record in the National Top 40. Either gets the labels calling.</p>
-      </section>
-      ${s.week > 1 ? `<section class="history"><h2>Earlier</h2>${logList(s, (w) => w < s.week - 1)}</section>` : ''}
+        <div class="tab-body">${panelBody(s)}</div>
+      </aside>
     </div>`;
+}
+
+type PanelTab = 'band' | 'charts' | 'records' | 'history';
+const PANEL_LABEL: Record<PanelTab, string> = { band: 'The band', charts: 'Charts', records: 'Songs & records', history: 'History' };
+
+function panelBody(s: GameState): string {
+  switch (panelTab) {
+    case 'band':
+      return `
+        ${s.candidates.length ? `<h3 class="sub">Auditions: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h3><div class="cards">${s.candidates.map((c) => card(s, c, true)).join('')}</div><h3 class="sub">Your band</h3>` : ''}
+        <div class="cards">${s.members.map((m) => card(s, m)).join('')}</div>`;
+    case 'charts':
+      return chartsSection(s);
+    case 'records':
+      return recordsSection(s) || '<p class="hint">No songs yet. Write some.</p>';
+    case 'history':
+      return logList(s, () => true);
+  }
+}
+
+const KIND_LABEL: Record<string, string> = {
+  gig: 'Live tonight', rehearse: 'Rehearsal', write: 'Songwriting', release: 'In the studio', party: 'Night out',
+  rest: 'Time off', advertise: 'Auditions', event: 'Situation', start: 'Previously',
+};
+
+/** The action zone: last week played back line by line, its effects, then what to do next. */
+function zone(s: GameState): string {
+  const sc = s.scene;
+  const playing = !!sc && sc.id !== playedScene && !reducedMotion();
+  const step = sc?.vibe === 'gig' || sc?.vibe === 'wasted' ? 0.8 : sc?.vibe === 'trip' ? 0.9 : 0.45;
+  const main = sc ? sc.beats.filter((b) => !b.late) : [];
+  const late = sc ? sc.beats.filter((b) => b.late) : [];
+  let t = 0.3;
+  const delay = () => { const d = t; t += step; return d; };
+  const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay().toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${esc(b.text)}</span></li>`;
+  const mainHtml = main.map(beatLi).join('');
+  const fxDelay = t;
+  t += 0.4;
+  const lateHtml = late.length ? `<div class="later" data-d="${t.toFixed(2)}"><h3>Later that week</h3><ul>${late.map((b) => `<li class="${b.tone}">${esc(b.text)}</li>`).join('')}</ul></div>` : '';
+  if (late.length) t += 0.5;
+  const nextDelay = t;
+  return `
+    <section id="zone" class="zone vibe-${sc?.vibe ?? 'quiet'} ${playing ? 'playing' : ''}" aria-live="polite">
+      <div class="screen">
+        <div class="screen-head">
+          <div><span class="kicker">${KIND_LABEL[sc?.kind ?? 'start']}</span><h2>${esc(sc?.title ?? s.bandName)}</h2></div>
+          ${playing ? '<button class="btn ghost small skip" data-do="skip">Skip</button>' : ''}
+        </div>
+        <ol class="beats">${mainHtml}</ol>
+        ${sc && (sc.effects.length || (debug && sc.hidden)) ? `<div class="fx" data-d="${fxDelay.toFixed(2)}">${effectChips(sc.effects)}${debug && sc.hidden ? `<p class="hidden-fx">${esc(sc.hidden)}</p>` : ''}</div>` : ''}
+        ${lateHtml}
+      </div>
+      <div class="next" data-d="${nextDelay.toFixed(2)}">${nextBlock(s)}</div>
+    </section>`;
+}
+
+function effectChips(fx: EffectChip[]): string {
+  const goodWhenUp = (stat: string) => stat !== 'habit';
+  const chip = (e: EffectChip) => {
+    const good = goodWhenUp(e.stat) ? e.delta > 0 : e.delta < 0;
+    const val = e.stat === 'money' ? `${e.delta > 0 ? '+' : '-'}£${Math.abs(e.delta)}` : `${e.stat} ${e.delta > 0 ? '+' : ''}${e.delta}`;
+    return `<span class="fxchip ${good ? 'up' : 'down'}">${esc(val)}</span>`;
+  };
+  const band = fx.filter((e) => e.who === null);
+  const people = [...new Set(fx.filter((e) => e.who).map((e) => e.who!))];
+  return `
+    ${band.length ? `<div class="fxrow"><span class="fxwho">Band</span>${band.map(chip).join('')}</div>` : ''}
+    ${people.map((p) => `<div class="fxrow"><span class="fxwho">${esc(p)}</span>${fx.filter((e) => e.who === p).map(chip).join('')}</div>`).join('')}`;
+}
+
+function nextBlock(s: GameState): string {
+  if (s.over) {
+    return `<div class="over"><h2>${s.over.won ? 'You made it. Sort of.' : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
+  }
+  const ev = eventCard(s);
+  if (ev) return ev;
+  const missing = missingForGig(s);
+  const subs: Record<ActionType, string> = {
+    gig: missing.length ? `Need ${missing.join(' and ')}` : bestVenue(s.fans).name.split(',')[0],
+    rehearse: `Tightness ${s.tightness}`,
+    write: s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'}` : 'Covers only',
+    release: s.releases.length ? `${s.releases.length} out` : 'Tape or vinyl',
+    party: 'Morale up, livers down',
+    rest: 'Recharge, dry out',
+    advertise: 'Replace or add a player',
+  };
+  const types: ActionType[] = ['gig', 'rehearse', 'write', 'release', 'party', 'rest', 'advertise'];
+  const open = openAction;
+  const opts = open ? actionOptions(s, open) : [];
+  const roleSelect =
+    open === 'advertise'
+      ? `<label class="role-pick">Looking for <select name="adRole">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<option value="${r}" ${r === adRole ? 'selected' : ''}>${ROLE_LABEL[r].toLowerCase()}</option>`).join('')}</select></label>`
+      : '';
+  return `
+    ${hopefuls(s)}
+    <h3 class="what-now">${s.candidates.length ? 'Or get on with the week' : 'What now?'}</h3>
+    ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
+    <div class="tiles">
+      ${types.map((t) => `<button class="tile" data-do="open" data-arg="${t}" aria-expanded="${open === t}"><strong>${ACTION_LABEL[t]}</strong><span>${esc(subs[t])}</span></button>`).join('')}
+    </div>
+    ${open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
+    <p class="hint goal">Goal before the end of 1983: ${WIN_FANS} fans and ${WIN_BUZZ} buzz, or a record in the National Top 40.</p>`;
+}
+
+/** Candidates from an advert, compact, right where the decision is made. */
+function hopefuls(s: GameState): string {
+  if (!s.candidates.length) return '';
+  const rows = s.candidates.map((c) => {
+    const est = debug ? overall(c) : estimate(c, overall(c));
+    const known = HIDDEN_TRAITS.filter((t) => c.known[t] > 0).map((t) => `${t} ${traitDisplay(c, t).toLowerCase()}`).join(', ');
+    const same = s.members.filter((x) => !x.isPlayer && x.role === c.role);
+    const btns = same.map((x) => `<button class="btn small" data-do="hire" data-arg="${c.id}" data-arg2="${x.id}">Replace ${esc(first(x))}</button>`);
+    if (s.members.length < MAX_MEMBERS) btns.push(`<button class="btn small ${same.length ? 'ghost' : ''}" data-do="hire" data-arg="${c.id}">Add</button>`);
+    return `<li><div class="hope-who"><strong>${esc(c.name)}</strong><span>~${est} overall, ${c.age}, ${GENRE_LABEL[c.style].toLowerCase()}${known ? `, ${esc(known)}` : ''}</span></div><div class="hope-btns">${btns.join('')}</div></li>`;
+  });
+  return `<div class="hopefuls"><h3>Hopefuls: ${ROLE_LABEL[s.candidateRole!].toLowerCase()}</h3><ul>${rows.join('')}</ul><p class="hint">Full cards in <a href="#" data-do="tab" data-arg="band">The band</a> tab. Hopefuls leave if you place another ad.</p></div>`;
+}
+
+function reducedMotion(): boolean {
+  try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
 
 function chartsSection(s: GameState): string {
@@ -253,7 +382,6 @@ function chartsSection(s: GameState): string {
   const hot = hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ');
   return `
     <section class="charts">
-      <h2>The charts</h2>
       <div class="chips">${tabs}</div>
       <p class="hint">${CHART_NAME[chartTab]}, ${dateLabel(s.week)}. ${note} Selling right now: ${hot}.</p>
       <div class="chart-wrap">
@@ -270,23 +398,6 @@ function chartsSection(s: GameState): string {
     </section>`;
 }
 
-function actionRow(s: GameState, type: ActionType, sub: string): string {
-  const blocked = s.over ? 'The game is over.' : s.pending ? 'Deal with the situation first.' : null;
-  const open = openAction === type && !blocked;
-  const opts = open ? actionOptions(s, type) : [];
-  const roleSelect =
-    type === 'advertise'
-      ? `<label class="role-pick">Looking for <select name="adRole">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<option value="${r}" ${r === adRole ? 'selected' : ''}>${ROLE_LABEL[r].toLowerCase()}</option>`).join('')}</select></label>`
-      : '';
-  return `
-    <div class="action-group ${open ? 'open' : ''}">
-      <button class="action" data-do="open" data-arg="${type}" aria-expanded="${open}" ${blocked ? 'disabled' : ''}>
-        <strong>${ACTION_LABEL[type]}</strong><span>${esc(blocked ?? sub)}</span>
-      </button>
-      ${open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', type, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
-    </div>`;
-}
-
 function choiceBtn(what: string, arg: string, arg2: string, label: string, cost: number, hint: string, locked?: string): string {
   return `<button class="choice" data-do="${what}" data-arg="${arg}" data-arg2="${arg2}" ${locked ? 'disabled' : ''}>
     <span class="choice-head"><strong>${esc(label)}</strong><span class="cost ${cost ? '' : 'free'}">${cost ? `£${cost}` : 'Free'}</span></span>
@@ -299,7 +410,8 @@ function eventCard(s: GameState): string {
   if (!v) return '';
   return `
     <div class="event" role="alertdialog" aria-labelledby="event-title">
-      <h2 id="event-title">${esc(v.title)}</h2>
+      <span class="kicker">Something's come up</span>
+      <h3 id="event-title">${esc(v.title)}</h3>
       <p>${esc(v.text)}</p>
       <div class="choices">${v.options.map((o, i) => choiceBtn('respond', String(i), '', o.label, o.cost, o.hint, o.locked)).join('')}</div>
     </div>`;
@@ -311,7 +423,6 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   return `
     <section class="records">
-      <h2>Songs and records</h2>
       ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${kind[r.kind]}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
       <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
     </section>`;

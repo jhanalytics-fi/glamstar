@@ -84,6 +84,41 @@ export interface LogEntry {
 
 export type GameOver = { reason: string; won: boolean };
 
+/** One line of the week's running commentary. */
+export interface Beat {
+  /** Clock time or day, e.g. "21:40" or "Tuesday". */
+  time?: string;
+  text: string;
+  tone: LogEntry['tone'];
+  /** Happened later in the week, after the main event. */
+  late?: boolean;
+}
+
+/** A single measurable change, shown as a chip under the commentary. */
+export interface EffectChip {
+  /** Member's short name, or null for band-level figures. */
+  who: string | null;
+  stat: string;
+  delta: number;
+}
+
+export type Vibe = 'normal' | 'gig' | 'trip' | 'wasted' | 'drama' | 'quiet';
+
+/** What the action zone plays back: the week (or situation) just lived through. */
+export interface Scene {
+  id: number;
+  kind: ActionType | 'event' | 'start';
+  title: string;
+  vibe: Vibe;
+  beats: Beat[];
+  effects: EffectChip[];
+  hidden?: string;
+  /** While true, logged lines are mirrored into the beats. */
+  recording: boolean;
+  /** While true, mirrored lines are marked as later in the week. */
+  late: boolean;
+}
+
 export interface GameState {
   version: 1;
   rng: number;
@@ -111,6 +146,8 @@ export interface GameState {
   releases: Release[];
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;
+  /** The latest week or situation, for the action zone. */
+  scene: Scene | null;
 }
 
 export interface NewGameInput {

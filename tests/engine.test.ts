@@ -508,6 +508,45 @@ describe('visible effects', () => {
   });
 });
 
+describe('the action zone scene', () => {
+  it('a gig plays out as timed commentary with effect chips', () => {
+    const s = act(newGame(input), A('gig', 'venue0'));
+    expect(s.scene!.kind).toBe('gig');
+    expect(['gig', 'wasted']).toContain(s.scene!.vibe);
+    const timed = s.scene!.beats.filter((b) => b.time);
+    expect(timed.length).toBeGreaterThanOrEqual(4);
+    expect(s.scene!.beats.some((b) => b.text.startsWith('Gig:'))).toBe(true);
+    expect(s.scene!.effects.some((e) => e.who === null && e.stat === 'money' && e.delta > 0)).toBe(true);
+    expect(s.scene!.effects.some((e) => e.stat === 'energy' && e.delta < 0)).toBe(true);
+    expect(s.scene!.recording).toBe(false);
+  });
+
+  it('a night in Soho goes on a trip', () => {
+    const s = act({ ...newGame(input), money: 500 }, A('party', 'soho'));
+    expect(s.scene!.vibe).toBe('trip');
+  });
+
+  it('things that happen later in the week are marked late', () => {
+    const s = act({ ...newGame(input), money: 10 }, REST);
+    expect(s.scene!.beats.some((b) => b.late && b.text.startsWith('Skint again'))).toBe(true);
+    expect(s.scene!.beats.some((b) => !b.late)).toBe(true);
+  });
+
+  it('answering a situation becomes its own scene', () => {
+    const s0 = forceEvent({ ...newGame(input), money: 1000 }, 'gear');
+    const s1 = resolvePending(s0, 0);
+    expect(s1.scene!.kind).toBe('event');
+    expect(s1.scene!.beats[0].text).toContain('You chose');
+    expect(s1.scene!.effects.some((e) => e.stat === 'gear' && e.delta === 1)).toBe(true);
+  });
+
+  it('a new game opens with an intro scene', () => {
+    const s = newGame(input);
+    expect(s.scene!.kind).toBe('start');
+    expect(s.scene!.beats.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
 describe('names', () => {
   it('never generates blocklisted real band names', () => {
     const rng = new Rng(1);

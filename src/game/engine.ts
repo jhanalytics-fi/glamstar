@@ -3,9 +3,9 @@ import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand, getToKno
 import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
-import { optionLocked, perform, sellRecords } from './actions';
+import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
-import { adjust, first, log, logEffects, mutate, removeMember, revealLog, snapshot } from './helpers';
+import { adjust, beat, first, log, logEffects, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
@@ -55,12 +55,16 @@ export function newGame(input: NewGameInput): GameState {
     flags: {},
     releases: [],
     pending: null,
+    scene: null,
   };
   s.world = createWorld(rng, s.bandName);
   advanceWorld(s.world, rng, 0, { bandName: s.bandName, fans: 0, buzz: 0 });
   forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(5, 35)));
+  openScene(s, 'start', `London, ${dateLabel(0)}`, 'quiet');
   log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
   log(s, 'You have a rehearsal room above a kebab shop, a handful of covers and no original songs.', 'neutral');
+  beat(s, undefined, 'First week. What does the band do?');
+  s.scene!.recording = false;
   s.rng = rng.state;
   return s;
 }
@@ -77,6 +81,7 @@ export function upgradeSave(s: GameState): GameState {
   s.flags ??= {};
   s.releases ??= [];
   s.pending ??= null;
+  s.scene ??= null;
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;
@@ -106,12 +111,16 @@ export function act(state: GameState, a: Action): GameState {
   const why = canAct(state, a);
   if (why) throw new Error(why);
   return mutate(state, (s, rng) => {
+    const label = actionOptions(s, a.type).find((o) => o.id === a.option)?.label ?? ACTION_LABEL[a.type];
+    openScene(s, a.type, label, a.type === 'gig' ? 'gig' : 'normal');
     const before = snapshot(s);
     perform(s, rng, a);
     for (const m of available(s)) getToKnow(m, KNOW_BY_ACTION[a.type]);
     logEffects(s, before);
     if (a.type !== 'rehearse') s.tightness = clamp(s.tightness - 1, 0, 100);
+    s.scene!.late = true;
     endOfWeek(s, rng);
+    s.scene!.recording = false;
   });
 }
 
