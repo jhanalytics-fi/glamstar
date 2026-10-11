@@ -46,6 +46,9 @@ let tourTier: string | null = null;
 let tourWeeks = 1;
 let tourPolicy: TourPolicy = 'steady';
 /** Development aid: shows true values and hidden changes. */
+const PACE_KEY = 'glamstar.pace';
+type Pace = 'relaxed' | 'brisk';
+let pace: Pace = (() => { try { return localStorage.getItem(PACE_KEY) === 'brisk' ? 'brisk' : 'relaxed'; } catch { return 'relaxed' as Pace; } })();
 let debug = (() => { try { return localStorage.getItem(DEBUG_KEY) === '1'; } catch { return false; } })();
 let error = '';
 
@@ -161,6 +164,10 @@ function onClick(e: Event, root: HTMLElement): void {
         debug = !debug;
         try { localStorage.setItem(DEBUG_KEY, debug ? '1' : '0'); } catch { /* fine */ }
         break;
+      case 'pace':
+        pace = pace === 'relaxed' ? 'brisk' : 'relaxed';
+        try { localStorage.setItem(PACE_KEY, pace); } catch { /* fine */ }
+        break;
     }
   } catch (err) {
     error = (err as Error).message;
@@ -193,6 +200,36 @@ function bringIntoView(el: Element | null): void {
   if (r.top < 0 || r.bottom > window.innerHeight) el.scrollIntoView({ block: r.height > window.innerHeight ? 'start' : 'nearest', behavior: reducedMotion() ? 'auto' : 'smooth' });
 }
 
+/**
+ * The header figures hold last week's values while the report plays, then count over
+ * to the new ones when the result lands, so the eye goes to the numbers that moved.
+ */
+function tickStats(root: HTMLElement, z: HTMLElement): void {
+  const sc = state?.scene;
+  const at = Number(z.querySelector<HTMLElement>('.headline')?.dataset.d ?? z.querySelector<HTMLElement>('.fx')?.dataset.d ?? NaN);
+  if (!sc?.start || !state || Number.isNaN(at)) return;
+  const now = { money: state.money, fans: state.fans, buzz: state.buzz, tightness: state.tightness };
+  const fmt = (key: string, v: number) => (key === 'money' ? `${v < 0 ? '-' : ''}£${Math.abs(Math.round(v))}` : String(Math.round(v)));
+  for (const key of Object.keys(now) as (keyof typeof now)[]) {
+    const el = root.querySelector<HTMLElement>(`[data-stat="${key}"]`);
+    const from = sc.start[key];
+    const to = now[key];
+    if (!el || from === to) continue;
+    el.textContent = fmt(key, from);
+    timers.push(window.setTimeout(() => {
+      el.classList.add(to > from ? 'tick-up' : 'tick-down');
+      const t0 = performance.now();
+      const step = (t: number) => {
+        const p = Math.min(1, (t - t0) / 900);
+        el.textContent = fmt(key, from + (to - from) * (1 - (1 - p) ** 3));
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+      timers.push(window.setTimeout(() => el.classList.remove('tick-up', 'tick-down'), 2200));
+    }, at * 1000));
+  }
+}
+
 /** Reveal the scene line by line, like a match report coming in. */
 function playback(root: HTMLElement): void {
   const z = root.querySelector<HTMLElement>('#zone.playing');
@@ -205,6 +242,7 @@ function playback(root: HTMLElement): void {
     last = Math.max(last, ms);
     timers.push(window.setTimeout(() => { el.classList.remove('wait'); el.classList.add('enter'); }, ms));
   }
+  tickStats(root, z);
   const id = state?.scene?.id ?? null;
   timers.push(window.setTimeout(() => {
     playedScene = id;
@@ -288,14 +326,14 @@ function renderGame(s: GameState): string {
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
-        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
+        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="pace" title="How fast the week's report is read out. Any click shows it all at once.">${pace === 'relaxed' ? 'Pace: relaxed' : 'Pace: brisk'}</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
       </div>
       <dl class="stats">
-        <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}">£${s.money}</dd></div>
-        <div><dt>${tip('Fans', 'fans')}</dt><dd>${s.fans}</dd></div>
-        <div><dt>${tip('Buzz', 'buzz')}</dt><dd>${s.buzz}</dd></div>
+        <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}" data-stat="money">${s.money < 0 ? '-' : ''}£${Math.abs(s.money)}</dd></div>
+        <div><dt>${tip('Fans', 'fans')}</dt><dd data-stat="fans">${s.fans}</dd></div>
+        <div><dt>${tip('Buzz', 'buzz')}</dt><dd data-stat="buzz">${s.buzz}</dd></div>
         <div title="Style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.knownEgoPenalty ? `, egos -${chem.knownEgoPenalty}` : ''}"><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
-        <div><dt>${tip('Tightness', 'tightness')}</dt><dd>${s.tightness}</dd></div>
+        <div><dt>${tip('Tightness', 'tightness')}</dt><dd data-stat="tightness">${s.tightness}</dd></div>
         <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${pos ? `#${pos}` : '-'}</dd></div>
       </dl>
       ${bandPulse(s)}
@@ -418,17 +456,20 @@ const KIND_LABEL: Record<string, string> = {
 function zone(s: GameState): string {
   const sc = s.scene;
   const playing = !!sc && sc.id !== playedScene && !reducedMotion();
-  const step = sc?.vibe === 'gig' || sc?.vibe === 'wasted' ? 0.8 : sc?.vibe === 'trip' ? 0.9 : 0.45;
+  // Paced like reading: longer lines stay on their own longer. Gigs and trips linger a little more.
+  const mood = sc?.vibe === 'gig' || sc?.vibe === 'wasted' ? 1.15 : sc?.vibe === 'trip' ? 1.25 : 1;
+  const speed = pace === 'relaxed' ? 1 : 0.45;
+  const readTime = (text: string) => Math.min(4.2, Math.max(1.3, text.length / 26)) * mood * speed;
   const main = sc ? sc.beats.filter((b) => !b.late) : [];
   const late = sc ? sc.beats.filter((b) => b.late) : [];
   let t = 0.3;
-  const delay = () => { const d = t; t += step; return d; };
-  const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay().toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${emph(b.text)}</span></li>`;
+  const delay = (b: Beat) => { const d = t; t += readTime(b.text); return d; };
+  const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay(b).toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${emph(b.text)}</span></li>`;
   const mainHtml = main.map(beatLi).join('');
-  const fxDelay = t + 0.3;
-  t += 1.3;
+  const fxDelay = t + 0.6 * speed;
+  t = fxDelay + 2.2 * speed;
   const lateHtml = late.length ? `<div class="later" data-d="${t.toFixed(2)}"><h3>Later that week</h3><ul>${late.map((b) => `<li class="${b.tone}">${esc(b.text)}</li>`).join('')}</ul></div>` : '';
-  if (late.length) t += 0.5;
+  if (late.length) t += Math.max(1.5, late.reduce((a, b) => a + readTime(b.text) * 0.6, 0));
   const nextDelay = t;
   const collapsed = !!sc && !playing && collapsedScene === sc.id;
   if (collapsed && sc) {

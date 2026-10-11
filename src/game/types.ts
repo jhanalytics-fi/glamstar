@@ -109,6 +109,8 @@ export type Vibe = 'normal' | 'gig' | 'trip' | 'wasted' | 'drama' | 'quiet';
 /** What the action zone plays back: the week (or situation) just lived through. */
 export interface Scene {
   id: number;
+  /** Band figures when the scene opened, so the UI can count them over to the new values. */
+  start?: { money: number; fans: number; buzz: number; tightness: number };
   kind: ActionType | 'event' | 'start';
   title: string;
   vibe: Vibe;

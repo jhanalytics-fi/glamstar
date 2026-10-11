@@ -171,7 +171,7 @@ export function logEffects(s: GameState, before: Snapshot, opts: { skipRoutine?:
 
 /** Start recording a new scene for the action zone. */
 export function openScene(s: GameState, kind: Scene['kind'], title: string, vibe: Vibe = 'normal'): void {
-  s.scene = { id: s.nextId++, kind, title, vibe, beats: [], effects: [], recording: true, late: false };
+  s.scene = { id: s.nextId++, kind, title, vibe, beats: [], effects: [], recording: true, late: false, start: { money: s.money, fans: s.fans, buzz: s.buzz, tightness: s.tightness } };
 }
 
 /** A line of commentary that only lives in the action zone, not the history log. */

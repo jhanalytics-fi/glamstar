@@ -846,3 +846,11 @@ describe('personal variance', () => {
     expect(new Set(gains).size).toBeGreaterThan(1);
   });
 });
+
+describe('scene start figures', () => {
+  it('a week remembers the band figures it started from', () => {
+    const s0 = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 2 });
+    const s1 = act(s0, { type: 'rehearse', option: 'regular' });
+    expect(s1.scene!.start).toEqual({ money: s0.money, fans: s0.fans, buzz: s0.buzz, tightness: s0.tightness });
+  });
+});

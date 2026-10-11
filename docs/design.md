@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.4)
+## Prototype status (v0.5)
 
 Playable in the browser. Implemented:
 
@@ -209,3 +209,7 @@ Every band starts with 8-14 core fans: family, flatmates and the pub. They never
 ## Personal variance
 
 Week actions change each member's energy, mood and habit by the listed amount ±35%, rolled per person (`wobble` in helpers). A day at the seaside does more for one member than another.
+
+## Pacing
+
+No hurry. The week's report is read out at reading speed: each line stays alone for its length / 26 characters a second (1.3-4.2 s), a bit longer for gigs and trips. The header figures (money, fans, buzz, tightness) hold the week's starting values until the result lands, then count over to the new ones and glow green or red, so the eye goes to the numbers that moved. A "Pace: relaxed / brisk" switch in the header (brisk is about twice as fast) is remembered per browser; any click still shows everything at once.
