@@ -1,5 +1,5 @@
 import { Rng, clamp } from './rng';
-import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, generateStartingBand, getToKnow, rollPotential } from './characters';
+import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
 import { advanceWorld, createWorld, heatCurve } from './world';
@@ -75,6 +75,11 @@ export function newGame(input: NewGameInput): GameState {
   const mum = rng.pick(mates);
   log(s, `Your fan base: your mum, ${first(mum)}'s sister, two flatmates and a bloke from the pub who calls you "the lads". ${core} people, all of them on the guest list.`, 'neutral');
   milestone(s, 'career', `${s.bandName} formed in London: ${[player, ...mates].map((m) => m.name).join(', ')}.`);
+  const intros: string[] = [];
+  for (const m of mates) {
+    intros.push(introduce(m, intros));
+    beat(s, ROLE_LABEL[m.role], intros[intros.length - 1]);
+  }
   beat(s, undefined, 'First week. What does the band do?');
   s.scene!.recording = false;
   s.rng = rng.state;

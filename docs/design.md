@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.5)
+## Prototype status (v0.6)
 
 Playable in the browser. Implemented:
 
@@ -213,3 +213,7 @@ Week actions change each member's energy, mood and habit by the listed amount ±
 ## Pacing
 
 No hurry. The week's report is read out at reading speed: each line stays alone for its length / 26 characters a second (1.3-4.2 s), a bit longer for gigs and trips. The header figures (money, fans, buzz, tightness) hold the week's starting values until the result lands, then count over to the new ones and glow green or red, so the eye goes to the numbers that moved. A "Pace: relaxed / brisk" switch in the header (brisk is about twice as fast) is remembered per browser; any click still shows everything at once.
+
+## Meeting the band
+
+The first week's report introduces each mate in a two-line scouting report built from their card: role, hometown, age, an overall verdict, and their strongest and weakest visible stat in words ("has proper hands, but dresses like a geography teacher"). Hidden traits are never mentioned. Lines are deterministic per musician and bandmates never share a phrase. Cards show the instrument as a large coloured badge above the name. Portraits and a visual character builder come later.

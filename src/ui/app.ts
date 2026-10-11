@@ -777,8 +777,8 @@ function card(s: GameState, m: Musician, candidate = false): string {
     <article class="card ${tier} ${out ? 'out' : ''}">
       <div class="card-in">
         <div class="card-head">
-          <div class="ovr" title="${fuzzy ? 'Your best guess. Play together more to know for sure.' : 'Overall rating'}">${fuzzy ? '<span class="approx">~</span>' : ''}${ovr}<small>${roleText}</small></div>
-          <div class="who"><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong>${m.realName !== m.name && !m.name.includes('"') ? `<span class="real">${esc(m.realName)}</span>` : ''}<span>${m.age}, ${esc(m.from)}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
+          <div class="ovr" title="${fuzzy ? 'Your best guess. Play together more to know for sure.' : 'Overall rating'}">${fuzzy ? '<span class="approx">~</span>' : ''}${ovr}</div>
+          <div class="who"><span class="role-badge role-${m.isPlayer ? 'vocals' : m.role}">${roleText}</span><strong>${esc(m.name)}${m.isPlayer ? ' (you)' : ''}</strong>${m.realName !== m.name && !m.name.includes('"') ? `<span class="real">${esc(m.realName)}</span>` : ''}<span>${m.age}, ${esc(m.from)}, ${GENRE_LABEL[m.style].toLowerCase()}</span></div>
         </div>
         <dl class="attrs">
           <div><dt>${tip('Skill', 'skill')}</dt><dd>${stat(m.skill)}</dd></div>

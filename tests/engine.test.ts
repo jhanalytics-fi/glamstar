@@ -854,3 +854,19 @@ describe('scene start figures', () => {
     expect(s1.scene!.start).toEqual({ money: s0.money, fans: s0.fans, buzz: s0.buzz, tightness: s0.tightness });
   });
 });
+
+describe('band introductions', () => {
+  it('the first week introduces each mate from their card, without hidden traits', async () => {
+    const { introduce } = await import('../src/game/characters');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 6 });
+    const mates = s.members.filter((m) => !m.isPlayer);
+    const lines: string[] = [];
+    for (const m of mates) {
+      const line = introduce(m, lines);
+      lines.push(line);
+      expect(line).toBe(introduce(m, lines.slice(0, -1)));
+      expect(line).not.toMatch(/ego|loyal|reliab|vice|stamina|potential/i);
+      expect(s.scene!.beats.some((b) => b.text === line)).toBe(true);
+    }
+  });
+});

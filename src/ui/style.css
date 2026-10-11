@@ -654,3 +654,13 @@ section + section { margin-top: 32px; }
 .stats dd.tick-up { color: var(--good); text-shadow: 0 0 14px rgba(110, 231, 160, 0.55); }
 .stats dd.tick-down { color: var(--bad); text-shadow: 0 0 14px rgba(255, 107, 107, 0.5); }
 .chem-title { margin-top: 32px; }
+
+/* Instrument badge on member cards */
+.role-badge { display: inline-block; margin-bottom: 6px; padding: 3px 10px; border-radius: 999px; font-family: var(--cond); font-weight: 800; font-size: 0.95rem; letter-spacing: 0.08em; text-transform: uppercase; color: #160b1a; background: var(--chrome); }
+.role-badge.role-vocals { background: var(--lipstick); color: #fff; }
+.role-badge.role-guitar { background: var(--nicotine); }
+.role-badge.role-bass { background: var(--chrome); }
+.role-badge.role-drums { background: #ff9f5a; }
+.role-badge.role-keys { background: #c9a0ff; }
+.who .role-badge { display: inline-block; color: #160b1a; }
+.who .role-badge.role-vocals { color: #fff; }

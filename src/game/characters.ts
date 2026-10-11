@@ -324,3 +324,41 @@ export function reveal(m: Musician, t: HiddenTrait, level: Knowledge): boolean {
   m.known[t] = level;
   return true;
 }
+
+const BEST: Record<'skill' | 'stage' | 'image' | 'writing', string[]> = {
+  skill: ['can really play', 'has proper hands', 'learned every solo off the radio, note for note'],
+  stage: ['owns a stage the moment the lights go down', 'was born to stand on a monitor', 'works a room like a holiday-camp compère'],
+  image: ['looks the part, all cheekbones and attitude', 'could sell a poster on looks alone', 'has a jacket that does half the work'],
+  writing: ['writes a decent tune on the back of a bus ticket', 'has a notebook full of half-good choruses', 'can turn a bad week into a verse'],
+};
+const WORST: Record<'skill' | 'stage' | 'image' | 'writing', string[]> = {
+  skill: ['is still learning the hard chords', 'plays like the instrument owes them money', 'loses count when the song speeds up'],
+  stage: ['stares at their shoes once the crowd turns up', 'stands so still the lighting man checks for a pulse', 'goes pale at the word "encore"'],
+  image: ['dresses like a geography teacher', 'owns one shirt and it shows', 'has a haircut that needs its own apology'],
+  writing: ['has never finished a song', 'thinks every lyric should rhyme with "fire"', 'keeps "borrowing" riffs from the radio'],
+};
+
+/**
+ * A two-line scouting report built from what you can see on the card: the strongest and the
+ * weakest of the four visible stats, age and hometown. Hidden traits are never mentioned.
+ * Deterministic per musician, so it does not disturb the game's random stream.
+ */
+export function introduce(m: Musician, avoid: string[] = []): string {
+  let h = 2166136261;
+  for (const c of m.id + m.realName) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
+  const rng = new Rng(h >>> 0);
+  const keys = ['skill', 'stage', 'image', 'writing'] as const;
+  const sorted = [...keys].sort((a, b) => m[b] - m[a]);
+  const best = sorted[0];
+  const worst = sorted[3];
+  const short = m.name.match(/"([^"]+)"/)?.[1] ?? m.name.split(' ')[0];
+  const ovr = overall(m);
+  const level = ovr >= 55 ? 'The real deal' : ovr >= 42 ? 'Solid' : 'Rough around the edges';
+  const age = m.age <= 20 ? 'barely old enough for the pub' : m.age >= 28 ? 'older than the rest and keen to mention it' : `${m.age}`;
+  const head = `${short} on ${ROLE_LABEL[m.role].toLowerCase()}, from ${m.from}, ${age}.`;
+  const gap = m[best] - m[worst];
+  // Bandmates introduced together never share a line.
+  const pick = (xs: string[]) => { const free = xs.filter((x) => !avoid.some((a) => a.includes(x))); return rng.pick(free.length ? free : xs); };
+  const body = gap >= 12 ? `${level}: ${pick(BEST[best])}, but ${pick(WORST[worst])}.` : `${level} and evenly built: no great strength, no glaring hole.`;
+  return `${head} ${body}`;
+}
