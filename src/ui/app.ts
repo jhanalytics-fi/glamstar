@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { DEADLINE_WEEK, MAX_MEMBERS, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -326,7 +326,7 @@ function renderGame(s: GameState): string {
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
-        <p class="when">${dateLabel(s.week)}, week ${s.week + 1} of ${DEADLINE_WEEK}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="pace" title="How fast the week's report is read out. Any click shows it all at once.">${pace === 'relaxed' ? 'Pace: relaxed' : 'Pace: brisk'}</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
+        <p class="when">${dateLabel(s.week)}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="pace" title="How fast the week's report is read out. Any click shows it all at once.">${pace === 'relaxed' ? 'Pace: relaxed' : 'Pace: brisk'}</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
       </div>
       <dl class="stats">
         <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}" data-stat="money">${s.money < 0 ? '-' : ''}£${Math.abs(s.money)}</dd></div>
