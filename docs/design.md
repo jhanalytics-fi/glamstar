@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.6)
+## Prototype status (v0.7)
 
 Playable in the browser. Implemented:
 
@@ -218,7 +218,7 @@ No hurry. The week's report is read out at reading speed: each line stays alone 
 
 The first week's report introduces each mate in a two-line scouting report built from their card: role, hometown, age, an overall verdict, and their strongest and weakest visible stat in words ("has proper hands, but dresses like a geography teacher"). Hidden traits are never mentioned. Lines are deterministic per musician and bandmates never share a phrase. Cards show the instrument as a large coloured badge above the name. Portraits and a visual character builder come later.
 
-## Sex, romance and scandal (planned)
+## Sex, romance and scandal
 
 Part of the rock'n'roll life, handled the same way as drugs: implied, off-screen (cut to black), and judged by its consequences with satirical bite. All characters involved are clearly adults; minors never appear in any romantic or sexual context, not even as a hint or a joke.
 
@@ -230,3 +230,5 @@ Mechanics, each moving stats rather than describing anything:
 - **Tabloid scandal.** Kiss-and-tell stories: buzz up, image down, label reaction later. The manager can bury it (money) or the band can lean into it (buzz, risk).
 - **Tour policy.** Wild / steady / clean also sets how much of this happens on the road.
 - **Satirical fallout.** Double-booked dates at the same gig, a paternity-suit letter, a nervous clinic visit, a moral panic in the press and the band's own double standards.
+
+Built in v0.7 (`src/game/romanceEvents.ts`): `after_show` (after a home gig: home, after-party or leave with someone; leaving sets a `fling` flag), `band_romance` (the closest pair, affinity over 34, becomes a couple if blessed), `band_breakup` (8+ weeks later, coin flip: exes' link drops to -90, or -70 if they write the break-up album, or one leaves), `kiss_and_tell` (250+ fans, far likelier after a fling: deny, pay £200, or lean in), `partner_ultimatum` (week off, invite the partner, or make them choose: loyalty decides), `double_booked` (after a fling) and the tour event `road_fling` (odds 100% / 50% / 15% by wild / steady / clean policy). Still to come: paternity letter, clinic visit, moral panic, label reactions.

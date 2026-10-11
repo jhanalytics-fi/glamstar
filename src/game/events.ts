@@ -6,6 +6,7 @@ import { addBuzz, adjust, beat, first, grow, log, logEffects, mutate, openScene,
 import { pickRivalName } from './world';
 import type { GameState, HiddenTrait, Musician } from './types';
 import { TOUR_EVENTS } from './tourEvents';
+import { ROMANCE_EVENTS } from './romanceEvents';
 
 type Params = Record<string, string | number>;
 
@@ -2474,6 +2475,7 @@ const HOME_ONLY = new Set([
 
 const EVENTS: EventDef[] = [
   ...BASE_EVENTS.map((e) => (HOME_ONLY.has(e.id) ? { ...e, where: 'home' as const } : e)),
+  ...ROMANCE_EVENTS,
   ...TOUR_EVENTS,
 ];
 

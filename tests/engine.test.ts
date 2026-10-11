@@ -259,6 +259,12 @@ describe('choice events', () => {
     video: (s) => later(s, 153),
     xmas_single: (s) => later(s, 95),
     manager_clause: (s) => { s.flags.manager = 2; s.flags.managerWeek = 40; },
+    after_show: (s) => { s.lastGigWeek = s.week; },
+    band_romance: (s) => { const [a, b] = s.members; s.affinity[[a.id, b.id].sort().join('|')] = 80; },
+    band_breakup: (s) => { const [, a, b] = s.members; s.flags[`romance:${[a.id, b.id].sort().join('|')}`] = s.week - 20; },
+    double_booked: (s) => { s.flags.fling = s.week - 2; },
+    kiss_and_tell: (s) => { s.flags.fling = s.week - 2; },
+    road_fling: (s) => { s.flags.lastBigParty = s.week; },
   };
 
   it('every event can fire and every response resolves cleanly', () => {
@@ -868,5 +874,53 @@ describe('band introductions', () => {
       expect(line).not.toMatch(/ego|loyal|reliab|vice|stamina|potential/i);
       expect(s.scene!.beats.some((b) => b.text === line)).toBe(true);
     }
+  });
+});
+
+describe('romance and scandal', () => {
+  const base = () => {
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 31 });
+    return { ...s, week: 40, fans: 400, money: 1000 };
+  };
+  const pick = (s: GameState, re: RegExp) => viewPending(s)!.options.findIndex((o) => re.test(o.label));
+
+  it('a blessed band romance makes a couple, and a break-up turns their link red', async () => {
+    const { couple } = await import('../src/game/romanceEvents');
+    const { chemistryLinks } = await import('../src/game/chemistry');
+    const s0 = base();
+    const [, a, b] = s0.members;
+    s0.affinity[[a.id, b.id].sort().join('|')] = 90;
+    let s = resolvePending(forceEvent(s0, 'band_romance'), 0);
+    expect(couple(s)?.map((m) => m.id).sort()).toEqual([a.id, b.id].sort());
+    s = { ...s, week: s.week + 10 };
+    let forced: GameState | null = null;
+    for (let i = 0; i < 20 && !forced; i++) { try { forced = forceEvent({ ...s, rng: s.rng + i }, 'band_breakup'); } catch { /* coin flip */ } }
+    s = resolvePending(forced!, pick(forced!, /Keep calm/));
+    expect(couple(s)).toBeNull();
+    const link = chemistryLinks(s).links.find((l) => [l.a, l.b].sort().join() === [a.id, b.id].sort().join())!;
+    expect(link.tone).toBe('bad');
+  });
+
+  it('after a fling the tabloids can come calling, and paying them off costs money', () => {
+    const s0 = { ...base(), lastGigWeek: 40 };
+    const s1 = resolvePending(forceEvent(s0, 'after_show'), 2);
+    expect(s1.flags.fling).toBe(40);
+    const story = forceEvent(s1, 'kiss_and_tell');
+    const paid = resolvePending(story, pick(story, /Pay/));
+    expect(paid.money).toBe(story.money - 200);
+  });
+
+  it('a wild tour policy brings more road flings than a clean one', async () => {
+    const { ROAD_ROMANCE } = await import('../src/game/romanceEvents');
+    const count = (policy: 'wild' | 'clean') => {
+      let n = 0;
+      for (let seed = 1; seed <= 200; seed++) {
+        const s = base();
+        startTour(s, new Rng(seed), 'clubs', 3, policy);
+        if (ROAD_ROMANCE[0].when(s, new Rng(seed * 7))) n++;
+      }
+      return n;
+    };
+    expect(count('wild')).toBeGreaterThan(count('clean') * 3);
   });
 });

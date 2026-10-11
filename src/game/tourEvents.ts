@@ -3,6 +3,7 @@ import { clamp } from './rng';
 import { addAffinity, available } from './chemistry';
 import { addBuzz, adjust, beat, first, log, player, revealLog, setVibe } from './helpers';
 import { tierById } from './tour';
+import { ROAD_ROMANCE } from './romanceEvents';
 import type { EventDef } from './events';
 import type { GameState, Musician } from './types';
 
@@ -380,4 +381,5 @@ export const TOUR_EVENTS: EventDef[] = [
   },
 ];
 
+TOUR_EVENTS.push(...ROAD_ROMANCE);
 export const TOUR_EVENT_IDS = TOUR_EVENTS.map((e) => e.id);
