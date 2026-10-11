@@ -32,6 +32,10 @@ The ultimate goal is rock immortality. Instead of one fixed goal, the action zon
 
 The game runs to the end of 1991. 1,000 fans with 55 buzz, or a record in the National Top 40, are milestones that get the labels calling; the game carries on. It ends when you go broke, lose the whole band for three months, or the decade ends.
 
+## Title screen
+
+A one-line pitch ("A rock band management game, the way they used to make them.") and the goal in plain words: ten years from the back room of a pub to rock immortality.
+
 ## Screen layout: the action zone
 
 The player's eyes stay on one place. The left (top on phones) is the **action zone**: a screen that plays back the week line by line like a match report, with clock times ("21:35 Stevie owns the room..."), then the effects as coloured chips (band, then each member), then anything that happened later in the week, and finally "What now?" with the next choices in the same place. Situations that need an answer appear right there too, as do audition hopefuls. Any click skips the playback.
@@ -260,7 +264,7 @@ A manager (`src/game/managers.ts`) has a hidden honesty, a clout (connections) a
 
 ## Economy (v0.10)
 
-Weekly upkeep = £10 + £6 per member + rent rises + **fame** (£0.02 per fan: wages, crew, flats) + **vice** (£0.50 per habit point over 30 per member, scaled up by fame) + **splurge** (2% of everything over £20,000: rock stars spend it). Every April the **Revenue** takes 40% of the year's gain above a £5,000 allowance (capped at what is in the bank; the accountant finds a loophole for the rest). Skint bands (under £50) pull shifts that cover basic upkeep, so being poor is slow, not fatal; debts are what kill you. The overdraft grows with fame: game over below -£250 minus £0.10 per fan.
+Weekly upkeep = £10 + £6 per member + rent rises + **fame** (£0.02 per fan: wages, crew, flats) + **vice** (£0.50 per habit point over 30 per member, scaled up by fame) + **splurge** (2% of everything over £20,000: rock stars spend it). Every April the **Revenue** takes 40% of the year's gain above a £5,000 allowance (capped at what is in the bank; the accountant finds a loophole for the rest). Skint bands (under £50) pull shifts that cover basic upkeep, but only for so long: 16 skint weeks in a row (warnings at 6 and 12; £100 in the bank resets the count) and the landlord changes the locks. Partying your money away and living on shifts is a slow death, not a lifestyle. The overdraft grows with fame: game over below -£250 minus £0.10 per fan.
 
 Gigs: playing London every week wears it out (home heat: each gig +1, x0.85 a week; crowd divided by 1 + 0.15 x heat). On tour a missing player is covered by a session musician (4% of the weekly cost, 10% worse shows) instead of cancelling; cancelling a tour costs 15% of the remaining fees. Upper tour tiers cost less a week than before (arenas £22k, America £24k, stadiums £140k), and a label covers part of a losing tour week (majors 50%, indies 30%, sharks nothing) as recoupable tour support.
 

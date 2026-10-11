@@ -953,12 +953,15 @@ describe('economy', () => {
     expect(after.money).toBeLessThan(15000 - 3000);
   });
 
-  it('broke bands pull shifts that keep a roof over their heads', () => {
+  it('skint bands survive on shifts for a while, but months without real money get them evicted', () => {
     let s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
     s = { ...s, money: 20 };
     s.members.forEach((m) => { m.habit = 0; });
-    for (let i = 0; i < 20; i++) { s = { ...s, pending: null }; s = act(s, { type: 'rest', option: 'sleep' }); }
+    for (let i = 0; i < 15; i++) { s = { ...s, pending: null }; s = act(s, { type: 'rest', option: 'sleep' }); }
     expect(s.over).toBeNull();
+    expect(s.log.some((l) => /final warning/.test(l.text))).toBe(true);
+    s = act({ ...s, pending: null }, { type: 'rest', option: 'sleep' });
+    expect(s.over?.won).toBe(false);
   });
 });
 

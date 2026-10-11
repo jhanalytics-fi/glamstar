@@ -20,6 +20,9 @@ export const LABEL_FANS = 1000;
 export const LABEL_BUZZ = 55;
 export const MAX_MEMBERS = 6;
 export const BROKE_LIMIT = -250;
+/** Under this much money you are skint; this many skint weeks in a row and you are evicted. */
+export const SKINT = 50;
+export const SKINT_WEEKS = 16;
 /** How far into the red the bank lets you go. A famous band gets a bigger overdraft. */
 export const overdraft = (s: GameState) => BROKE_LIMIT - Math.round(s.fans * 0.1);
 
@@ -292,7 +295,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   if (s.flags.homeHeat) s.flags.homeHeat = Math.round(s.flags.homeHeat * 0.85 * 100) / 100;
   labelWeek(s, rng);
   managerWeek(s, rng);
-  if (s.money < 50) {
+  if (s.money < SKINT) {
     // Skint: everyone picks up shifts somewhere.
     // Enough to keep a roof overhead, not enough to get anywhere.
     s.money += 10 + s.members.length * 6;
@@ -302,6 +305,12 @@ function endOfWeek(s: GameState, rng: Rng): void {
     }
     log(s, 'Skint again. Everyone pulled shifts at the warehouse and the chip shop.', 'neutral');
   }
+  // Shifts keep you alive, not housed: months on end without real money and the landlord loses patience.
+  if (s.money < SKINT) s.flags.skintWeeks = (s.flags.skintWeeks ?? 0) + 1;
+  else if (s.money >= 100) s.flags.skintWeeks = 0;
+  const sk = s.flags.skintWeeks ?? 0;
+  if (sk === 6) log(s, 'Six weeks of back rent. The landlord has started leaving notes. Mum has lent you twenty quid and a look.', 'bad');
+  if (sk === 12) log(s, `The landlord's final warning: four weeks to find the rent or you are out. Get some proper money in.`, 'bad');
 
   for (const m of [...s.members]) {
     m.weeksInBand++;
@@ -381,7 +390,7 @@ function checkOver(s: GameState): void {
     milestone(s, 'career', 'First record in the National Top 40.');
     log(s, `Milestone: a record in the National Top 40 with no label behind it. Every A&R man in London wants to buy you lunch.`, 'good');
   }
-  if (s.money < overdraft(s) && !s.tour) {
+  if ((s.money < overdraft(s) || (s.flags.skintWeeks ?? 0) >= SKINT_WEEKS) && !s.tour) {
     s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
   } else if (s.members.filter((m) => !m.isPlayer).length === 0 && s.candidates.length === 0 && s.flags.aloneSince !== undefined && s.week - s.flags.aloneSince > 12) {
     s.over = { won: false, reason: 'Three months with no band. You sell your stage clothes at Camden market. It is over.' };
