@@ -48,6 +48,12 @@ export function adjust(m: Musician, k: 'energy' | 'mood' | 'habit' | 'skill' | '
   m[k] = clamp(Math.round(m[k] + d), lo, hi);
 }
 
+/** People react differently: a week's mood, energy or habit change varies by about ±35% per person. */
+export function wobble(rng: Rng, d: number): number {
+  if (Math.abs(d) < 2) return d;
+  return Math.round(d * (0.65 + rng.next() * 0.7)) || Math.sign(d);
+}
+
 export function addBuzz(s: GameState, d: number): void {
   s.buzz = clamp(Math.round(s.buzz + d), 0, 100);
 }

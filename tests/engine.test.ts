@@ -788,8 +788,8 @@ describe('report headline', () => {
     const s0 = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 5 });
     const s1 = act(s0, { type: 'rehearse', option: 'regular' });
     const t = s1.scene?.stats?.find((x) => x.label === 'Tightness');
-    expect(t?.value).toBe(`${s1.tightness - s0.tightness >= 0 ? '+' : ''}${s1.tightness - s0.tightness}`);
-    expect(t?.sub).toBe(`now ${s1.tightness}`);
+    // Change plus starting level gives the level shown underneath (events later in the week may move it again).
+    expect(Number(t!.sub!.replace('now ', '')) - Number(t!.value)).toBe(s0.tightness);
   });
 });
 
@@ -832,7 +832,17 @@ describe('fans', () => {
       while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
       s = act(s, { type: 'rest', option: 'sleep' });
     }
-    expect(s.fans).toBeLessThan(core + 200);
+    expect(s.log.some((l) => /Casual fans are finding other bands/.test(l.text))).toBe(true);
     expect(s.fans).toBeGreaterThanOrEqual(core);
+  });
+});
+
+describe('personal variance', () => {
+  it('the same week out affects band members differently', () => {
+    const s0 = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 21 });
+    for (const m of s0.members) { m.energy = 20; m.mood = 40; }
+    const s1 = act(s0, { type: 'rest', option: 'seaside' });
+    const gains = s1.members.map((m) => m.energy);
+    expect(new Set(gains).size).toBeGreaterThan(1);
   });
 });

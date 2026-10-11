@@ -205,3 +205,7 @@ The band tab ends with a FIFA-style chemistry web. Every pair of members is a li
 ## Core fans and fading
 
 Every band starts with 8-14 core fans: family, flatmates and the pub. They never leave. Everyone above that is a casual fan: after 6 weeks with no gig, tour or release, casual fans drift away at 2% a week (at least one), with a reminder in the log when it starts and every 8 weeks after.
+
+## Personal variance
+
+Week actions change each member's energy, mood and habit by the listed amount ±35%, rolled per person (`wobble` in helpers). A day at the seaside does more for one member than another.

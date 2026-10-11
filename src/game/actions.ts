@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
-import { addBuzz, adjust, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict } from './helpers';
+import { addBuzz, adjust, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
 import { hotGenres, trend } from './world';
 import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
@@ -282,9 +282,9 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
 
   const energyMult = g.energyMult * (s.flags.roadie ? 0.8 : 1) * (s.flags.noVan ? 1.3 : 1);
   for (const m of available(s)) {
-    adjust(m, 'energy', -22 * (1.4 - m.hidden.stamina / 100) * energyMult);
-    adjust(m, 'mood', perf >= 50 ? 5 : perf < 40 ? -6 : 0);
-    adjust(m, 'habit', (m.hidden.vice / 50) * rng.int(0, 2));
+    adjust(m, 'energy', wobble(rng, -22 * (1.4 - m.hidden.stamina / 100) * energyMult));
+    adjust(m, 'mood', wobble(rng, perf >= 50 ? 5 : perf < 40 ? -6 : 0));
+    adjust(m, 'habit', wobble(rng, (m.hidden.vice / 50) * rng.int(0, 2)));
     grow(m, 'stage', 1, rng, 0.12);
     if (m.energy < 25) revealLog(s, m, 'stamina', 1);
   }
@@ -317,16 +317,16 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
     }
     grow(m, 'skill', 1, rng, 0.8);
     grow(m, 'stage', 1, rng, 0.2);
-    adjust(m, 'energy', option === 'bootcamp' ? -16 : -8);
+    adjust(m, 'energy', wobble(rng, option === 'bootcamp' ? -16 : -8));
     if (option === 'bootcamp') {
-      adjust(m, 'habit', -6);
-      adjust(m, 'mood', -8);
+      adjust(m, 'habit', wobble(rng, -6));
+      adjust(m, 'mood', wobble(rng, -8));
     }
     if (option === 'coach') {
       grow(m, 'skill', 3, rng);
       reveal(m, 'potential', 1);
       if (m.hidden.ego >= 70) {
-        adjust(m, 'mood', -6);
+        adjust(m, 'mood', wobble(rng, -6));
         log(s, `${subj(m, 'did not', 'did not')} enjoy being told how to play by a man in a cardigan.`, 'bad');
         revealLog(s, m, 'ego', 1);
       }
@@ -375,11 +375,11 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       grow(t, 'skill', 4, rng);
       getToKnow(t, 30);
       if (t.hidden.ego >= 70 && !t.isPlayer) {
-        adjust(t, 'mood', -6);
+        adjust(t, 'mood', wobble(rng, -6));
         log(s, `${first(t)} took private lessons as an insult, then took them anyway.`, 'neutral');
         revealLog(s, t, 'ego', 1);
       } else {
-        adjust(t, 'mood', 4);
+        adjust(t, 'mood', wobble(rng, 4));
         log(s, `${subj(t, 'had', 'had')} a week of private lessons with an old jazz teacher in Archway.`, 'good');
       }
     }
@@ -432,7 +432,7 @@ function write(s: GameState, rng: Rng, option: string): void {
     newSong(s, rng, me.writing * 0.75 + chem * 0.1 + rng.int(-12, 18), me, 'solo', me.style);
     for (const m of here) {
       if (!m.isPlayer && m.hidden.ego >= 65 && m.writing >= 40) {
-        adjust(m, 'mood', -5);
+        adjust(m, 'mood', wobble(rng, -5));
         addAffinity(s, m.id, me.id, -4);
         log(s, `${first(m)} asked why nobody wanted their ideas.`, 'bad');
         revealLog(s, m, 'ego', 1);
@@ -441,7 +441,7 @@ function write(s: GameState, rng: Rng, option: string): void {
     return;
   }
 
-  for (const m of here) adjust(m, 'energy', -5);
+  for (const m of here) adjust(m, 'energy', wobble(rng, -5));
   if (rng.chance(option === 'jam' ? 0.15 : 0.2)) {
     log(s, rng.pick(['Five days of jamming the same riff. Nothing usable.', 'The tape recorder ate the only good idea.', 'Everyone had a different song in mind. Nothing finished.']), 'bad');
     return;
@@ -462,7 +462,7 @@ function write(s: GameState, rng: Rng, option: string): void {
     newSong(s, rng, base - 5 + rng.int(-10, 12), best, 'trend', hot);
     for (const m of here) {
       if (m.style !== hot && !m.isPlayer && rng.chance(0.6)) {
-        adjust(m, 'mood', -6);
+        adjust(m, 'mood', wobble(rng, -6));
         log(s, `${first(m)} called the new song "a sell-out" and played it with their eyes shut.`, 'bad');
       }
     }
@@ -470,7 +470,7 @@ function write(s: GameState, rng: Rng, option: string): void {
     newSong(s, rng, base + rng.int(-18, 25), best, 'ballad', me.style);
     for (const m of here) {
       if (!m.isPlayer && (m.style === 'metal' || m.style === 'punk')) {
-        adjust(m, 'mood', -5);
+        adjust(m, 'mood', wobble(rng, -5));
         log(s, `${first(m)} is not happy about the key change.`, 'bad');
       }
     }
@@ -499,7 +499,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
   for (const m of available(s)) {
-    adjust(m, 'energy', -8);
+    adjust(m, 'energy', wobble(rng, -8));
     grow(m, 'skill', 1, rng, 0.35);
     grow(m, 'writing', 1, rng, 0.2);
   }
@@ -511,9 +511,9 @@ function party(s: GameState, rng: Rng, option: string): void {
   const here = available(s);
   const p = { cans: [7, 4, [0, 3]], squat: [14, 12, [2, 8]], soho: [16, 18, [4, 10]], throw: [20, 20, [5, 12]] }[option] as [number, number, [number, number]];
   for (const m of here) {
-    adjust(m, 'mood', p[0]);
-    adjust(m, 'energy', -p[1]);
-    adjust(m, 'habit', (m.hidden.vice / 100) * rng.int(p[2][0], p[2][1]));
+    adjust(m, 'mood', wobble(rng, p[0]));
+    adjust(m, 'energy', wobble(rng, -p[1]));
+    adjust(m, 'habit', wobble(rng, (m.hidden.vice / 100) * rng.int(p[2][0], p[2][1])));
   }
   forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, rng.int(1, option === 'cans' ? 3 : 6)));
   const wildest = [...here].sort((a, b) => b.hidden.vice - a.hidden.vice)[0];
@@ -551,29 +551,29 @@ function rest(s: GameState, rng: Rng, option: string): void {
   for (const m of s.members) {
     switch (option) {
       case 'sleep':
-        adjust(m, 'energy', m.habit > 50 ? 20 : 35);
-        adjust(m, 'mood', 4);
-        adjust(m, 'habit', -8);
+        adjust(m, 'energy', wobble(rng, m.habit > 50 ? 20 : 35));
+        adjust(m, 'mood', wobble(rng, 4));
+        adjust(m, 'habit', wobble(rng, -8));
         break;
       case 'seaside':
-        adjust(m, 'energy', 30);
-        adjust(m, 'mood', 12);
-        adjust(m, 'habit', -6);
+        adjust(m, 'energy', wobble(rng, 30));
+        adjust(m, 'mood', wobble(rng, 12));
+        adjust(m, 'habit', wobble(rng, -6));
         break;
       case 'dry':
-        adjust(m, 'energy', 25);
-        adjust(m, 'mood', m.habit >= 40 ? -18 : -6);
+        adjust(m, 'energy', wobble(rng, 25));
+        adjust(m, 'mood', wobble(rng, m.habit >= 40 ? -18 : -6));
         if (m.habit >= 40) revealLog(s, m, 'vice', 1);
-        adjust(m, 'habit', -18);
+        adjust(m, 'habit', wobble(rng, -18));
         break;
       case 'mum':
-        adjust(m, 'energy', 45);
-        adjust(m, 'mood', -3);
-        adjust(m, 'habit', -10);
+        adjust(m, 'energy', wobble(rng, 45));
+        adjust(m, 'mood', wobble(rng, -3));
+        adjust(m, 'habit', wobble(rng, -10));
         break;
     }
     if (option === 'sleep' && m.habit >= 50) {
-      adjust(m, 'mood', -6);
+      adjust(m, 'mood', wobble(rng, -6));
       log(s, `${subj(m, 'spent', 'spent')} the quiet week climbing the walls.`, 'bad');
     }
   }
@@ -630,12 +630,12 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
   log(s, text[option], 'neutral');
   if (option === 'bar') {
     const me = player(s);
-    adjust(me, 'energy', -6);
-    adjust(me, 'habit', 2);
+    adjust(me, 'energy', wobble(rng, -6));
+    adjust(me, 'habit', wobble(rng, 2));
   }
   const current = s.members.find((m) => m.role === role && !m.isPlayer);
   if (current && (option === 'classified' || (option === 'newsagent' && rng.chance(0.3)))) {
-    adjust(current, 'mood', -8);
+    adjust(current, 'mood', wobble(rng, -8));
     addAffinity(s, current.id, 'p', -8);
     log(s, `${first(current)} saw the ad. Awkward.`, 'bad');
   }
