@@ -501,7 +501,7 @@ describe('potential and age', () => {
       const m = s.members.find((x) => x.id === g.id);
       if (!m) break;
       m.habit = 90; m.outWeeks = 0;
-      s = step(s, REST);
+      s = step({ ...s, money: 1000 }, REST); // habits cost money; keep the band solvent for the test
     }
     const after = s.members.find((m) => m.id === g.id);
     if (after) expect(after.hidden.potential).toBeLessThan(80);
@@ -929,5 +929,35 @@ describe('romance and scandal', () => {
       return n;
     };
     expect(count('wild')).toBeGreaterThan(count('clean') * 3);
+  });
+});
+
+describe('economy', () => {
+  it('fame, habits and spare cash all cost money every week', async () => {
+    const { upkeep, viceBill, splurge } = await import('../src/game/engine');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
+    for (const m of s.members) m.habit = 10;
+    const base = upkeep(s);
+    expect(upkeep({ ...s, fans: 100000 })).toBe(base + 2000);
+    expect(splurge({ ...s, money: 70000 })).toBe(1000);
+    for (const m of s.members) m.habit = 70;
+    expect(viceBill(s)).toBe(Math.round(40 * s.members.length * 0.5));
+  });
+
+  it('the Revenue takes 40% of the year\'s gain above the allowance in April', () => {
+    let s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
+    s = { ...s, week: 13, money: 15000, flags: { ...s.flags, taxBase: 0 } };
+    s.members.forEach((m) => { m.habit = 0; });
+    const after = act(s, { type: 'rest', option: 'sleep' });
+    expect(after.log.some((l) => /The tax year is over/.test(l.text))).toBe(true);
+    expect(after.money).toBeLessThan(15000 - 3000);
+  });
+
+  it('broke bands pull shifts that keep a roof over their heads', () => {
+    let s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
+    s = { ...s, money: 20 };
+    s.members.forEach((m) => { m.habit = 0; });
+    for (let i = 0; i < 20; i++) { s = { ...s, pending: null }; s = act(s, { type: 'rest', option: 'sleep' }); }
+    expect(s.over).toBeNull();
   });
 });

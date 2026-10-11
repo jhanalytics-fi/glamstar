@@ -5,13 +5,28 @@ import { resolvePending, viewPending } from '../src/game/events';
 import { missingForGig } from '../src/game/chemistry';
 import { overall } from '../src/game/characters';
 import { signOffer } from '../src/game/labels';
+import { TOUR_TIERS } from '../src/game/tour';
 import type { Action, GameState, Role } from '../src/game/types';
 
 const labelsSeen = new Set<string>();
+const checkpoints = [26, 52, 104, 208, 312, 416];
+const moneyAt: Record<number, number[]> = {};
+const fansAt: Record<number, number[]> = {};
+const brokeWeeks: number[] = [];
+const flow: Record<string, number> = {};
+const lastLogs: string[][] = [];
+const brokeSigned: number[] = [];
 const signings: number[] = [];
 const results: { won: boolean; reason: string; week: number; fans: number; charted: boolean; releases: number; events: number; tours: number; label: number | undefined; maxTier: string }[] = [];
 
 const RUNS = Number(process.env.RUNS ?? 300);
+function track(st: GameState, a: Action): GameState {
+  const before = st.money;
+  const after = act(st, a);
+  const k = a.type === 'tour' ? 'tour' : a.type;
+  flow[k] = (flow[k] ?? 0) + (after.money - before);
+  return after;
+}
 for (let seed = 1; seed <= RUNS; seed++) {
   let s: GameState = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: (['choirboy', 'artschool', 'factory', 'posh'] as const)[seed % 4], style: 'glam', seed });
   let events = 0;
@@ -24,9 +39,12 @@ for (let seed = 1; seed <= RUNS; seed++) {
       events++;
       const v = viewPending(s)!;
       const free = v.options.map((o, i) => ({ o, i })).filter((x) => !x.o.locked);
-      s = resolvePending(s, free[seed % free.length].i);
+      // Skint bands pick the cheapest way out; otherwise a mix of everything.
+      const pickI = s.money < 300 ? [...free].sort((x, y) => x.o.cost - y.o.cost)[0].i : free[(seed + events) % free.length].i;
+      s = resolvePending(s, pickI);
     }
     if (s.over) break;
+    if (checkpoints.includes(s.week)) { (moneyAt[s.week] ??= []).push(s.money); (fansAt[s.week] ??= []).push(s.fans); }
     if (!s.contract && s.offers.length) { const best = [...s.offers].sort((a, b) => b.terms.advance - a.terms.advance)[0]; s = signOffer(s, best.id); signed++; labelsSeen.add(best.label); }
     if (s.candidates.length && s.candidateRole) {
       const best = [...s.candidates].sort((a, b) => overall(b) - overall(a))[0];
@@ -44,18 +62,19 @@ for (let seed = 1; seed <= RUNS; seed++) {
     if (s.tour) {
       if (s.tour.week + 1 >= s.tour.weeks) lastTourEnd = s.week + 1;
       const worn = s.members.filter((m) => m.energy < 15).length >= 2;
-      s = act(s, { type: 'tour', option: worn ? 'abandon' : 'continue:steady' });
+      s = track(s, { type: 'tour', option: worn ? 'abandon' : 'continue:steady' });
       continue;
     }
-    const tiers = actionOptions(s, 'tour').filter((o) => !o.locked);
+    // A sensible manager books a tier the band can fill and afford.
+    const tiers = actionOptions(s, 'tour').filter((o) => { if (o.locked) return false; const t = TOUR_TIERS.find((x) => x.id === o.id); return !t || process.env.RECKLESS === '1' || (s.fans >= t.fans * 1.4 && s.money >= t.weeklyCost); });
     // Tour every few months once promoters will have you: rest up first, then go.
     const due = s.week - lastTourEnd >= 10;
     if (tiers.length && due && !roleMiss && s.members.some((m) => m.energy < 60)) {
-      s = act(s, { type: 'rest', option: 'sleep' });
+      s = track(s, { type: 'rest', option: 'sleep' });
       continue;
     }
     if (tiers.length && due && !roleMiss) {
-      s = act(s, { type: 'tour', option: tiers[tiers.length - 1].id });
+      s = track(s, { type: 'tour', option: tiers[tiers.length - 1].id });
       tours++;
       lastTourEnd = s.week + 99; // set properly when the tour ends
       maxTier = tiers[tiers.length - 1].id;
@@ -71,9 +90,10 @@ for (let seed = 1; seed <= RUNS; seed++) {
     else if (bestGig) a = { type: 'gig', option: bestGig.id };
     else a = { type: 'rehearse', option: 'regular' };
     if (canAct(s, a)) a = { type: 'rest', option: 'sleep' };
-    s = act(s, a);
+    s = track(s, a);
   }
   signings.push(signed);
+  if (!s.over!.won && /landlord/.test(s.over!.reason)) { lastLogs.push([`week ${s.week} fans ${s.fans} contract ${s.contract?.label ?? '-'} manager ${s.manager?.name ?? '-'}`, ...s.log.slice(-14).map((l) => l.text.slice(0, 130))]); brokeWeeks.push(s.week); brokeSigned.push(s.contract ? 1 : 0); }
   results.push({ won: s.over!.won, reason: s.over!.reason.split(':')[0].slice(0, 40), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events, tours, label: s.flags.labelCalling, maxTier });
 }
 
@@ -88,3 +108,10 @@ const byReason: Record<string, number> = {};
 for (const r of results) byReason[r.reason] = (byReason[r.reason] ?? 0) + 1;
 console.log(byReason);
 console.log('signings per game', avg(signings), 'labels used', [...labelsSeen].join(', '));
+
+const med = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : 0);
+console.log('median money at', Object.fromEntries(checkpoints.map((w) => [w, med(moneyAt[w] ?? [])])));
+console.log('median fans at', Object.fromEntries(checkpoints.map((w) => [w, med(fansAt[w] ?? [])])));
+console.log('broke weeks', brokeWeeks.sort((a, b) => a - b).join(','), 'signed when broke', brokeSigned.reduce((a, b) => a + b, 0));
+console.log('money flow by action (incl. that week\'s upkeep and events)', Object.fromEntries(Object.entries(flow).map(([k, v]) => [k, Math.round(v / RUNS)])));
+for (const l of lastLogs.slice(0, 9)) console.log('---\n' + l.join('\n'));

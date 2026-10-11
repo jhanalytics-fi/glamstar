@@ -1,7 +1,7 @@
 // Going on tour: seven rungs from the pubs of the South East to the stadiums of the world.
 // Cities and countries are real; venues are invented so nothing real gets trashed.
 import { Rng, clamp } from './rng';
-import { seizeTourProfit } from './labels';
+import { seizeTourProfit, tourSupport } from './labels';
 import { commission } from './managers';
 import { available, missingForGig, performance } from './chemistry';
 import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, revealLog, setVibe, verdict } from './helpers';
@@ -35,9 +35,9 @@ export const TOUR_TIERS: TourTier[] = [
   { id: 'clubs', name: 'UK club tour', region: 'uk', venue: 'club', minWeeks: 2, maxWeeks: 4, gigsPerWeek: 5, capacity: [200, 500], fee: 160, weeklyCost: 420, fans: 250, buzz: 0, need: 'release' },
   { id: 'theatres', name: 'UK theatres and universities', region: 'uk', venue: 'theatre', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [700, 2500], fee: 900, weeklyCost: 2600, fans: 900, buzz: 25, need: 'record' },
   { id: 'europe', name: 'European club tour', region: 'europe', venue: 'euroclub', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [300, 1200], fee: 450, weeklyCost: 2300, fans: 1800, buzz: 40, need: 'record' },
-  { id: 'arenas', name: 'Arena tour, UK and Europe', region: 'ukeurope', venue: 'arena', minWeeks: 4, maxWeeks: 8, gigsPerWeek: 4, capacity: [5000, 15000], fee: 9000, weeklyCost: 28000, fans: 6000, buzz: 50, need: 'national' },
-  { id: 'america', name: 'North American tour', region: 'northamerica', venue: 'usvenue', minWeeks: 6, maxWeeks: 12, gigsPerWeek: 5, capacity: [1500, 15000], fee: 6000, weeklyCost: 30000, fans: 12000, buzz: 55, need: 'world' },
-  { id: 'stadiums', name: 'World stadium tour', region: 'world', venue: 'stadium', minWeeks: 10, maxWeeks: 20, gigsPerWeek: 3, capacity: [30000, 80000], fee: 70000, weeklyCost: 180000, fans: 30000, buzz: 65, need: 'worldtop10' },
+  { id: 'arenas', name: 'Arena tour, UK and Europe', region: 'ukeurope', venue: 'arena', minWeeks: 4, maxWeeks: 8, gigsPerWeek: 4, capacity: [5000, 15000], fee: 9000, weeklyCost: 22000, fans: 6000, buzz: 50, need: 'national' },
+  { id: 'america', name: 'North American tour', region: 'northamerica', venue: 'usvenue', minWeeks: 6, maxWeeks: 12, gigsPerWeek: 5, capacity: [1500, 15000], fee: 6000, weeklyCost: 24000, fans: 12000, buzz: 55, need: 'world' },
+  { id: 'stadiums', name: 'World stadium tour', region: 'world', venue: 'stadium', minWeeks: 10, maxWeeks: 20, gigsPerWeek: 3, capacity: [30000, 80000], fee: 70000, weeklyCost: 140000, fans: 30000, buzz: 65, need: 'worldtop10' },
 ];
 
 const NEED_TEXT: Record<Need, string> = {
@@ -200,13 +200,20 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   let weekPeople = 0;
   let weekFans = 0;
   let weekMoney = 0;
+  // The show must go on: a missing player is covered by a session musician flown in for the week.
+  const gaps = missingForGig(s);
+  if (gaps.length) {
+    const dep = Math.round(Math.max(150, t.weeklyCost * 0.04) * gaps.length);
+    weekMoney -= dep;
+    beat(s, undefined, `Without ${gaps.join(' and ')}, the tour manager flies in a session player who learns the set on the bus. £${dep.toLocaleString('en-GB')} for the week.`, 'neutral');
+  }
   let perfSum = 0;
   let played = 0;
 
   stops.forEach((stop, i) => {
     const day = DAYS[Math.min(6, Math.round((i * 6) / Math.max(1, stops.length - 1)))];
-    if (missingForGig(s).length) {
-      beat(s, day, `${stop.city}: cancelled. You can't play without ${missingForGig(s).join(' and ')}.`, 'bad');
+    if (!available(s).length) {
+      beat(s, day, `${stop.city}: cancelled. Nobody is fit to play.`, 'bad');
       weekMoney -= Math.round(t.fee * 0.3);
       return;
     }
@@ -215,7 +222,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
       const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
       if (rng.chance(p * 0.5 * (tour.policy === 'wild' ? 1.4 : tour.policy === 'clean' ? 0.5 : 1))) wasted.add(m.id);
     }
-    const perf = performance(s, wasted);
+    const perf = Math.round(performance(s, wasted) * (gaps.length ? 0.9 : 1));
     const demand = s.fans / t.fans;
     let fill = clamp(0.18 + 0.35 * Math.min(demand, 2.2) + s.buzz / 300, 0.06, 1);
     if (abroad) fill *= 0.7 + 0.3 * familiar;
@@ -224,7 +231,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     const pay = Math.round(t.fee * Math.min(1, crowd / stop.capacity) + crowd * 0.4);
     const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
     // New towns mean new people, until you have played them all to death.
-    const novelty = clamp(1 - s.fans / (t.fans * 25), 0.1, 1);
+    const novelty = clamp(1 - s.fans / (t.fans * 10), 0.1, 1);
     const gain = Math.round(((crowd * (perf - 40)) / 90) * 0.35 * (perf > 40 ? fashion * novelty : 1));
     const fanDelta = Math.max(gain, -Math.round(crowd * 0.03));
     weekPeople += crowd;
@@ -261,6 +268,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   const cost = t.weeklyCost;
   s.money += weekMoney - cost;
   commission(s, weekMoney - cost);
+  const support = tourSupport(s, weekMoney - cost);
+  if (support) log(s, `Tour support from the label: £${support.toLocaleString('en-GB')} towards this week's losses. On your tab, naturally.`, 'neutral');
   const seized = seizeTourProfit(s, weekMoney - cost);
   if (seized) log(s, `The label's man was at the box office. £${seized.toLocaleString('en-GB')} of this week's profit went "against the advance". Clause 14(c). Nobody read clause 14(c).`, 'bad');
   s.fans = Math.max(0, s.fans + weekFans);
@@ -300,7 +309,7 @@ export function endTour(s: GameState, abandoned: boolean): void {
   const net = s.money - tour.startMoney;
   if (abandoned) {
     const remaining = (tour.weeks - tour.week) * tour.gigsPerWeek;
-    const penalty = Math.round(remaining * t.fee * 0.3);
+    const penalty = Math.round(remaining * t.fee * 0.15);
     s.money -= penalty;
     addBuzz(s, -8);
     s.fans = Math.round(s.fans * 0.97);

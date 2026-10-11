@@ -261,7 +261,11 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
   const perf = performance(s, wasted);
-  const crowd = clamp(g.crowd(s, rng), 6, g.capacity);
+  // Play the same London rooms every week and people stop coming: they saw you last Friday.
+  const overexposed = 1 / (1 + (s.flags.homeHeat ?? 0) * 0.15);
+  const crowd = clamp(Math.round(g.crowd(s, rng) * overexposed), 6, g.capacity);
+  s.flags.homeHeat = (s.flags.homeHeat ?? 0) + 1;
+  if (overexposed < 0.6 && rng.chance(0.3)) log(s, 'Half the regulars stayed home. "We saw you last week," says the barman. "And the week before."', 'neutral');
   const wastedMembers = available(s).filter((m) => wasted.has(m.id));
   gigCommentary(s, rng, { venue: g.venue, crowd, capacity: g.capacity, perf, wasted: wastedMembers });
   for (const m of wastedMembers) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);

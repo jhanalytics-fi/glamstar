@@ -225,6 +225,18 @@ export function labelSales(s: GameState, r: Release, units: number): { units: nu
   return { units: promoted, cash: 0 };
 }
 
+/** Tour support: a label covers half of a losing tour week, and puts it on your tab. Returns what it paid. */
+export function tourSupport(s: GameState, loss: number): number {
+  const c = s.contract;
+  if (!c || loss >= 0) return 0;
+  const l = labelById(c.label);
+  if (l.tier === 'shark') return 0;
+  const pay = Math.round(-loss * (l.tier === 'major' ? 0.5 : 0.3));
+  c.unrecouped += pay;
+  s.money += pay;
+  return pay;
+}
+
 /** Tour profits seized under a tour-recoupment clause. Returns what the label took. */
 export function seizeTourProfit(s: GameState, profit: number): number {
   const c = s.contract;

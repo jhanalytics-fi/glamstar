@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.9)
+## Prototype status (v0.10)
 
 Playable in the browser. Implemented:
 
@@ -196,7 +196,7 @@ Playable in the browser. Implemented:
 - Habits, A&E, the clinic, quitting, poaching, press reviews, day jobs when skint, random events.
 - The game runs to the end of 1991; label interest is a milestone. Going below -£250 ends the game.
 
-Balance is checked with `npm run sim` (300 seeded runs with a simple bot). Current bot: about 90% wins, around week 56. Expect harder tuning once labels and touring add their own pressure.
+Balance is checked with `npm run sim` (seeded runs with a simple bot; `RUNS=40` for a quick check, `RECKLESS=1` for a bot that books any tour it can). See Economy below for the current numbers.
 
 ## Chemistry screen
 
@@ -257,3 +257,11 @@ Offers arrive by letter (one at a time, at most three open, six weeks to answer)
 ## Managers (v0.9)
 
 A manager (`src/game/managers.ts`) has a hidden honesty, a clout (connections) and a cut (15-25%). Clout raises gig fees (up to +60%), label heat, offer frequency and haggling odds. The cut comes off gig pay, tour profit, label advances, royalty cheques and audit recoveries. A crook rounds their share up by a quarter, sometimes bills "management expenses", and an unread contract hides clause 14(b) (half your songwriting, forever) which can be bought out, fought in court or lived with (cut rises). Sacking costs a pay-off (more if the contract was never read). Managers find you from 80 fans and 15 buzz.
+
+## Economy (v0.10)
+
+Weekly upkeep = £10 + £6 per member + rent rises + **fame** (£0.02 per fan: wages, crew, flats) + **vice** (£0.50 per habit point over 30 per member, scaled up by fame) + **splurge** (2% of everything over £20,000: rock stars spend it). Every April the **Revenue** takes 40% of the year's gain above a £5,000 allowance (capped at what is in the bank; the accountant finds a loophole for the rest). Skint bands (under £50) pull shifts that cover basic upkeep, so being poor is slow, not fatal; debts are what kill you. The overdraft grows with fame: game over below -£250 minus £0.10 per fan.
+
+Gigs: playing London every week wears it out (home heat: each gig +1, x0.85 a week; crowd divided by 1 + 0.15 x heat). On tour a missing player is covered by a session musician (4% of the weekly cost, 10% worse shows) instead of cancelling; cancelling a tour costs 15% of the remaining fees. Upper tour tiers cost less a week than before (arenas £22k, America £24k, stadiums £140k), and a label covers part of a losing tour week (majors 50%, indies 30%, sharks nothing) as recoupable tour support.
+
+Sim (40 runs, careful bot): nobody goes bankrupt; median money about £1k at six months, £8.5k after a year, £50k after two, £100-200k from year four on (it used to reach £1.25m). Median fans 1.2k after a year, 40k after four, 165k after eight. Progression is still too generous: two thirds of bots reach stadium tours. That is the next balance pass (fan growth and tour gates), not an economy problem.

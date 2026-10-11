@@ -20,6 +20,8 @@ export const LABEL_FANS = 1000;
 export const LABEL_BUZZ = 55;
 export const MAX_MEMBERS = 6;
 export const BROKE_LIMIT = -250;
+/** How far into the red the bank lets you go. A famous band gets a bigger overdraft. */
+export const overdraft = (s: GameState) => BROKE_LIMIT - Math.round(s.fans * 0.1);
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -204,6 +206,39 @@ export function fire(state: GameState, memberId: string): GameState {
 
 // ---------------------------------------------------------------- week end
 
+/** Weekly cost of keeping the band alive. Fame brings wages, crew, flats and hangers-on. */
+export function upkeep(s: GameState): number {
+  return 10 + s.members.length * 6 + (s.flags.rentUp ?? 0) + Math.round(s.fans * 0.02) + viceBill(s) + splurge(s);
+}
+
+/** Habits cost money, and famous habits cost more. */
+export function viceBill(s: GameState): number {
+  return Math.round(s.members.reduce((a, m) => a + Math.max(0, m.habit - 30), 0) * 0.5 * (1 + s.fans / 20000));
+}
+
+/** Money burns a hole: rock stars spend 2% of everything over £20,000 every week. */
+export function splurge(s: GameState): number {
+  return Math.max(0, Math.round((s.money - 20000) * 0.02));
+}
+
+/** Tax: every April the Revenue takes 40% of what the band made over the year, above a £5,000 allowance. */
+export const TAX_RATE = 0.4;
+export const TAX_ALLOWANCE = 5000;
+function taxYear(s: GameState): void {
+  // The tax year ends in the first week of April: week 13 of each year.
+  if (s.week % 52 !== 13) return;
+  const base = s.flags.taxBase ?? 0;
+  const gain = s.money - base - TAX_ALLOWANCE;
+  if (gain > 0) {
+    const bill = Math.round(gain * TAX_RATE);
+    const paid = Math.min(bill, Math.max(0, s.money));
+    s.money -= paid;
+    log(s, `The tax year is over. The Revenue wants £${bill.toLocaleString('en-GB')}, 40% of what you made above the allowance.${paid < bill ? ' Your accountant found a loophole for the rest. Do not ask.' : ''}`, 'bad');
+    if (bill >= 10000 && s.flags.taxman === undefined) { s.flags.taxman = s.week; milestone(s, 'career', `First big tax bill: £${bill.toLocaleString('en-GB')}.`); }
+  }
+  s.flags.taxBase = s.money;
+}
+
 /** Weeks without a gig, tour or release before casual fans start drifting away. */
 export const FAN_FADE_AFTER = 6;
 
@@ -223,19 +258,26 @@ function fadeFans(s: GameState): void {
 }
 
 function endOfWeek(s: GameState, rng: Rng): void {
-  const cost = 10 + s.members.length * 6 + (s.flags.rentUp ?? 0);
+  const lifestyle = upkeep(s) - (10 + s.members.length * 6 + (s.flags.rentUp ?? 0));
+  const cost = upkeep(s);
   s.money -= cost;
   if (s.money < 0) {
     for (const m of s.members) adjust(m, 'mood', -4);
     log(s, `Rent and food cost £${cost}. You are £${-s.money} in the red.`, 'bad');
+  } else if (lifestyle >= 100 && s.week % 13 === 0) {
+    const bits = [splurge(s) >= 200 && 'a Rolls-Royce nobody can drive', viceBill(s) >= 100 && 'a dealer on a retainer', 'wages, crew and a flat each'].filter(Boolean);
+    log(s, `Fame is expensive: ${bits.join(', ')}. £${cost.toLocaleString('en-GB')} a week now.`, 'neutral');
   }
+  taxYear(s);
   s.buzz = clamp(s.buzz - Math.ceil(s.buzz * 0.06), 0, 100);
   fadeFans(s);
+  if (s.flags.homeHeat) s.flags.homeHeat = Math.round(s.flags.homeHeat * 0.85 * 100) / 100;
   labelWeek(s, rng);
   managerWeek(s, rng);
   if (s.money < 50) {
     // Skint: everyone picks up shifts somewhere.
-    s.money += 8 * s.members.length;
+    // Enough to keep a roof overhead, not enough to get anywhere.
+    s.money += 10 + s.members.length * 6;
     for (const m of s.members) {
       adjust(m, 'energy', -6);
       adjust(m, 'mood', -2);
@@ -321,7 +363,7 @@ function checkOver(s: GameState): void {
     milestone(s, 'career', 'First record in the National Top 40.');
     log(s, `Milestone: a record in the National Top 40 with no label behind it. Every A&R man in London wants to buy you lunch.`, 'good');
   }
-  if (s.money < BROKE_LIMIT && !s.tour) {
+  if (s.money < overdraft(s) && !s.tour) {
     s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
   } else if (s.members.filter((m) => !m.isPlayer).length === 0 && s.candidates.length === 0 && s.flags.aloneSince !== undefined && s.week - s.flags.aloneSince > 12) {
     s.over = { won: false, reason: 'Three months with no band. You sell your stage clothes at Camden market. It is over.' };
