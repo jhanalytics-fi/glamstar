@@ -187,6 +187,8 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
     const ceiling = 1 - r.fans / 4000;
     r.fans = Math.max(0, Math.round(r.fans * (1 + (r.momentum > 0 ? r.momentum * ceiling : r.momentum) + (t - 0.65) * 0.03) + rng.int(-3, 3)));
     r.buzz = clamp(Math.round(r.buzz * 0.9 + rng.int(0, 6)), 0, 100);
+    // A storming gig, a review, a fight on the news: now and then a band is the talk of the town.
+    if (rng.chance(0.06)) r.buzz = clamp(r.buzz + rng.int(15, 35), 0, 100);
   }
   const charted = new Set(w.charts.london.filter((e) => e.pos <= 20).map((e) => e.id));
   const signed = w.rivals.filter((r) => r.fans >= 1500 && rng.chance(0.08));
@@ -228,7 +230,7 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
 
   // Charts
   const playerScore = player.fans * (1 + player.buzz / 100);
-  const london = w.rivals.map((r) => ({ id: r.id, artist: r.name, title: null, origin: null, score: r.fans * (1 + r.buzz / 100), isPlayer: false }));
+  const london = w.rivals.map((r) => ({ id: r.id, artist: r.name, title: null, origin: null, score: r.fans * (1 + r.buzz / 100) * (0.9 + rng.next() * 0.2), isPlayer: false }));
   london.push({ id: 'player', artist: player.bandName, title: null, origin: null, score: playerScore, isPlayer: true });
   setChart(w, 'london', london);
 
@@ -290,6 +292,19 @@ function setChart(w: World, id: ChartId, rows: { id: string; artist: string; tit
       const before = prev.get(r.id + (r.title ?? ''));
       return { id: r.id, artist: r.artist, title: r.title, origin: r.origin, pos: i + 1, last: before?.pos ?? null, weeks: (before?.weeks ?? 0) + 1, isPlayer: r.isPlayer };
     });
+}
+
+/**
+ * The world was warmed up for a few months before the game starts. Give every chart entry a believable
+ * history: some have been around for months, some are new this week.
+ */
+export function ageCharts(w: World, rng: Rng): void {
+  for (const id of Object.keys(w.charts) as ChartId[]) {
+    for (const e of w.charts[id]) {
+      e.weeks = Math.max(1, e.weeks - rng.int(0, e.weeks - 1));
+      if (e.weeks === 1) e.last = null;
+    }
+  }
 }
 
 export function playerPosition(w: World, id: ChartId): number | null {

@@ -961,3 +961,14 @@ describe('economy', () => {
     expect(s.over).toBeNull();
   });
 });
+
+describe('charts at the start', () => {
+  it('entries have different histories, and the London chart moves from week to week', () => {
+    const s0 = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 14 });
+    for (const id of ['london', 'uk', 'albums'] as const) expect(new Set(s0.world.charts[id].map((e) => e.weeks)).size).toBeGreaterThan(3);
+    let s = s0;
+    for (let i = 0; i < 3; i++) s = act({ ...s, pending: null }, { type: 'rest', option: 'sleep' });
+    const moved = s.world.charts.london.filter((e) => e.last !== null && e.last !== e.pos).length;
+    expect(moved).toBeGreaterThan(5);
+  });
+});

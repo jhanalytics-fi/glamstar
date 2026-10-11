@@ -2,7 +2,7 @@ import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
-import { advanceWorld, createWorld, heatCurve } from './world';
+import { advanceWorld, ageCharts, createWorld, heatCurve } from './world';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
@@ -71,6 +71,7 @@ export function newGame(input: NewGameInput): GameState {
   s.world = createWorld(rng, s.bandName);
   // Let the charts run for a few months before you arrive, so they have history.
   for (let i = 0; i < 20; i++) advanceWorld(s.world, rng, 0, { bandName: s.bandName, fans: 0, buzz: 0 });
+  ageCharts(s.world, rng);
   forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(5, 35)));
   openScene(s, 'start', `London, ${dateLabel(0)}`, 'quiet');
   log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
