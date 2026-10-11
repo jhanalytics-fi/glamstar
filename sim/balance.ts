@@ -14,6 +14,8 @@ const moneyAt: Record<number, number[]> = {};
 const fansAt: Record<number, number[]> = {};
 const brokeWeeks: number[] = [];
 const flow: Record<string, number> = {};
+const fanFlow: Record<string, number> = {};
+const peaks = { uk: 0, uk10: 0, europe: 0, world: 0, world10: 0 };
 const lastLogs: string[][] = [];
 const brokeSigned: number[] = [];
 const signings: number[] = [];
@@ -22,9 +24,11 @@ const results: { won: boolean; reason: string; week: number; fans: number; chart
 const RUNS = Number(process.env.RUNS ?? 300);
 function track(st: GameState, a: Action): GameState {
   const before = st.money;
+  const fb = st.fans;
   const after = act(st, a);
   const k = a.type === 'tour' ? 'tour' : a.type;
   flow[k] = (flow[k] ?? 0) + (after.money - before);
+  fanFlow[k] = (fanFlow[k] ?? 0) + (after.fans - fb);
   return after;
 }
 for (let seed = 1; seed <= RUNS; seed++) {
@@ -93,6 +97,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
     s = track(s, a);
   }
   signings.push(signed);
+  const pk = s.world.peaks; if (pk.uk !== undefined) peaks.uk++; if ((pk.uk ?? 99) <= 10) peaks.uk10++; if (pk.europe !== undefined) peaks.europe++; if (pk.world !== undefined) peaks.world++; if ((pk.world ?? 99) <= 10) peaks.world10++;
   if (!s.over!.won && /landlord/.test(s.over!.reason)) { lastLogs.push([`week ${s.week} fans ${s.fans} contract ${s.contract?.label ?? '-'} manager ${s.manager?.name ?? '-'}`, ...s.log.slice(-14).map((l) => l.text.slice(0, 130))]); brokeWeeks.push(s.week); brokeSigned.push(s.contract ? 1 : 0); }
   results.push({ won: s.over!.won, reason: s.over!.reason.split(':')[0].slice(0, 40), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events, tours, label: s.flags.labelCalling, maxTier });
 }
@@ -115,3 +120,5 @@ console.log('median fans at', Object.fromEntries(checkpoints.map((w) => [w, med(
 console.log('broke weeks', brokeWeeks.sort((a, b) => a - b).join(','), 'signed when broke', brokeSigned.reduce((a, b) => a + b, 0));
 console.log('money flow by action (incl. that week\'s upkeep and events)', Object.fromEntries(Object.entries(flow).map(([k, v]) => [k, Math.round(v / RUNS)])));
 for (const l of lastLogs.slice(0, 9)) console.log('---\n' + l.join('\n'));
+console.log('chart peaks reached (games)', peaks, 'of', RUNS);
+console.log('fan flow by action (incl. that week\'s record sales and events)', Object.fromEntries(Object.entries(fanFlow).map(([k, v]) => [k, Math.round(v / RUNS)])));

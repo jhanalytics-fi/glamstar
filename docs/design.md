@@ -20,9 +20,9 @@ Tone: dark comedy with real stakes. Sex, drugs and rock'n'roll are part of the s
 | UK club tour | 2-4 | 5 | 200-500 | 250 fans, something released |
 | UK theatres and universities | 3-6 | 5 | 700-2,500 | 900 fans, buzz 25, a record in the shops |
 | European club tour | 3-6 | 5 | 300-1,200 | 1,800 fans, buzz 40, a record |
-| Arena tour, UK and Europe | 4-8 | 4 | 5,000-15,000 | 6,000 fans, buzz 50, a National Top 40 hit |
-| North American tour | 6-12 | 5 | 1,500-15,000 | 12,000 fans, buzz 55, a World Top 40 record |
-| World stadium tour | 10-20 | 3 | 30,000-80,000 | 30,000 fans, buzz 65, a World Top 10 hit |
+| Arena tour, UK and Europe | 4-8 | 4 | 5,000-15,000 | 12,000 fans, buzz 50, a National Top 40 hit |
+| North American tour | 6-12 | 5 | 1,500-15,000 | 25,000 fans, buzz 55, a World Top 40 record |
+| World stadium tour | 10-20 | 3 | 30,000-80,000 | 60,000 fans, buzz 65, a World Top 10 hit |
 
 The player picks the tier, the length and how the band behaves on the road (party every night, work hard and play hard, or a clean tour), and can change the behaviour each week. While on tour nothing else happens: each week plays its dates (real cities and countries, invented venues) with a day-by-day report, road costs come out, and road-only situations turn up more often (breakdowns, customs searches, trashed hotels, promoters doing a runner, food poisoning, homesickness, extra dates, riots). The tour can be abandoned at any time, with cancellation fees, lost buzz and fans, and promoters who remember. Bands come home tight, famous and often wrecked.
 
@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.10)
+## Prototype status (v0.11)
 
 Playable in the browser. Implemented:
 
@@ -264,4 +264,15 @@ Weekly upkeep = £10 + £6 per member + rent rises + **fame** (£0.02 per fan: w
 
 Gigs: playing London every week wears it out (home heat: each gig +1, x0.85 a week; crowd divided by 1 + 0.15 x heat). On tour a missing player is covered by a session musician (4% of the weekly cost, 10% worse shows) instead of cancelling; cancelling a tour costs 15% of the remaining fees. Upper tour tiers cost less a week than before (arenas £22k, America £24k, stadiums £140k), and a label covers part of a losing tour week (majors 50%, indies 30%, sharks nothing) as recoupable tour support.
 
-Sim (40 runs, careful bot): nobody goes bankrupt; median money about £1k at six months, £8.5k after a year, £50k after two, £100-200k from year four on (it used to reach £1.25m). Median fans 1.2k after a year, 40k after four, 165k after eight. Progression is still too generous: two thirds of bots reach stadium tours. That is the next balance pass (fan growth and tour gates), not an economy problem.
+Sim (40 runs, careful bot): nobody goes bankrupt; median money about £1k at six months, £8.5k after a year, £50k after two, £100-200k from year four on (it used to reach £1.25m). (These were the v0.10.0 numbers; see Progression below for the current ones.)
+
+## Progression (v0.11)
+
+Design target: a solid UK career is achievable, global stardom is rare and hard but possible.
+
+- **Fan churn:** half a per cent of casual fans drift away every week, whatever you do. Fan totals now settle where gains match losses instead of piling up for ten years.
+- **Tour conversion:** a tour crowd converts to new fans at 0.2 per attendee-point (was 0.35), times a tier factor: pubs and clubs 1, theatres and Europe 0.8, arenas and America 0.5, stadiums 0.3. Most of a stadium already owns the album.
+- **Tour gates:** arenas 12,000 fans, North America 25,000, stadiums 60,000 (plus the chart needs).
+- **Charts in real units:** your singles score sales / 650 and albums sales / 450 against the stars, so a UK number one needs about 60,000 copies a week. Bigger markets need bigger hits: star scores are x1.6 on the Euro chart and x3 on the World chart. Your sales count abroad only as far as they travel: **reach** = label distribution (major 1, indie 0.35, shark 0.25, none 0.1) blended with touring the region (Europe, North America, the world).
+
+Sim (40 runs, careful bot): median fans 900 after a year, 6.7k after two, 11.5k after four, 16k at the end (p90 53k). Every bot charts nationally (37 of 40 reach the UK Top 10), 33 reach the Euro chart, 9 the World chart, 2 a World Top 10 hit. Highest tours: Europe 24, arenas 7, North America 9, stadiums 0. Nobody goes bankrupt; median money £7k after a year, £43k after two, £60-80k later.

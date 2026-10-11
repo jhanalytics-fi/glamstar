@@ -7,7 +7,7 @@ import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from 
 import { rollEvents } from './events';
 import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
-import { labelWeek } from './labels';
+import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
@@ -207,6 +207,20 @@ export function fire(state: GameState, memberId: string): GameState {
 
 // ---------------------------------------------------------------- week end
 
+/**
+ * How far the band's records travel. A major's international arm carries them; an indie barely gets past
+ * Dover; touring a region builds an audience that buys there.
+ */
+export function reach(s: GameState): { europe: number; world: number } {
+  const tier = s.contract ? labelById(s.contract.label).tier : null;
+  const dist = tier === 'major' ? 1 : tier === 'indie' ? 0.35 : tier === 'shark' ? 0.25 : 0.1;
+  const toured = (r: string) => Math.min(1, (s.flags[`toured_${r}`] ?? 0) / 2);
+  return {
+    europe: Math.min(1, dist * 0.6 + toured('europe') * 0.25 + toured('ukeurope') * 0.25),
+    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2),
+  };
+}
+
 /** Weekly cost of keeping the band alive. Fame brings wages, crew, flats and hangers-on. */
 export function upkeep(s: GameState): number {
   return 10 + s.members.length * 6 + (s.flags.rentUp ?? 0) + Math.round(s.fans * 0.02) + viceBill(s) + splurge(s);
@@ -245,6 +259,9 @@ export const FAN_FADE_AFTER = 6;
 
 /** Out of sight, out of mind: an idle band loses casual fans, never the core ones. */
 function fadeFans(s: GameState): void {
+  // People grow up, move on, get mortgages: half a per cent of casual fans drift off every week regardless.
+  const casualNow = s.fans - (s.flags.coreFans ?? 0);
+  if (casualNow > 200) s.fans -= Math.round(casualNow * 0.005);
   if (s.tour) return;
   const lastRelease = s.releases.reduce((a, r) => Math.max(a, r.week), -99);
   const lastSeen = Math.max(s.lastGigWeek ?? -99, lastRelease, s.flags.lastTourWeek ?? -99, 0);
@@ -326,7 +343,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   rollEvents(s, rng);
 
-  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records })) {
+  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records, reach: reach(s) })) {
     log(s, n.text, n.tone);
     if (n.milestone) milestone(s, 'chart', n.text);
   }

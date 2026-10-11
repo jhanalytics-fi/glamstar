@@ -99,6 +99,9 @@ const ORIGIN_WEIGHT: Record<Exclude<ChartId, 'london' | 'albums'>, (o: Origin) =
   world: (o) => (o === 'US' ? 1 : o === 'UK' ? 0.7 : 0.3),
 };
 
+/** The bigger the market, the more records a hit has to sell. */
+const MARKET = { uk: 1, europe: 1.6, world: 3 } as const;
+
 const PLAYABLE: Genre[] = ['metal', 'hardrock', 'glam', 'punk', 'newwave'];
 const STAR_GENRES: StarGenre[] = ['pop', 'pop', 'pop', 'newwave', 'newwave', 'hardrock', 'metal', 'glam', 'punk'];
 const EURO: Origin[] = ['SWE', 'GER', 'ITA', 'NED', 'FIN', 'FRA'];
@@ -164,6 +167,8 @@ export interface PlayerChartInput {
   buzz: number;
   /** Your records in the shops and this week's sales. */
   records?: { id: string; title: string; units: number; kind?: string }[];
+  /** How far your records travel beyond the UK (0-1): label distribution and touring abroad. */
+  reach?: { europe: number; world: number };
 }
 
 export interface ChartNews {
@@ -240,7 +245,7 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
     .filter((x) => x.h > 0.04)
     .map(({ s, h }) => ({ id: `${s.id}-lp`, artist: s.name, title: s.album, origin: s.origin, score: s.fame * h * trend(s.genre, week) * ORIGIN_WEIGHT.uk(s.origin) * (0.94 + rng.next() * 0.12), isPlayer: false }));
   for (const r of (player.records ?? []).filter((x) => x.kind === 'album')) {
-    albumRows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK' as Origin, score: (r.units / 9) * (0.92 + rng.next() * 0.16), isPlayer: true });
+    albumRows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK' as Origin, score: (r.units / 450) * (0.92 + rng.next() * 0.16), isPlayer: true });
   }
   setChart(w, 'albums', albumRows);
 
@@ -252,11 +257,13 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
         artist: s.name,
         title: s.single,
         origin: s.origin,
-        score: s.fame * s.heat * trend(s.genre, week) * ORIGIN_WEIGHT[c](s.origin) * (0.92 + rng.next() * 0.16),
+        score: s.fame * s.heat * trend(s.genre, week) * ORIGIN_WEIGHT[c](s.origin) * MARKET[c] * (0.92 + rng.next() * 0.16),
         isPlayer: false,
       }));
     for (const r of (player.records ?? []).filter((x) => x.kind !== 'album')) {
-      rows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK', score: (r.units / 27) * ORIGIN_WEIGHT[c]('UK') * (0.92 + rng.next() * 0.16), isPlayer: true });
+      // UK sales count in full at home; abroad only as far as your label and your touring carry them.
+      const reach = c === 'uk' ? 1 : (player.reach?.[c] ?? 0.1);
+      rows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK', score: (r.units / 650) * ORIGIN_WEIGHT[c]('UK') * reach * (0.92 + rng.next() * 0.16), isPlayer: true });
     }
     setChart(w, c, rows);
   }

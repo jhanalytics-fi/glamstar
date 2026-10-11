@@ -35,9 +35,9 @@ export const TOUR_TIERS: TourTier[] = [
   { id: 'clubs', name: 'UK club tour', region: 'uk', venue: 'club', minWeeks: 2, maxWeeks: 4, gigsPerWeek: 5, capacity: [200, 500], fee: 160, weeklyCost: 420, fans: 250, buzz: 0, need: 'release' },
   { id: 'theatres', name: 'UK theatres and universities', region: 'uk', venue: 'theatre', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [700, 2500], fee: 900, weeklyCost: 2600, fans: 900, buzz: 25, need: 'record' },
   { id: 'europe', name: 'European club tour', region: 'europe', venue: 'euroclub', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [300, 1200], fee: 450, weeklyCost: 2300, fans: 1800, buzz: 40, need: 'record' },
-  { id: 'arenas', name: 'Arena tour, UK and Europe', region: 'ukeurope', venue: 'arena', minWeeks: 4, maxWeeks: 8, gigsPerWeek: 4, capacity: [5000, 15000], fee: 9000, weeklyCost: 22000, fans: 6000, buzz: 50, need: 'national' },
-  { id: 'america', name: 'North American tour', region: 'northamerica', venue: 'usvenue', minWeeks: 6, maxWeeks: 12, gigsPerWeek: 5, capacity: [1500, 15000], fee: 6000, weeklyCost: 24000, fans: 12000, buzz: 55, need: 'world' },
-  { id: 'stadiums', name: 'World stadium tour', region: 'world', venue: 'stadium', minWeeks: 10, maxWeeks: 20, gigsPerWeek: 3, capacity: [30000, 80000], fee: 70000, weeklyCost: 140000, fans: 30000, buzz: 65, need: 'worldtop10' },
+  { id: 'arenas', name: 'Arena tour, UK and Europe', region: 'ukeurope', venue: 'arena', minWeeks: 4, maxWeeks: 8, gigsPerWeek: 4, capacity: [5000, 15000], fee: 9000, weeklyCost: 22000, fans: 12000, buzz: 50, need: 'national' },
+  { id: 'america', name: 'North American tour', region: 'northamerica', venue: 'usvenue', minWeeks: 6, maxWeeks: 12, gigsPerWeek: 5, capacity: [1500, 15000], fee: 6000, weeklyCost: 24000, fans: 25000, buzz: 55, need: 'world' },
+  { id: 'stadiums', name: 'World stadium tour', region: 'world', venue: 'stadium', minWeeks: 10, maxWeeks: 20, gigsPerWeek: 3, capacity: [30000, 80000], fee: 70000, weeklyCost: 140000, fans: 60000, buzz: 65, need: 'worldtop10' },
 ];
 
 const NEED_TEXT: Record<Need, string> = {
@@ -181,6 +181,9 @@ export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number,
   playTourWeek(s, rng);
 }
 
+/** Share of a tour crowd that can still be won over, by tier. */
+const CONVERSION: Record<string, number> = { pubs: 1, clubs: 1, theatres: 0.8, europe: 0.8, arenas: 0.5, america: 0.5, stadiums: 0.3 };
+
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 /** One week on the road: travel, the gigs, the damage. */
@@ -232,7 +235,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
     // New towns mean new people, until you have played them all to death.
     const novelty = clamp(1 - s.fans / (t.fans * 10), 0.1, 1);
-    const gain = Math.round(((crowd * (perf - 40)) / 90) * 0.35 * (perf > 40 ? fashion * novelty : 1));
+    // In a club most of the room is new to you; in a stadium most of them already own the album.
+    const gain = Math.round(((crowd * (perf - 40)) / 90) * 0.2 * CONVERSION[t.id] * (perf > 40 ? fashion * novelty : 1));
     const fanDelta = Math.max(gain, -Math.round(crowd * 0.03));
     weekPeople += crowd;
     weekFans += fanDelta;

@@ -222,7 +222,7 @@ describe('records', () => {
   });
 
   it('a well-loved single can enter the National Top 40, a milestone that does not end the game', () => {
-    let s = { ...withSongs(4, 80), fans: 1200, buzz: 50 };
+    let s = { ...withSongs(4, 80), fans: 30000, buzz: 60 };
     s = settle(act(s, A('release', 'single')));
     for (let i = 0; i < 4 && !s.over; i++) s = step(s, REST);
     expect(s.world.peaks.uk).toBeDefined();
@@ -394,7 +394,7 @@ describe('charts', () => {
   });
 
   it('a selling album enters the album chart, not the singles chart', () => {
-    let s = { ...newGame(input), money: 5000, fans: 3000, buzz: 60 };
+    let s = { ...newGame(input), money: 5000, fans: 20000, buzz: 60 };
     s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `Album Song ${i}`, quality: 75, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
     s = settle(act(s, A('release', 'album')));
     for (let i = 0; i < 3; i++) s = step(s, REST);
