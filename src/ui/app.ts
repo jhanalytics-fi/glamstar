@@ -7,7 +7,8 @@ import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
-import { LAWYER_FEE, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
+import { sackCost, sackManager, managerWord } from '../game/managers';
+import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
 import type { TourPolicy } from '../game/types';
 import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
@@ -43,6 +44,7 @@ let playedScene: number | null = null;
 let collapsedScene: number | null = null;
 let armedFire: string | null = null;
 let armedBuyout = false;
+let armedSack = false;
 /** The outcome of the last thing done in the Label tab. */
 let labelNote = '';
 let armedAbandon = false;
@@ -109,6 +111,7 @@ function onClick(e: Event, root: HTMLElement): void {
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
   if (what !== 'buyOut') armedBuyout = false;
+  if (what !== 'sackManager') armedSack = false;
   if (what === 'tab') labelNote = '';
   if (what !== 'abandon') armedAbandon = false;
   try {
@@ -162,6 +165,11 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'offerHaggle': state = haggle(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerRead': state = readSmallPrint(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerDecline': state = declineOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'audit': state = audit(state!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'sackManager':
+        if (armedSack) { state = sackManager(state!); labelNote = state.log.at(-1)?.text ?? ''; armedSack = false; }
+        else armedSack = true;
+        break;
       case 'buyOut':
         if (armedBuyout) { state = buyOut(state!); labelNote = state.log.at(-1)?.text ?? ''; armedBuyout = false; }
         else armedBuyout = true;
@@ -407,7 +415,7 @@ function bandPulse(s: GameState): string {
 }
 
 type PanelTab = 'band' | 'label' | 'charts' | 'records' | 'history';
-const PANEL_LABEL: Record<PanelTab, string> = { band: 'The band', label: 'Label', charts: 'Charts', records: 'Songs & records', history: 'History' };
+const PANEL_LABEL: Record<PanelTab, string> = { band: 'The band', label: 'Business', charts: 'Charts', records: 'Songs & records', history: 'History' };
 
 function panelBody(s: GameState): string {
   switch (panelTab) {
@@ -490,7 +498,31 @@ function termsList(t: DealTerms, read: boolean): string {
 }
 
 /** Record deals: offers on the table, or the contract you are stuck with. */
+function managerBlock(s: GameState): string {
+  const m = s.manager;
+  if (!m) return `<h3 class="sub">Manager</h3><p class="hint">No manager. You book your own gigs and haggle with labels yourselves. Managers find you once you have a following.</p>`;
+  const cost = sackCost(s);
+  return `<h3 class="sub">Manager</h3>
+    <article class="deal-card">
+      <h3>${esc(m.name)}</h3>
+      <p class="hint">${esc(managerWord(m))}</p>
+      <dl class="deal">
+        <div><dt>Commission</dt><dd>${Math.round(m.cut * 100)}% of everything</dd></div>
+        <div><dt>Taken so far</dt><dd>${money(m.taken)}</dd></div>
+        <div><dt>Contract</dt><dd>${m.read ? 'Read by a solicitor' : 'Nobody read it'}</dd></div>
+      </dl>
+      <p class="hint">A manager squeezes promoters for bigger fees, gets labels to listen and helps you haggle. Then takes their cut.</p>
+      <div class="card-foot"><button class="btn ghost" data-do="sackManager" ${s.money < cost ? 'disabled' : ''}>${armedSack ? `Really pay ${money(cost)} to sack them?` : `Sack: ${money(cost)} pay-off`}</button></div>
+    </article>`;
+}
+
+const MOOD_WORD = (g: number) => (g >= 75 ? 'They love you' : g >= 50 ? 'Warm' : g >= 30 ? 'Cooling' : 'Frosty: one more flop and you are out');
+
 function labelSection(s: GameState): string {
+  return labelDeals(s) + managerBlock(s);
+}
+
+function labelDeals(s: GameState): string {
   const note = labelNote ? `<p class="label-note">${emph(labelNote)}</p>` : '';
   if (s.contract) {
     const c = s.contract;
@@ -507,15 +539,23 @@ function labelSection(s: GameState): string {
           <div><dt>Albums delivered</dt><dd>${c.albumsDelivered} of ${c.terms.albums}</dd></div>
           <div><dt>You still owe them</dt><dd class="${c.unrecouped > 0 ? 'neg' : ''}">${money(c.unrecouped)}</dd></div>
           <div><dt>Next royalty statement</dt><dd>${nextStatement} week${nextStatement === 1 ? '' : 's'}</dd></div>
+          <div><dt>The label's mood</dt><dd class="${c.goodwill < 30 ? 'neg' : ''}">${MOOD_WORD(c.goodwill)}</dd></div>
         </dl>
         <p class="hint">Royalties pay off the advance and every recording bill first. Only after that do you see a cheque.</p>
-        <div class="card-foot"><button class="btn ghost" data-do="buyOut" ${s.money < cost ? 'disabled' : ''}>${armedBuyout ? `Really pay ${money(cost)} to leave?` : `Buy yourself out: ${money(cost)}`}</button></div>
-      </article>`;
+        <div class="card-foot">
+          <button class="btn ghost" data-do="buyOut" ${s.money < cost ? 'disabled' : ''}>${armedBuyout ? `Really pay ${money(cost)} to leave?` : `Buy yourself out: ${money(cost)}`}</button>
+          ${c.statements ? `<button class="btn ghost" data-do="audit" ${s.money < AUDIT_FEE ? 'disabled' : ''} title="Accountants go through the label's books. Crooks pay up. Every label hates it.">Audit the label: ${money(AUDIT_FEE)}</button>` : ''}
+        </div>
+      </article>${s.offers.length ? `<h3 class="sub">Somebody wants to poach you</h3>${offerCards(s)}` : ''}`;
   }
   if (!s.offers.length) {
     return `${note}<p class="hint">No label wants you yet. They watch fans, buzz and the charts. The small independents start sniffing at a few hundred fans and some buzz; the majors only call when the whole town is talking. The first offers tend to come from the people you should trust least.</p>`;
   }
-  return `${note}${s.offers.map((o) => {
+  return `${note}${offerCards(s)}`;
+}
+
+function offerCards(s: GameState): string {
+  return s.offers.map((o) => {
     const l = labelById(o.label);
     const left = o.expires - s.week;
     return `
@@ -524,6 +564,7 @@ function labelSection(s: GameState): string {
         <h3>${esc(l.name)}</h3>
         <p class="hint">Word on the street: ${esc(l.word)}</p>
         ${termsList(o.terms, o.read)}
+        ${o.buyout ? `<p class="smallprint"><strong>Buyout:</strong> they pay your current label ${money(o.buyout)}, and it goes on your new tab.</p>` : ''}
         <p class="hint">Offer open for ${left} more week${left === 1 ? '' : 's'}.</p>
         <div class="card-foot">
           <button class="btn" data-do="offerSign" data-arg="${o.id}">Sign</button>
@@ -532,7 +573,7 @@ function labelSection(s: GameState): string {
           <button class="btn ghost" data-do="offerDecline" data-arg="${o.id}">Turn down</button>
         </div>
       </article>`;
-  }).join('')}`;
+  }).join('');
 }
 
 const KIND_LABEL: Record<string, string> = {

@@ -10,6 +10,7 @@ import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierBy
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
+import { commission, feeBoost } from './managers';
 import type { Action, ActionType, GameState, Genre, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -264,13 +265,15 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   const wastedMembers = available(s).filter((m) => wasted.has(m.id));
   gigCommentary(s, rng, { venue: g.venue, crowd, capacity: g.capacity, perf, wasted: wastedMembers });
   for (const m of wastedMembers) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
-  const pay = g.fee + Math.round(crowd * 2 * g.door);
+  // A manager with clout squeezes promoters, then takes their cut.
+  const pay = Math.round((g.fee + Math.round(crowd * 2 * g.door)) * feeBoost(s));
   const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
   // Playing the same London rooms mostly reaches people who already know you.
   const novelty = clamp(1 - s.fans / (g.capacity * 8), 0.05, 1);
   const raw = ((crowd * (perf - 42)) / 90) * g.fanMult * (perf > 42 ? novelty : 1);
   const fanDelta = Math.max(Math.round(raw > 0 ? raw * fashion : raw), -Math.round(crowd * 0.1));
   s.money += pay;
+  commission(s, pay);
   s.fans = Math.max(0, s.fans + fanDelta);
   addBuzz(s, Math.max(0, (perf - 45) / 5) + crowd / 60 + g.buzzBonus);
   if (s.lastGigWeek === null) milestone(s, 'career', `First gig: ${g.venue}, ${crowd} people.`);
@@ -498,9 +501,15 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
   const deal = labelRelease(s, kind);
   const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0);
-  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + rng.int(-4, 4)), 1, 99);
-  const appeal =
+  let appeal =
     songs.reduce((a, x) => a + (x.kind === 'ballad' ? 1.25 : 1) * (0.7 + trend(x.genre, s.week) * 0.5), 0) / songs.length;
+  let polish = 0;
+  if (kind !== 'demo') {
+    // The A&R got their way: a poppier record, or a session player on it.
+    if (s.flags.arPush) { appeal *= 1.2; delete s.flags.arPush; }
+    if (s.flags.sessionPlayer) { polish = 4; delete s.flags.sessionPlayer; }
+  }
+  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + polish + rng.int(-4, 4)), 1, 99);
   const title = songs[0].title;
   if (kind === 'demo') {
     s.releases = s.releases.filter((r) => r.kind !== 'demo');

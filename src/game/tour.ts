@@ -2,6 +2,7 @@
 // Cities and countries are real; venues are invented so nothing real gets trashed.
 import { Rng, clamp } from './rng';
 import { seizeTourProfit } from './labels';
+import { commission } from './managers';
 import { available, missingForGig, performance } from './chemistry';
 import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, revealLog, setVibe, verdict } from './helpers';
 import { trend } from './world';
@@ -259,6 +260,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
 
   const cost = t.weeklyCost;
   s.money += weekMoney - cost;
+  commission(s, weekMoney - cost);
   const seized = seizeTourProfit(s, weekMoney - cost);
   if (seized) log(s, `The label's man was at the box office. £${seized.toLocaleString('en-GB')} of this week's profit went "against the advance". Clause 14(c). Nobody read clause 14(c).`, 'bad');
   s.fans = Math.max(0, s.fans + weekFans);

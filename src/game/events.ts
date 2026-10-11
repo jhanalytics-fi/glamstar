@@ -2,11 +2,13 @@
 import { Rng, clamp } from './rng';
 import { addAffinity, available, forEachPair, getAffinity, performance } from './chemistry';
 import { PRESS, songTitle } from './names';
-import { addBuzz, adjust, beat, first, grow, log, logEffects, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
+import { addBuzz, adjust, beat, first, grow, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
+import { managerWord, newManager } from './managers';
 import type { GameState, HiddenTrait, Musician } from './types';
 import { TOUR_EVENTS } from './tourEvents';
 import { ROMANCE_EVENTS } from './romanceEvents';
+import { LABEL_EVENTS } from './labelEvents';
 
 type Params = Record<string, string | number>;
 
@@ -1771,36 +1773,45 @@ const BASE_EVENTS: EventDef[] = [
   {
     id: 'manager_offer',
     weight: 3,
-    when: (s, rng) => (s.fans >= 80 && s.buzz >= 15 && !s.flags.manager ? { who: rng.pick(['Clive Sparrowhawk', 'Maurice "Mo" Lightfoot', 'Vera Pendleton-Shaw', 'Terry Glass of Glass Act Management']) } : null),
-    title: (_s, p) => `${p.who} wants to manage you`,
-    text: (_s, p) => `${p.who} has a sheepskin coat, a car phone and a contract. "Sign tonight and there is £250 in it for you. It's all standard, sweetheart. Nobody reads these."`,
+    when: (s, rng) => (s.fans >= 80 && s.buzz >= 15 && !s.manager && since(s, 'managerPitch', 20) ? { seed: rng.int(1, 1e9) } : null),
+    title: (s, p) => `${newManager(s, new Rng(Number(p.seed))).name} wants to manage you`,
+    text: (s, p) => {
+      const m = newManager(s, new Rng(Number(p.seed)));
+      return `${m.name} has a sheepskin coat, a car phone and a contract: ${Math.round(m.cut * 100)}% of everything you earn. Word is that ${managerWord(m).replace(`${m.name} `, '')} "Sign tonight and there is £250 in it for you. It's all standard, sweetheart. Nobody reads these."`;
+    },
     options: (_s, p) => [
       {
         label: 'Sign on the spot',
         hint: 'Cash now, connections, and a contract nobody read.',
         resolve: (st) => {
-          st.flags.manager = 2; st.flags.managerWeek = st.week;
+          const m = newManager(st, new Rng(Number(p.seed)));
+          st.manager = m; st.flags.managerPitch = st.week;
           st.money += 250; addBuzz(st, 5);
-          log(st, `You signed with ${p.who} on the bonnet of a car. He called you "the next big thing" and drove off fast.`, 'good');
+          milestone(st, 'career', `${m.name} became the band's manager.`);
+          log(st, `You signed with ${m.name} on the bonnet of a car. "The next big thing," they said, and drove off fast.`, 'good');
         },
       },
       {
         label: 'Get a solicitor to read it first',
-        hint: 'Smaller advance, fewer surprises.',
+        hint: 'Smaller signing fee, fewer surprises.',
         cost: 60,
         resolve: (st) => {
-          st.flags.manager = 1; st.flags.managerWeek = st.week;
+          const m = { ...newManager(st, new Rng(Number(p.seed))), read: true };
+          st.manager = m; st.flags.managerPitch = st.week;
           st.money += 100; addBuzz(st, 4);
-          log(st, `The solicitor found clause 14(b): ${p.who} would have owned half your songs, forever. Crossed out. You signed the rest.`, 'good');
+          milestone(st, 'career', `${m.name} became the band's manager.`);
+          log(st, m.honesty < 40
+            ? `The solicitor found clause 14(b): ${m.name} would have owned half your songs, forever. Crossed out. You signed the rest.`
+            : `The solicitor read all forty pages and found nothing worse than ${Math.round(m.cut * 100)}%. You signed.`, 'good');
         },
       },
       {
-        label: 'Show him the door',
+        label: 'Show them the door',
         hint: 'You manage yourselves. Harder, but yours.',
         resolve: (st) => {
-          st.flags.manager = 3;
+          st.flags.managerPitch = st.week;
           adjust(player(st), 'mood', 4); addBuzz(st, -1);
-          log(st, `${p.who} left his card. It has three phone numbers on it, all crossed out.`, 'neutral');
+          log(st, 'They left a card. It has three phone numbers on it, all crossed out.', 'neutral');
         },
       },
     ],
@@ -1808,33 +1819,35 @@ const BASE_EVENTS: EventDef[] = [
   {
     id: 'manager_clause',
     weight: 8,
-    when: (s) => (s.flags.manager === 2 && s.week - (s.flags.managerWeek ?? s.week) >= 4 ? {} : null),
+    when: (s) => (s.manager && !s.manager.read && s.manager.honesty < 40 && !s.flags.clauseDone && s.week - s.manager.signed >= 4 ? {} : null),
     title: () => 'Clause 14(b)',
-    text: () => 'A letter from your manager’s lawyer. Page nine, small print: he owns half your songwriting "in perpetuity, throughout the universe". He would like his share of everything, backdated.',
+    text: (s) => `A letter from ${s.manager!.name}'s lawyer. Page nine, small print: your manager owns half your songwriting "in perpetuity, throughout the universe", and would like their share of everything, backdated.`,
     options: () => [
       {
         label: 'Buy your way out',
-        hint: 'Expensive freedom.',
+        hint: 'Expensive freedom. The manager goes too.',
         cost: 250,
-        resolve: (st) => { st.flags.manager = 4; everyone(st, 'mood', 5); log(st, 'You bought the contract back. You are free, broke and wiser.', 'good'); },
+        resolve: (st) => { st.flags.clauseDone = 1; st.manager = null; st.flags.manager = 4; everyone(st, 'mood', 5); log(st, 'You bought the contract back. No manager, no clause. You are free, broke and wiser.', 'good'); },
       },
       {
-        label: 'Take him to court',
+        label: 'Take them to court',
         hint: 'Lawyers cost money. Winning costs more.',
         cost: 80,
         resolve: (st, rng) => {
-          if (rng.chance(0.45)) { st.flags.manager = 4; addBuzz(st, 5); log(st, `The judge called the contract "unconscionable" and ${PRESS} called it "a victory for rock".`, 'good'); }
-          else { st.flags.manager = 5; st.money -= 150; log(st, 'You lost. Costs awarded against you, and the clause stands.', 'bad'); }
+          st.flags.clauseDone = 1;
+          if (rng.chance(0.45)) { st.manager = null; st.flags.manager = 4; addBuzz(st, 5); log(st, `The judge called the contract "unconscionable" and ${PRESS} called it "a victory for rock". The manager is history.`, 'good'); }
+          else { st.money -= 150; st.manager!.cut = 0.3; log(st, 'You lost. Costs awarded against you, the clause stands, and your manager now takes thirty per cent "to cover the legal unpleasantness".', 'bad'); }
         },
       },
       {
         label: 'Live with it',
-        hint: 'He takes his cut. You keep your evenings free of lawyers.',
+        hint: 'They take their cut. You keep your evenings free of lawyers.',
         resolve: (st) => {
-          st.flags.manager = 5;
+          st.flags.clauseDone = 1;
           const cut = clamp(Math.round(st.money * 0.2), 30, 200);
-          st.money -= cut; adjust(player(st), 'mood', -10);
-          log(st, `Your manager took £${cut} "on account". You will never see a royalty statement that makes sense.`, 'bad');
+          st.money -= cut; st.manager!.taken += cut; st.manager!.cut = Math.max(st.manager!.cut, 0.25);
+          adjust(player(st), 'mood', -10);
+          log(st, `Your manager took £${cut} "on account" and now takes a quarter of everything. You will never see a statement that makes sense.`, 'bad');
         },
       },
     ],
@@ -2476,6 +2489,7 @@ const HOME_ONLY = new Set([
 const EVENTS: EventDef[] = [
   ...BASE_EVENTS.map((e) => (HOME_ONLY.has(e.id) ? { ...e, where: 'home' as const } : e)),
   ...ROMANCE_EVENTS,
+  ...LABEL_EVENTS,
   ...TOUR_EVENTS,
 ];
 
@@ -2691,7 +2705,7 @@ function news(s: GameState, rng: Rng): void {
       return true;
     },
     () => {
-      if (s.flags.manager !== 1 && s.flags.manager !== 2) return false;
+      if (!s.manager) return false;
       addBuzz(s, 2);
       log(s, 'Your manager got you a mention on a breakfast radio show. You were described as "lively".', 'good');
       return true;

@@ -8,6 +8,7 @@ import { rollEvents } from './events';
 import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import { labelWeek } from './labels';
+import { managerWeek } from './managers';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
@@ -63,6 +64,7 @@ export function newGame(input: NewGameInput): GameState {
     milestones: [],
     offers: [],
     contract: null,
+    manager: null,
   };
   s.world = createWorld(rng, s.bandName);
   // Let the charts run for a few months before you arrive, so they have history.
@@ -106,6 +108,14 @@ export function upgradeSave(s: GameState): GameState {
   s.milestones ??= [];
   s.offers ??= [];
   s.contract ??= null;
+  if (s.contract) { s.contract.goodwill ??= 60; s.contract.shaved ??= 0; s.contract.statements ??= 0; }
+  if (s.manager === undefined) {
+    // Managers used to be flags: 1 = read contract, 2 and 5 = the sheepskin-coat type.
+    const f = s.flags.manager;
+    s.manager = f === 1 || f === 2 || f === 5
+      ? { name: 'Clive Sparrowhawk', honesty: f === 1 ? 65 : 20, clout: 35, cut: 0.2, signed: s.flags.managerWeek ?? s.week, read: f !== 2, taken: 0 }
+      : null;
+  }
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;
@@ -222,6 +232,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   s.buzz = clamp(s.buzz - Math.ceil(s.buzz * 0.06), 0, 100);
   fadeFans(s);
   labelWeek(s, rng);
+  managerWeek(s, rng);
   if (s.money < 50) {
     // Skint: everyone picks up shifts somewhere.
     s.money += 8 * s.members.length;

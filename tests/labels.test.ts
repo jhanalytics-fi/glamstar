@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { act, newGame } from '../src/game/engine';
 import { actionOptions } from '../src/game/actions';
 import { Rng } from '../src/game/rng';
-import { LABELS, buyOut, buyoutCost, declineOffer, haggle, interested, labelById, labelWeek, makeTerms, readSmallPrint, royaltyPerCopy, seizeTourProfit, signOffer } from '../src/game/labels';
+import { AUDIT_FEE, LABELS, audit, buyOut, buyoutCost, declineOffer, haggle, interested, labelById, labelWeek, makeTerms, readSmallPrint, royaltyPerCopy, seizeTourProfit, signOffer } from '../src/game/labels';
 import type { GameState, Offer } from '../src/game/types';
 
 const fresh = (seed = 3): GameState => {
@@ -129,5 +129,69 @@ describe('record labels', () => {
     labelWeek(s, new Rng(2));
     expect(s.contract).toBeNull();
     expect(s.milestones.some((m) => /Dropped by Colossus/.test(m.text))).toBe(true);
+  });
+});
+
+describe('poaching, audits and the A&R', () => {
+  it('a rival label buying you out puts the buyout on your new tab', () => {
+    let s = signOffer(withOffer(fresh(), 'badpenny'), 'o1');
+    const cost = buyoutCost(s);
+    const o: Offer = { id: 'o2', label: 'colossus', week: s.week, expires: s.week + 4, terms: makeTerms(s, labelById('colossus'), new Rng(3)), read: false, haggled: 0, buyout: cost };
+    s = signOffer({ ...s, offers: [o] }, 'o2');
+    expect(s.contract!.label).toBe('colossus');
+    expect(s.contract!.unrecouped).toBe(o.terms.advance + cost);
+  });
+
+  it('an audit finds what a crook kept off the statements, and finds nothing at an honest label', () => {
+    const crook = signOffer(withOffer(fresh(), 'goldtooth'), 'o1');
+    crook.contract!.statements = 1; crook.contract!.shaved = 1000; crook.contract!.unrecouped = 0; crook.money = 1000;
+    const a = audit(crook);
+    expect(a.money).toBeGreaterThan(1000 - AUDIT_FEE + 500);
+    expect(a.contract === null || a.contract.goodwill < crook.contract!.goodwill).toBe(true);
+    const honest = signOffer(withOffer(fresh(), 'badpenny'), 'o1');
+    honest.contract!.statements = 1; honest.money = 1000;
+    const b = audit(honest);
+    expect(b.money).toBe(1000 - AUDIT_FEE);
+  });
+
+  it('a flop with a label that has gone off you gets you dropped, even by a patient one', () => {
+    const s = structuredClone(signOffer(withOffer(fresh(), 'badpenny'), 'o1'));
+    s.contract!.goodwill = 35;
+    s.releases.push({ id: 'a', kind: 'album', title: 'Flop', quality: 30, appeal: 1, week: s.week, sold: 100, lastWeek: 0, label: 'badpenny', royalty: 0.5 });
+    s.contract!.albumsDelivered = 1; s.contract!.reviewWeek = s.week + 1; s.week += 1;
+    labelWeek(s, new Rng(4));
+    expect(s.contract).toBeNull();
+  });
+
+  it('doing what the A&R says makes the next record poppier', () => {
+    const base = signOffer(withOffer(fresh(), 'imperial'), 'o1');
+    base.songs = [1, 2].map((i) => ({ title: `S${i}`, quality: 60, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    const pushed = { ...structuredClone(base), flags: { ...base.flags, arPush: 1 } };
+    const a = act(base, { type: 'release', option: 'single' }).releases.at(-1)!;
+    const b = act(pushed, { type: 'release', option: 'single' }).releases.at(-1)!;
+    expect(b.appeal).toBeCloseTo(a.appeal * 1.2, 5);
+  });
+});
+
+describe('managers', () => {
+  it('take their cut of gig money, but a well-connected one gets bigger fees', async () => {
+    const { commission, feeBoost, sackManager, sackCost } = await import('../src/game/managers');
+    const s = fresh();
+    s.manager = { name: 'Vera', honesty: 80, clout: 60, cut: 0.2, signed: 0, read: true, taken: 0 };
+    expect(feeBoost(s)).toBeCloseTo(1.4);
+    const before = s.money;
+    expect(commission(s, 100)).toBe(20);
+    expect(s.money).toBe(before - 20);
+    s.money = 5000;
+    const out = sackManager(s);
+    expect(out.manager).toBeNull();
+    expect(out.money).toBe(5000 - sackCost(s));
+  });
+
+  it('a crooked manager rounds their share up', async () => {
+    const { commission } = await import('../src/game/managers');
+    const s = fresh();
+    s.manager = { name: 'Lenny', honesty: 10, clout: 30, cut: 0.2, signed: 0, read: false, taken: 0 };
+    expect(commission(s, 100)).toBe(25);
   });
 });

@@ -105,6 +105,23 @@ export interface Offer {
   read: boolean;
   /** Times you have pushed for better terms. */
   haggled: number;
+  /** A rival label offering to pay off your current contract. The buyout goes on your new tab. */
+  buyout?: number;
+}
+
+export interface Manager {
+  name: string;
+  /** Hidden. Low means skimming and nasty clauses. */
+  honesty: number;
+  /** Connections: better gigs, better deals, labels listen. */
+  clout: number;
+  /** Commission on everything the band earns. */
+  cut: number;
+  signed: number;
+  /** A solicitor read the management contract. */
+  read: boolean;
+  /** Commission taken so far. */
+  taken: number;
 }
 
 export interface Contract {
@@ -120,6 +137,12 @@ export interface Contract {
   reviewWeek: number | null;
   /** Albums that sold under what the label expected. */
   flops: number;
+  /** 0-100: how the label feels about you. Do as the A&R says and it rises. */
+  goodwill: number;
+  /** Royalties the label quietly kept off the statements. Only an audit finds them. */
+  shaved: number;
+  /** Statements sent so far. */
+  statements: number;
 }
 
 export interface PendingEvent {
@@ -217,6 +240,8 @@ export interface GameState {
   offers: Offer[];
   /** The deal you are signed to, if any. */
   contract: Contract | null;
+  /** Your manager, if you have one. */
+  manager: Manager | null;
 }
 
 export type MilestoneKind = 'career' | 'release' | 'lineup' | 'chart' | 'tour' | 'drama';

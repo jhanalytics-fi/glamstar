@@ -249,6 +249,9 @@ describe('choice events', () => {
     return s;
   }
 
+  const signed = (s: GameState) => {
+    s.contract = { label: 'imperial', signed: 10, terms: { advance: 3000, rate: 0.1, albums: 3, budget: 8000, smallPrint: { deductions: 0.2, tourRecoup: false, ownsName: false, promoRecoup: true } }, unrecouped: 3000, albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0, goodwill: 60, shaved: 0, statements: 0 };
+  };
   /** Per-event setup for situations that need a later year, a season or a follow-up flag. */
   const later = (s: GameState, week: number) => { s.week = week; s.lastGigWeek = week - 1; s.flags.lastBigParty = week; };
   const SETUP: Record<string, (s: GameState) => void> = {
@@ -258,7 +261,11 @@ describe('choice events', () => {
     benefit: (s) => later(s, 153),
     video: (s) => later(s, 153),
     xmas_single: (s) => later(s, 95),
-    manager_clause: (s) => { s.flags.manager = 2; s.flags.managerWeek = 40; },
+    manager_clause: (s) => { s.manager = { name: 'Clive', honesty: 20, clout: 30, cut: 0.2, signed: 40, read: false, taken: 0 }; },
+    ar_single: (s) => { signed(s); },
+    ar_image: (s) => { signed(s); },
+    ar_session: (s) => { signed(s); s.members.forEach((m) => { m.skill = 50; }); },
+    label_scandal: (s) => { signed(s); s.flags.kissTell = s.week; },
     after_show: (s) => { s.lastGigWeek = s.week; },
     band_romance: (s) => { const [a, b] = s.members; s.affinity[[a.id, b.id].sort().join('|')] = 80; },
     band_breakup: (s) => { const [, a, b] = s.members; s.flags[`romance:${[a.id, b.id].sort().join('|')}`] = s.week - 20; },

@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.8)
+## Prototype status (v0.9)
 
 Playable in the browser. Implemented:
 
@@ -247,4 +247,13 @@ Eight fictional labels in three kinds (`src/game/labels.ts`). Each has a hidden 
 
 Offers arrive by letter (one at a time, at most three open, six weeks to answer) and sit in the Label tab. The player can sign, push for more (better terms, or the label walks; odds rise with heat and rival offers), pay a £100 lawyer to read the small print, or turn it down (that label waits half a year). Advances are loans: they and every recording budget (single 15%, EP 35%, album 100%) go on the band's tab. Label releases sell at the label's promotion multiplier; royalties (retail price x rate x (1 - deductions)) go to the ledger, and every 13 weeks a statement sets them against the debt and pays out only what is left. Labels review each album 16 weeks after release against what they quietly expect (indie 1,500, shark 800, major 6,000 copies); too many flops and you are dropped, debt and all. No album for a year brings angry calls, two years gets you dropped. Delivering every album owed makes you a free agent. You can always buy yourself out: £1,000 plus 30-100% of the debt depending on the label's honesty, plus £2,000 if they own your name. While signed, self-financed records are not allowed; demos still are.
 
-Still to come: labels poaching a signed band (paying the buyout), A&R meddling (single choice, image, chasing trends), royalty audits that catch crooks, label reactions to scandal, and managers.
+### Label relationship, poaching and audits (v0.9)
+
+- **Goodwill** (0-100, starts at 60) is the label's mood, shown in words in the Business tab. Hits +10, flops -15, A&R choices move it. Promotion scales with it (x0.8 to x1.2), and a flop while goodwill is under 30 gets you dropped even by a patient label.
+- **A&R meddling** (`src/game/labelEvents.ts`): `ar_single` (make it poppier: next record x1.2 appeal, purists sulk), `ar_image` (a makeover: +3 image for all, £400 on your tab), `ar_session` (a session player replaces your weakest member on record: +4 quality, or stand by them, or fire them), `label_scandal` (after a kiss-and-tell: majors and indies are appalled, sharks want more).
+- **Poaching:** once heat passes 3,000, a label with stronger promotion may offer to buy you out. The buyout is added to your new debt.
+- **Audits** (£300, after the first statement): crooked labels shave 20-45% off reported royalties; the audit recovers 60-100% of it. Every label hates it (goodwill -30, or -10 if clean), and the worst crooks may drop you out of spite.
+
+## Managers (v0.9)
+
+A manager (`src/game/managers.ts`) has a hidden honesty, a clout (connections) and a cut (15-25%). Clout raises gig fees (up to +60%), label heat, offer frequency and haggling odds. The cut comes off gig pay, tour profit, label advances, royalty cheques and audit recoveries. A crook rounds their share up by a quarter, sometimes bills "management expenses", and an unread contract hides clause 14(b) (half your songwriting, forever) which can be bought out, fought in court or lived with (cut rises). Sacking costs a pay-off (more if the contract was never read). Managers find you from 80 fans and 15 buzz.

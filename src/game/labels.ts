@@ -2,6 +2,7 @@
 // where the bodies are buried. Some labels are decent. Some are sharks in nice suits.
 import { Rng, clamp } from './rng';
 import { addBuzz, adjust, log, milestone, mutate } from './helpers';
+import { commission, managerHaggle, managerHeat } from './managers';
 import type { Contract, DealTerms, GameState, Offer, Release, ReleaseKind, SmallPrint } from './types';
 
 export type LabelTier = 'indie' | 'shark' | 'major';
@@ -40,12 +41,13 @@ const BUDGET_SHARE: Record<ReleaseKind, number> = { demo: 0, single: 0.15, ep: 0
 /** Album sales each kind of label quietly expects. */
 const EXPECTS: Record<LabelTier, number> = { indie: 1500, shark: 800, major: 6000 };
 export const LAWYER_FEE = 100;
+export const AUDIT_FEE = 300;
 const STATEMENT_WEEKS = 13;
 const REVIEW_AFTER = 16;
 
 /** How hot the band is to the people with chequebooks. */
 export function heat(s: GameState): number {
-  return s.fans + s.buzz * 20 + (s.flags.chartedNational !== undefined ? 1500 : 0) + (s.flags.arInterest ?? 0) * 200;
+  return s.fans + s.buzz * 20 + (s.flags.chartedNational !== undefined ? 1500 : 0) + (s.flags.arInterest ?? 0) * 200 + managerHeat(s);
 }
 
 /** Which kinds of label will talk to you at all. */
@@ -103,7 +105,8 @@ export function labelWeek(s: GameState, rng: Rng): void {
   if (!s.contract && s.offers.length < 3) {
     for (const l of rng.shuffle([...LABELS])) {
       if (s.offers.some((o) => o.label === l.id) || !interested(s, l) || (s.flags[`passed_${l.id}`] !== undefined && s.week - s.flags[`passed_${l.id}`] < 26)) continue;
-      if (!rng.chance(l.tier === 'shark' ? 0.06 : l.tier === 'indie' ? 0.07 : 0.08)) continue;
+      const boost = 1 + (s.manager ? s.manager.clout / 100 : 0);
+      if (!rng.chance((l.tier === 'shark' ? 0.06 : l.tier === 'indie' ? 0.07 : 0.08) * boost)) continue;
       const o: Offer = { id: `offer${s.nextId++}`, label: l.id, week: s.week, expires: s.week + 6, terms: makeTerms(s, l, rng), read: false, haggled: 0 };
       s.offers.push(o);
       log(s, `A letter from ${l.name}: they want to sign ${s.bandName}. £${o.terms.advance.toLocaleString('en-GB')} advance. Details in the Label tab.`, 'good');
@@ -114,6 +117,7 @@ export function labelWeek(s: GameState, rng: Rng): void {
   const c = s.contract;
   if (!c) return;
   const l = labelById(c.label);
+  poach(s, rng, l);
   if ((s.week - c.signed) % STATEMENT_WEEKS === 0 && s.week > c.signed) statement(s, c, l);
   if (c.reviewWeek !== null && s.week >= c.reviewWeek) review(s, c, l);
   const lastAlbum = Math.max(c.signed, ...s.releases.filter((r) => r.label === c.label && r.kind === 'album').map((r) => r.week));
@@ -124,16 +128,30 @@ export function labelWeek(s: GameState, rng: Rng): void {
   if (s.week - lastAlbum >= 104) drop(s, l, `${l.name} have dropped ${s.bandName} for failing to deliver an album. Two years of excuses, one paragraph of a letter.`);
 }
 
+/** A bigger label wants you badly enough to pay off your current one. */
+function poach(s: GameState, rng: Rng, current: Label): void {
+  if (s.offers.length || heat(s) < 3000 || !rng.chance(0.03)) return;
+  const rivals = LABELS.filter((x) => x.id !== current.id && x.promo > current.promo && interested(s, x) && (s.flags[`passed_${x.id}`] === undefined || s.week - s.flags[`passed_${x.id}`] >= 26));
+  if (!rivals.length) return;
+  const l = rng.pick(rivals);
+  const o: Offer = { id: `offer${s.nextId++}`, label: l.id, week: s.week, expires: s.week + 4, terms: makeTerms(s, l, rng), read: false, haggled: 0, buyout: buyoutCost(s) };
+  s.offers.push(o);
+  log(s, `${l.name} want you, and they will pay ${current.name} £${o.buyout!.toLocaleString('en-GB')} to get you out. Details in the Label tab. (Guess whose tab the buyout goes on.)`, 'good');
+}
+
 function statement(s: GameState, c: Contract, l: Label): void {
   // Creative accounting: the less honest the label, the fewer records you apparently sold.
   const shave = l.honesty >= 60 ? 1 : 0.55 + (l.honesty / 100) * 0.7;
   const reported = Math.round(c.owed * shave);
+  c.shaved += c.owed - reported;
+  c.statements++;
   c.owed = 0;
   const before = c.unrecouped;
   const cleared = Math.min(before, reported);
   c.unrecouped = before - cleared;
   const paid = reported - cleared;
   s.money += paid;
+  commission(s, paid);
   if (reported === 0 && before === 0) return;
   log(
     s,
@@ -147,11 +165,15 @@ function review(s: GameState, c: Contract, l: Label): void {
   c.reviewWeek = null;
   const album = [...s.releases].reverse().find((r) => r.label === c.label && r.kind === 'album');
   const sold = album?.sold ?? 0;
-  if (sold < EXPECTS[l.tier]) {
+  const flop = sold < EXPECTS[l.tier];
+  if (flop) {
     c.flops++;
+    c.goodwill = clamp(c.goodwill - 15, 0, 100);
     log(s, `${l.name} looked at the sales of "${album?.title}" (${sold.toLocaleString('en-GB')}). The meeting was short.`, 'bad');
+  } else {
+    c.goodwill = clamp(c.goodwill + 10, 0, 100);
   }
-  if (c.flops > l.patience - 1) {
+  if (c.flops > l.patience - 1 || (flop && c.goodwill < 30)) {
     drop(s, l, `${l.name} have dropped ${s.bandName}. The letter calls it "a difficult decision". It was a two-minute decision.`);
     return;
   }
@@ -196,7 +218,9 @@ export function tagRelease(s: GameState, r: Release): void {
 /** Label releases sell harder, and the money goes to the label's ledger, not your pocket. */
 export function labelSales(s: GameState, r: Release, units: number): { units: number; cash: number } {
   if (!r.label) return { units, cash: -1 };
-  const promoted = Math.round(units * labelById(r.label).promo);
+  // A label that likes you works the record harder.
+  const goodwill = s.contract?.label === r.label ? 0.8 + s.contract.goodwill / 250 : 1;
+  const promoted = Math.round(units * labelById(r.label).promo * goodwill);
   if (s.contract?.label === r.label) s.contract.owed += promoted * (r.royalty ?? 0);
   return { units: promoted, cash: 0 };
 }
@@ -238,7 +262,7 @@ export function haggle(state: GameState, id: string): GameState {
     const l = labelById(o.label);
     if (o.haggled >= 2) throw new Error(`${l.name} have made their final offer.`);
     o.haggled++;
-    const odds = clamp(0.3 + heat(s) / 5000 + (s.offers.length - 1) * 0.15 - (o.haggled - 1) * 0.15, 0.1, 0.8);
+    const odds = clamp(0.3 + heat(s) / 5000 + (s.offers.length - 1) * 0.15 - (o.haggled - 1) * 0.15 + managerHaggle(s), 0.1, 0.85);
     if (rng.chance(odds)) {
       o.terms.advance = Math.round((o.terms.advance * 1.25) / 50) * 50;
       o.terms.rate = Math.round((o.terms.rate + 0.01) * 100) / 100;
@@ -264,11 +288,17 @@ export function declineOffer(state: GameState, id: string): GameState {
 
 export function signOffer(state: GameState, id: string): GameState {
   return mutate(state, (s) => {
-    if (s.contract) throw new Error('You are already signed. Buy yourself out first.');
     const o = offer(s, id);
+    if (s.contract && !o.buyout) throw new Error('You are already signed. Buy yourself out first.');
     const l = labelById(o.label);
-    s.contract = { label: l.id, signed: s.week, terms: o.terms, unrecouped: o.terms.advance, albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0 };
+    if (s.contract && o.buyout) {
+      const old = labelById(s.contract.label);
+      s.flags[`passed_${old.id}`] = s.week + 200;
+      milestone(s, 'career', `${l.name} bought ${s.bandName} out of the ${old.name} deal for £${o.buyout.toLocaleString('en-GB')}.`);
+    }
+    s.contract = { label: l.id, signed: s.week, terms: o.terms, unrecouped: o.terms.advance + (o.buyout ?? 0), albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0, goodwill: 60, shaved: 0, statements: 0 };
     s.money += o.terms.advance;
+    commission(s, o.terms.advance);
     s.offers = [];
     addBuzz(s, l.tier === 'major' ? 12 : 6);
     for (const m of s.members) adjust(m, 'mood', 15);
@@ -294,5 +324,33 @@ export function buyOut(state: GameState): GameState {
     s.flags[`passed_${l.id}`] = s.week + 200;
     milestone(s, 'career', `Bought out of the ${l.name} deal for £${cost.toLocaleString('en-GB')}.`);
     log(s, `${s.bandName} paid £${cost.toLocaleString('en-GB')} to walk away from ${l.name}. ${c.terms.smallPrint.ownsName ? 'Buying back your own name was the expensive bit.' : 'The lawyers were the only winners, as usual.'}`, 'neutral');
+  });
+}
+
+/** Send in the accountants. Crooks pay up and hate you for it; honest labels just hate you a bit. */
+export function audit(state: GameState): GameState {
+  return mutate(state, (s, rng) => {
+    const c = s.contract;
+    if (!c) throw new Error('You are not signed to anyone.');
+    if (!c.statements) throw new Error('Wait for a royalty statement before you audit one.');
+    if (s.money < AUDIT_FEE) throw new Error(`An audit costs £${AUDIT_FEE}. You do not have it.`);
+    const l = labelById(c.label);
+    s.money -= AUDIT_FEE;
+    s.flags.audited = s.week;
+    if (c.shaved < 50) {
+      c.goodwill = clamp(c.goodwill - 10, 0, 100);
+      log(s, `The accountants spent three weeks in ${l.name}'s basement and found the books in order. £${AUDIT_FEE} well wasted, and the label is offended.`, 'neutral');
+      return;
+    }
+    const found = Math.round(c.shaved * (0.6 + rng.next() * 0.4));
+    c.shaved = 0;
+    c.goodwill = clamp(c.goodwill - 30, 0, 100);
+    const cleared = Math.min(c.unrecouped, found);
+    c.unrecouped -= cleared;
+    s.money += found - cleared;
+    commission(s, found - cleared);
+    milestone(s, 'career', `Audit caught ${l.name} short: £${found.toLocaleString('en-GB')} in missing royalties.`);
+    log(s, `The audit found £${found.toLocaleString('en-GB')} of royalties that ${l.name} "mislaid". ${cleared ? `£${cleared.toLocaleString('en-GB')} came off your debt` : ''}${cleared && found - cleared ? ', and ' : ''}${found - cleared ? `£${(found - cleared).toLocaleString('en-GB')} came to you` : ''}. Relations are now frosty.`, 'good');
+    if (l.honesty < 25 && rng.chance(0.4)) drop(s, l, `${l.name} dropped ${s.bandName} a week after the audit. The letter mentions "a breakdown of trust". From them.`);
   });
 }
