@@ -217,3 +217,16 @@ No hurry. The week's report is read out at reading speed: each line stays alone 
 ## Meeting the band
 
 The first week's report introduces each mate in a two-line scouting report built from their card: role, hometown, age, an overall verdict, and their strongest and weakest visible stat in words ("has proper hands, but dresses like a geography teacher"). Hidden traits are never mentioned. Lines are deterministic per musician and bandmates never share a phrase. Cards show the instrument as a large coloured badge above the name. Portraits and a visual character builder come later.
+
+## Sex, romance and scandal (planned)
+
+Part of the rock'n'roll life, handled the same way as drugs: implied, off-screen (cut to black), and judged by its consequences with satirical bite. All characters involved are clearly adults; minors never appear in any romantic or sexual context, not even as a hint or a joke.
+
+Mechanics, each moving stats rather than describing anything:
+
+- **After-show choices.** After a gig or tour night: go home, hit the after-party, or disappear with someone from the bar. Mood up, energy down, small chances of scandal or a missed soundcheck.
+- **Inner-band romance.** Two members can get together: their chemistry link jumps to green, the rest of the band's mood and links wobble (jealousy, cliques). A break-up turns the link red and may cost a member.
+- **Partners.** A member's partner can be supportive, or demand they choose between the band and them (the "partner who hates the band" blurb becomes a mechanic).
+- **Tabloid scandal.** Kiss-and-tell stories: buzz up, image down, label reaction later. The manager can bury it (money) or the band can lean into it (buzz, risk).
+- **Tour policy.** Wild / steady / clean also sets how much of this happens on the road.
+- **Satirical fallout.** Double-booked dates at the same gig, a paternity-suit letter, a nervous clinic visit, a moral panic in the press and the band's own double standards.

@@ -7,6 +7,7 @@ Rock-career management sim, London 1982 onwards. Design lives in `docs/design.md
 - All in-game text is English. Discussion with the owner (Jussi) is in Finnish.
 - Never use real band, musician, label, magazine, venue or TV show names. Everything is fictional, generated or parodic.
 - Adult themes (drugs, alcohol, excess) are part of the game, written with satirical bite. Sexual content stays implied and off-screen.
+- Every character in any romantic or sexual context, including hints and jokes, is clearly an adult. Minors never appear in such content in any form.
 - Game logic in `src/game/` is pure and takes a seeded RNG; no DOM access there. Rendering lives in `src/ui/`.
 - Every change to game logic gets or updates a Vitest test.
 - Use "->" for arrows in text, never the unicode arrow.
