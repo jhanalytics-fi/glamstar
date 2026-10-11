@@ -653,3 +653,4 @@ section + section { margin-top: 32px; }
 .stats dd { transition: color 0.4s, text-shadow 0.4s; }
 .stats dd.tick-up { color: var(--good); text-shadow: 0 0 14px rgba(110, 231, 160, 0.55); }
 .stats dd.tick-down { color: var(--bad); text-shadow: 0 0 14px rgba(255, 107, 107, 0.5); }
+.chem-title { margin-top: 32px; }

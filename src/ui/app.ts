@@ -435,7 +435,7 @@ function chemPanel(s: GameState): string {
     `<li class="${l.tone}"><span class="lk">${esc(name(l.a))} & ${esc(name(l.b))}</span><b>${l.score}</b><span class="why">${esc(why(l))}</span></li>`).join('');
   const part = (label: string, v: number, k: string) => `<div><span>${tip(label, k)}</span><b>${v}</b></div>`;
   return `
-    <h3 class="sub">Chemistry</h3>
+    <h3 class="sub chem-title">Chemistry</h3>
     <div class="chem">
       <svg viewBox="0 0 ${W} ${H}" class="chemweb" role="img" aria-label="Band chemistry links">${lines}${nodes}</svg>
       <div class="chemside">
