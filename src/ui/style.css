@@ -664,3 +664,7 @@ section + section { margin-top: 32px; }
 .role-badge.role-keys { background: #c9a0ff; }
 .who .role-badge { display: inline-block; color: #160b1a; }
 .who .role-badge.role-vocals { color: #fff; }
+.role-pick .chips { margin-top: 6px; }
+.chip.gap { border-color: var(--bad); color: var(--bad); }
+.chip.gap[aria-pressed="true"] { background: var(--bad); color: #160b1a; }
+.role-pick { display: block; }

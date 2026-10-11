@@ -232,3 +232,7 @@ Mechanics, each moving stats rather than describing anything:
 - **Satirical fallout.** Double-booked dates at the same gig, a paternity-suit letter, a nervous clinic visit, a moral panic in the press and the band's own double standards.
 
 Built in v0.7 (`src/game/romanceEvents.ts`): `after_show` (after a home gig: home, after-party or leave with someone; leaving sets a `fling` flag), `band_romance` (the closest pair, affinity over 34, becomes a couple if blessed), `band_breakup` (8+ weeks later, coin flip: exes' link drops to -90, or -70 if they write the break-up album, or one leaves), `kiss_and_tell` (250+ fans, far likelier after a fling: deny, pay £200, or lean in), `partner_ultimatum` (week off, invite the partner, or make them choose: loyalty decides), `double_booked` (after a fling) and the tour event `road_fling` (odds 100% / 50% / 15% by wild / steady / clean policy). Still to come: paternity letter, clinic visit, moral panic, label reactions.
+
+## Hiring
+
+Ads target one instrument, picked as chips (Guitar, Bass, Drums, Keys). When the band is missing a player the gig needs, that role is marked "(missing)" in red and is preselected when the hiring menu opens, and the tile reads "Find a bassist".

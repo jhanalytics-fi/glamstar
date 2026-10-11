@@ -118,8 +118,11 @@ function onClick(e: Event, root: HTMLElement): void {
         draft.name = `${draft.firstName.trim()} ${draft.lastName.trim()}`;
         state = newGame(draft);
         break;
+      case 'adRole': adRole = arg as Role; break;
       case 'open':
         openAction = openAction === arg ? null : (arg as ActionType);
+        // Hiring with a hole in the line-up: the ad is for the missing player by default.
+        if (openAction === 'advertise' && state) { const gaps = missingRoles(state); if (gaps.length) adRole = gaps[0]; }
         tourTier = null;
         break;
       case 'fold': collapsedScene = state?.scene?.id ?? null; break;
@@ -228,6 +231,13 @@ function tickStats(root: HTMLElement, z: HTMLElement): void {
       timers.push(window.setTimeout(() => el.classList.remove('tick-up', 'tick-down'), 2200));
     }, at * 1000));
   }
+}
+
+/** Roles the band cannot gig without right now. */
+function missingRoles(s: GameState): Role[] {
+  const miss = missingForGig(s);
+  const map: [string, Role][] = [['a drummer', 'drums'], ['a bassist', 'bass'], ['a guitarist', 'guitar']];
+  return map.filter(([t]) => miss.includes(t)).map(([, r]) => r);
 }
 
 /** Reveal the scene line by line, like a match report coming in. */
@@ -553,16 +563,17 @@ function nextBlock(s: GameState): string {
     release: s.releases.length ? `${s.releases.length} out` : 'Tape or vinyl',
     party: 'Morale up, livers down',
     rest: 'Recharge, dry out',
-    advertise: 'Replace or add a player',
+    advertise: missing.length ? `Find ${missing.join(' and ')}` : 'Replace or add a player',
     tour: tourSub(s),
   };
   const types: ActionType[] = ['gig', 'tour', 'rehearse', 'write', 'release', 'party', 'rest', 'advertise'];
   const tourShut = TOUR_TIERS.every((t) => tierLocked(s, t));
   const open = openAction;
   const opts = open ? actionOptions(s, open) : [];
+  const gaps = missingRoles(s);
   const roleSelect =
     open === 'advertise'
-      ? `<label class="role-pick">Looking for <select name="adRole">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<option value="${r}" ${r === adRole ? 'selected' : ''}>${ROLE_LABEL[r].toLowerCase()}</option>`).join('')}</select></label>`
+      ? `<div class="role-pick"><span>Looking for</span><div class="chips">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<button class="chip ${gaps.includes(r) ? 'gap' : ''}" data-do="adRole" data-arg="${r}" aria-pressed="${r === adRole}">${ROLE_LABEL[r]}${gaps.includes(r) ? ' (missing)' : ''}</button>`).join('')}</div></div>`
       : '';
   return `
     ${hopefuls(s)}
