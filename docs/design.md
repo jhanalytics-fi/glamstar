@@ -34,7 +34,7 @@ The game runs to the end of 1991. 1,000 fans with 55 buzz, or a record in the Na
 
 ## Title screen
 
-A one-line pitch ("A rock band management game, the way they used to make them.") and the goal in plain words: ten years from the back room of a pub to rock immortality.
+A one-line pitch ("A rock band management game"; the era is in the next line) and the goal in plain words: ten years from the back room of a pub to rock immortality.
 
 ## Screen layout: the action zone
 

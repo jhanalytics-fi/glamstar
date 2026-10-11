@@ -292,7 +292,7 @@ function renderCreate(): string {
   const pressed = (b: boolean) => `aria-pressed="${b}"`;
   return `
     <h1 class="logo">GLAMSTAR <span class="version">v${__APP_VERSION__}</span></h1>
-    <p class="pitch">A rock band management game, the way they used to make them.</p>
+    <p class="pitch">A rock band management game</p>
     <p class="tagline">London, January 1982. You have a voice, three mates from the pub and a band name scribbled on a beer mat. Ten years to go from the back room of a pub to rock immortality: gig, write, record, tour, sign the right deal, keep the band together, and stay out of the tabloids. Mostly.</p>
     <div class="create">
       <div class="names">
