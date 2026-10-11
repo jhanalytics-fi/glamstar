@@ -4,8 +4,11 @@ import { actionOptions } from '../src/game/actions';
 import { resolvePending, viewPending } from '../src/game/events';
 import { missingForGig } from '../src/game/chemistry';
 import { overall } from '../src/game/characters';
+import { signOffer } from '../src/game/labels';
 import type { Action, GameState, Role } from '../src/game/types';
 
+const labelsSeen = new Set<string>();
+const signings: number[] = [];
 const results: { won: boolean; reason: string; week: number; fans: number; charted: boolean; releases: number; events: number; tours: number; label: number | undefined; maxTier: string }[] = [];
 
 const RUNS = Number(process.env.RUNS ?? 300);
@@ -15,6 +18,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
   let tours = 0;
   let lastTourEnd = -99;
   let maxTier = '-';
+  let signed = 0;
   while (!s.over) {
     while (s.pending) {
       events++;
@@ -23,6 +27,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
       s = resolvePending(s, free[seed % free.length].i);
     }
     if (s.over) break;
+    if (!s.contract && s.offers.length) { const best = [...s.offers].sort((a, b) => b.terms.advance - a.terms.advance)[0]; s = signOffer(s, best.id); signed++; labelsSeen.add(best.label); }
     if (s.candidates.length && s.candidateRole) {
       const best = [...s.candidates].sort((a, b) => overall(b) - overall(a))[0];
       const cur = s.members.find((m) => m.role === s.candidateRole && !m.isPlayer);
@@ -68,6 +73,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
     if (canAct(s, a)) a = { type: 'rest', option: 'sleep' };
     s = act(s, a);
   }
+  signings.push(signed);
   results.push({ won: s.over!.won, reason: s.over!.reason.split(':')[0].slice(0, 40), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events, tours, label: s.flags.labelCalling, maxTier });
 }
 
@@ -81,3 +87,4 @@ console.log('won by charting', won.filter((r) => r.charted).length, 'avg release
 const byReason: Record<string, number> = {};
 for (const r of results) byReason[r.reason] = (byReason[r.reason] ?? 0) + 1;
 console.log(byReason);
+console.log('signings per game', avg(signings), 'labels used', [...labelsSeen].join(', '));

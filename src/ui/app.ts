@@ -7,8 +7,9 @@ import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
+import { LAWYER_FEE, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
 import type { TourPolicy } from '../game/types';
-import type { ActionType, Background, Beat, EffectChip, GameState, Gender, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
 import { nextGoal } from '../game/goals';
@@ -41,6 +42,9 @@ let playedScene: number | null = null;
 /** Scene folded down to one line so the choices sit near the top. */
 let collapsedScene: number | null = null;
 let armedFire: string | null = null;
+let armedBuyout = false;
+/** The outcome of the last thing done in the Label tab. */
+let labelNote = '';
 let armedAbandon = false;
 let tourTier: string | null = null;
 let tourWeeks = 1;
@@ -104,6 +108,8 @@ function onClick(e: Event, root: HTMLElement): void {
   // Any interaction finishes the playback of the current scene.
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
+  if (what !== 'buyOut') armedBuyout = false;
+  if (what === 'tab') labelNote = '';
   if (what !== 'abandon') armedAbandon = false;
   try {
     switch (what) {
@@ -152,6 +158,14 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'respond': state = resolvePending(state!, Number(arg)); break;
       case 'hire': state = hire(state!, arg!, arg2 || undefined); break;
       case 'dismiss': state = dismissCandidates(state!); break;
+      case 'offerSign': state = signOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'offerHaggle': state = haggle(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'offerRead': state = readSmallPrint(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'offerDecline': state = declineOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'buyOut':
+        if (armedBuyout) { state = buyOut(state!); labelNote = state.log.at(-1)?.text ?? ''; armedBuyout = false; }
+        else armedBuyout = true;
+        break;
       case 'fire':
         // Two-step button instead of a browser dialog.
         if (armedFire === arg) { state = fire(state!, arg!); armedFire = null; }
@@ -352,7 +366,7 @@ function renderGame(s: GameState): string {
       ${zone(s)}
       <aside class="panel">
         <div class="tabs" role="tablist">
-          ${(['band', 'charts', 'records', 'history'] as PanelTab[]).map((t) => `<button role="tab" class="tab" data-do="tab" data-arg="${t}" aria-selected="${panelTab === t}">${PANEL_LABEL[t]}${t === 'band' && s.candidates.length ? ' <span class="dot" aria-label="auditions waiting"></span>' : ''}</button>`).join('')}
+          ${(['band', 'label', 'charts', 'records', 'history'] as PanelTab[]).map((t) => `<button role="tab" class="tab" data-do="tab" data-arg="${t}" aria-selected="${panelTab === t}">${PANEL_LABEL[t]}${(t === 'band' && s.candidates.length) || (t === 'label' && s.offers.length) ? ` <span class="dot" aria-label="${t === 'band' ? 'auditions waiting' : 'offers waiting'}"></span>` : ''}</button>`).join('')}
         </div>
         <div class="tab-body">${panelBody(s)}</div>
       </aside>
@@ -392,8 +406,8 @@ function bandPulse(s: GameState): string {
     </div>`;
 }
 
-type PanelTab = 'band' | 'charts' | 'records' | 'history';
-const PANEL_LABEL: Record<PanelTab, string> = { band: 'The band', charts: 'Charts', records: 'Songs & records', history: 'History' };
+type PanelTab = 'band' | 'label' | 'charts' | 'records' | 'history';
+const PANEL_LABEL: Record<PanelTab, string> = { band: 'The band', label: 'Label', charts: 'Charts', records: 'Songs & records', history: 'History' };
 
 function panelBody(s: GameState): string {
   switch (panelTab) {
@@ -404,6 +418,8 @@ function panelBody(s: GameState): string {
         ${chemPanel(s)}`;
     case 'charts':
       return chartsSection(s);
+    case 'label':
+      return labelSection(s);
     case 'records':
       return recordsSection(s) || '<p class="hint">No songs yet. Write some.</p>';
     case 'history': {
@@ -455,6 +471,68 @@ function chemPanel(s: GameState): string {
         <p class="hint">Green links lift the whole band, red ones drag it down. Parties, time together and shared success mend links; feuds and big egos break them.</p>
       </div>
     </div>`;
+}
+
+const money = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`;
+const TIER_SHOWN: Record<LabelTier, string> = { indie: 'Independent', shark: 'Independent', major: 'Major label' };
+
+function termsList(t: DealTerms, read: boolean): string {
+  const p = t.smallPrint;
+  const traps = [p.deductions > 0 && `${Math.round(p.deductions * 100)}% of royalties go on "deductions"`, p.tourRecoup && 'tour profits go to the label until you recoup', p.ownsName && 'the label owns the band name', p.promoRecoup && 'promotion and videos are charged to you'].filter(Boolean) as string[];
+  return `
+    <dl class="deal">
+      <div><dt>Advance</dt><dd>${money(t.advance)}</dd></div>
+      <div><dt>Royalty</dt><dd>${Math.round(t.rate * 100)}%${read ? ` <small>(${money(royaltyPerCopy(t, 'album') * 100)} per 100 albums)</small>` : ''}</dd></div>
+      <div><dt>Albums owed</dt><dd>${t.albums}</dd></div>
+      <div><dt>Recording budget</dt><dd>${money(t.budget)} per album</dd></div>
+    </dl>
+    <p class="smallprint">${read ? (traps.length ? `<strong>Small print:</strong> ${esc(traps.join('; '))}.` : '<strong>Small print:</strong> nothing nasty. Rare.') : '<strong>Small print:</strong> unread. Everyone signs without reading. Everyone regrets it.'}</p>`;
+}
+
+/** Record deals: offers on the table, or the contract you are stuck with. */
+function labelSection(s: GameState): string {
+  const note = labelNote ? `<p class="label-note">${emph(labelNote)}</p>` : '';
+  if (s.contract) {
+    const c = s.contract;
+    const l = labelById(c.label);
+    const cost = buyoutCost(s);
+    const nextStatement = 13 - ((s.week - c.signed) % 13);
+    return `${note}
+      <article class="deal-card signed">
+        <span class="deal-tier">${TIER_SHOWN[l.tier]}</span>
+        <h3>${esc(l.name)}</h3>
+        <p class="hint">${esc(l.word)}</p>
+        ${termsList(c.terms, true)}
+        <dl class="deal">
+          <div><dt>Albums delivered</dt><dd>${c.albumsDelivered} of ${c.terms.albums}</dd></div>
+          <div><dt>You still owe them</dt><dd class="${c.unrecouped > 0 ? 'neg' : ''}">${money(c.unrecouped)}</dd></div>
+          <div><dt>Next royalty statement</dt><dd>${nextStatement} week${nextStatement === 1 ? '' : 's'}</dd></div>
+        </dl>
+        <p class="hint">Royalties pay off the advance and every recording bill first. Only after that do you see a cheque.</p>
+        <div class="card-foot"><button class="btn ghost" data-do="buyOut" ${s.money < cost ? 'disabled' : ''}>${armedBuyout ? `Really pay ${money(cost)} to leave?` : `Buy yourself out: ${money(cost)}`}</button></div>
+      </article>`;
+  }
+  if (!s.offers.length) {
+    return `${note}<p class="hint">No label wants you yet. They watch fans, buzz and the charts. The small independents start sniffing at a few hundred fans and some buzz; the majors only call when the whole town is talking. The first offers tend to come from the people you should trust least.</p>`;
+  }
+  return `${note}${s.offers.map((o) => {
+    const l = labelById(o.label);
+    const left = o.expires - s.week;
+    return `
+      <article class="deal-card">
+        <span class="deal-tier">${TIER_SHOWN[l.tier]}</span>
+        <h3>${esc(l.name)}</h3>
+        <p class="hint">Word on the street: ${esc(l.word)}</p>
+        ${termsList(o.terms, o.read)}
+        <p class="hint">Offer open for ${left} more week${left === 1 ? '' : 's'}.</p>
+        <div class="card-foot">
+          <button class="btn" data-do="offerSign" data-arg="${o.id}">Sign</button>
+          <button class="btn ghost" data-do="offerHaggle" data-arg="${o.id}" ${o.haggled >= 2 ? 'disabled' : ''}>${o.haggled >= 2 ? 'Final offer' : 'Push for more'}</button>
+          ${o.read ? '' : `<button class="btn ghost" data-do="offerRead" data-arg="${o.id}" ${s.money < LAWYER_FEE ? 'disabled' : ''}>Lawyer reads it: ${money(LAWYER_FEE)}</button>`}
+          <button class="btn ghost" data-do="offerDecline" data-arg="${o.id}">Turn down</button>
+        </div>
+      </article>`;
+  }).join('')}`;
 }
 
 const KIND_LABEL: Record<string, string> = {

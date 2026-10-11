@@ -9,7 +9,8 @@ import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { TourPolicy } from './types';
-import type { Action, ActionType, GameState, Genre, Musician, ReleaseKind, Role, Song, SongKind } from './types';
+import { labelById, labelRelease, labelSales, tagRelease } from './labels';
+import type { Action, ActionType, GameState, Genre, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
   id: string;
@@ -174,6 +175,17 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
     }
     case 'release': {
       const need = (n: number) => (unreleased < n ? `Needs ${n} unreleased songs. You have ${unreleased}.` : undefined);
+      if (s.contract) {
+        const l = labelById(s.contract.label);
+        const t = s.contract.terms;
+        const bill = (share: number) => `£${Math.round(t.budget * share).toLocaleString('en-GB')} on the label's tab`;
+        return [
+          { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'For the merch table. The label does not care.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
+          { id: 'single', label: `Single on ${l.name}`, cost: 0, hint: `Proper studio, proper promotion. ${bill(0.15)}.`, locked: need(2) },
+          { id: 'ep', label: `EP on ${l.name}`, cost: 0, hint: `Four songs, label muscle. ${bill(0.35)}.`, locked: need(4) },
+          { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.`, locked: need(8) },
+        ];
+      }
       return [
         { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'Sell tapes at gigs, send one to the radio.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
         { id: 'single', label: 'Self-financed 7" single', cost: 300, hint: 'A real record in real shops. Can chart if enough people buy it.', locked: need(2) },
@@ -484,7 +496,8 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   releaseCommentary(s, kind, rng);
   const pool = kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
-  const studio = kind === 'demo' ? -8 : kind === 'single' ? 0 : 3;
+  const deal = labelRelease(s, kind);
+  const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0);
   const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + rng.int(-4, 4)), 1, 99);
   const appeal =
     songs.reduce((a, x) => a + (x.kind === 'ballad' ? 1.25 : 1) * (0.7 + trend(x.genre, s.week) * 0.5), 0) / songs.length;
@@ -494,8 +507,11 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   } else {
     for (const x of songs) x.released = true;
   }
-  s.releases.push({ id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 });
-  milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ' on Kebab Shop Records'}.`);
+  const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 };
+  tagRelease(s, rec);
+  s.releases.push(rec);
+  const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
+  milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ` on ${labelName}`}.`);
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
   for (const m of available(s)) {
@@ -504,7 +520,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
     grow(m, 'writing', 1, rng, 0.2);
   }
   s.tightness = clamp(s.tightness + 3, 0, 100);
-  log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
+  log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : rec.label ? ` Out now on ${labelName}, with posters on every bus shelter they could afford.` : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
 }
 
 function party(s: GameState, rng: Rng, option: string): void {
@@ -653,11 +669,13 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     if (r.kind === 'demo') continue;
     const age = s.week - r.week;
     const demand = (s.fans * 0.25 + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind];
-    const units = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
+    const raw = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
+    // Label records sell harder, but the money goes to the label's ledger first.
+    const { units, cash } = labelSales(s, r, raw);
     r.lastWeek = units;
     r.sold += units;
     if (units > 0) {
-      s.money += Math.round(units * MARGIN[r.kind]);
+      if (cash < 0) s.money += Math.round(units * MARGIN[r.kind]);
       // Records win new listeners, but each extra fan is harder to find than the last.
       s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
       out.push({ id: r.id, title: r.title, units, kind: r.kind });

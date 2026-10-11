@@ -67,6 +67,59 @@ export interface Release {
   week: number;
   sold: number;
   lastWeek: number;
+  /** Label release: who put it out, and the band's royalty per copy after deductions. */
+  label?: string;
+  royalty?: number;
+}
+
+/** The nasty bits of a record deal. Hidden until a lawyer reads the contract. */
+export interface SmallPrint {
+  /** Share of royalties lost to "packaging", "breakage" and "new technology" deductions. */
+  deductions: number;
+  /** Tour profits go to the label until the advance is earned back. */
+  tourRecoup: boolean;
+  /** The label owns the band name: leaving costs extra. */
+  ownsName: boolean;
+  /** Promo and video costs are charged back to the band. */
+  promoRecoup: boolean;
+}
+
+export interface DealTerms {
+  advance: number;
+  /** Royalty share of the retail price, before deductions. */
+  rate: number;
+  /** Albums owed. The label can drop you after each one. */
+  albums: number;
+  /** Recording budget per album (recoupable). Singles and EPs cost a share of it. */
+  budget: number;
+  smallPrint: SmallPrint;
+}
+
+export interface Offer {
+  id: string;
+  label: string;
+  week: number;
+  expires: number;
+  terms: DealTerms;
+  /** A lawyer has read the small print. */
+  read: boolean;
+  /** Times you have pushed for better terms. */
+  haggled: number;
+}
+
+export interface Contract {
+  label: string;
+  signed: number;
+  terms: DealTerms;
+  /** Money the label wants back before you see a penny of royalties. */
+  unrecouped: number;
+  albumsDelivered: number;
+  /** Royalties earned since the last statement (not yet paid or set against the debt). */
+  owed: number;
+  /** Week the label decides whether to keep you, after an album has had time to sell. */
+  reviewWeek: number | null;
+  /** Albums that sold under what the label expected. */
+  flops: number;
 }
 
 export interface PendingEvent {
@@ -160,6 +213,10 @@ export interface GameState {
   tour: Tour | null;
   /** The career highlights: releases, line-up changes, chart moments, tours. */
   milestones: Milestone[];
+  /** Record deal offers on the table. */
+  offers: Offer[];
+  /** The deal you are signed to, if any. */
+  contract: Contract | null;
 }
 
 export type MilestoneKind = 'career' | 'release' | 'lineup' | 'chart' | 'tour' | 'drama';

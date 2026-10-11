@@ -668,3 +668,18 @@ section + section { margin-top: 32px; }
 .chip.gap { border-color: var(--bad); color: var(--bad); }
 .chip.gap[aria-pressed="true"] { background: var(--bad); color: #160b1a; }
 .role-pick { display: block; }
+
+/* Record deals */
+.deal-card { border: 1px solid var(--smoke); border-radius: 14px; padding: 16px; margin-bottom: 14px; background: rgba(255,255,255,0.03); }
+.deal-card.signed { border-color: var(--nicotine); }
+.deal-card h3 { margin: 4px 0 2px; font-size: 1.2rem; }
+.deal-tier { font-family: var(--cond); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--chrome); }
+.deal { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 10px 0; }
+.deal div { background: rgba(255,255,255,0.05); border-radius: 8px; padding: 6px 10px; }
+.deal dt { font-family: var(--cond); font-size: 0.82rem; color: var(--muted); }
+.deal dd { margin: 0; font-weight: 700; }
+.deal dd small { font-weight: 400; color: var(--muted); }
+.deal dd.neg { color: var(--bad); }
+.smallprint { font-size: 0.92rem; color: var(--muted); }
+.deal-card .card-foot { display: flex; flex-wrap: wrap; gap: 8px; }
+.label-note { padding: 10px 12px; border-left: 3px solid var(--lipstick); background: rgba(255,61,139,0.08); border-radius: 6px; }

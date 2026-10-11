@@ -7,6 +7,7 @@ import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from 
 import { rollEvents } from './events';
 import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
+import { labelWeek } from './labels';
 import type { Action, GameState, Musician, NewGameInput } from './types';
 
 export { first } from './helpers';
@@ -60,6 +61,8 @@ export function newGame(input: NewGameInput): GameState {
     scene: null,
     tour: null,
     milestones: [],
+    offers: [],
+    contract: null,
   };
   s.world = createWorld(rng, s.bandName);
   // Let the charts run for a few months before you arrive, so they have history.
@@ -101,6 +104,8 @@ export function upgradeSave(s: GameState): GameState {
   s.scene ??= null;
   s.tour ??= null;
   s.milestones ??= [];
+  s.offers ??= [];
+  s.contract ??= null;
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;
@@ -216,6 +221,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   }
   s.buzz = clamp(s.buzz - Math.ceil(s.buzz * 0.06), 0, 100);
   fadeFans(s);
+  labelWeek(s, rng);
   if (s.money < 50) {
     // Skint: everyone picks up shifts somewhere.
     s.money += 8 * s.members.length;

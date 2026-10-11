@@ -184,7 +184,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.7)
+## Prototype status (v0.8)
 
 Playable in the browser. Implemented:
 
@@ -236,3 +236,15 @@ Built in v0.7 (`src/game/romanceEvents.ts`): `after_show` (after a home gig: hom
 ## Hiring
 
 Ads target one instrument, picked as chips (Guitar, Bass, Drums, Keys). When the band is missing a player the gig needs, that role is marked "(missing)" in red and is preselected when the hiring menu opens, and the tile reads "Find a bassist".
+
+## Record labels (v0.8)
+
+Eight fictional labels in three kinds (`src/game/labels.ts`). Each has a hidden honesty (0-100), a promotion multiplier, patience (flop albums tolerated) and a rumour line the player sees.
+
+- **Honest indies** (Bad Penny, Wax Lyrical, Gutterpress): small advances, 14-18% royalty, 2 albums, clean small print, modest promotion.
+- **Sharks** (Goldtooth, Starlight): look like indies, call first (150 fans and any release), flash advances, 11-14% royalty, 5-6 albums, heavy deductions, tour profits seized until recouped, they own the band name, and they under-report sales on statements.
+- **Majors** (Colossus, Imperial, Polyvox): only call when the labels are calling (milestone, a national chart entry or two A&R tip-offs). Big advances and budgets, 8-12% royalty, 3-5 albums, 2.4-3x promotion, little patience; some bill promotion to the band.
+
+Offers arrive by letter (one at a time, at most three open, six weeks to answer) and sit in the Label tab. The player can sign, push for more (better terms, or the label walks; odds rise with heat and rival offers), pay a £100 lawyer to read the small print, or turn it down (that label waits half a year). Advances are loans: they and every recording budget (single 15%, EP 35%, album 100%) go on the band's tab. Label releases sell at the label's promotion multiplier; royalties (retail price x rate x (1 - deductions)) go to the ledger, and every 13 weeks a statement sets them against the debt and pays out only what is left. Labels review each album 16 weeks after release against what they quietly expect (indie 1,500, shark 800, major 6,000 copies); too many flops and you are dropped, debt and all. No album for a year brings angry calls, two years gets you dropped. Delivering every album owed makes you a free agent. You can always buy yourself out: £1,000 plus 30-100% of the debt depending on the label's honesty, plus £2,000 if they own your name. While signed, self-financed records are not allowed; demos still are.
+
+Still to come: labels poaching a signed band (paying the buyout), A&R meddling (single choice, image, chasing trends), royalty audits that catch crooks, label reactions to scandal, and managers.
