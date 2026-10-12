@@ -589,17 +589,17 @@ function zone(s: GameState): string {
   // Paced like reading: longer lines stay on their own longer. Gigs and trips linger a little more.
   const mood = sc?.vibe === 'gig' || sc?.vibe === 'wasted' ? 1.15 : sc?.vibe === 'trip' ? 1.25 : 1;
   const speed = pace === 'relaxed' ? 1 : 0.45;
-  const readTime = (text: string) => Math.min(4.2, Math.max(1.3, text.length / 26)) * mood * speed;
+  const readTime = (text: string) => Math.min(6.5, Math.max(2, text.length / 18)) * mood * speed;
   const main = sc ? sc.beats.filter((b) => !b.late) : [];
   const late = sc ? sc.beats.filter((b) => b.late) : [];
   let t = 0.3;
   const delay = (b: Beat) => { const d = t; t += readTime(b.text); return d; };
   const beatLi = (b: Beat) => `<li class="beat ${b.tone}" data-d="${delay(b).toFixed(2)}">${b.time ? `<span class="t">${esc(b.time)}</span>` : '<span class="t"></span>'}<span class="txt">${emph(b.text)}</span></li>`;
   const mainHtml = main.map(beatLi).join('');
-  const fxDelay = t + 0.6 * speed;
-  t = fxDelay + 2.2 * speed;
+  const fxDelay = t + 1.2 * speed;
+  t = fxDelay + 3.2 * speed;
   const lateHtml = late.length ? `<div class="later" data-d="${t.toFixed(2)}"><h3>Later that week</h3><ul>${late.map((b) => `<li class="${b.tone}">${esc(b.text)}</li>`).join('')}</ul></div>` : '';
-  if (late.length) t += Math.max(1.5, late.reduce((a, b) => a + readTime(b.text) * 0.6, 0));
+  if (late.length) t += Math.max(2.5, late.reduce((a, b) => a + readTime(b.text) * 0.75, 0));
   const nextDelay = t;
   const collapsed = !!sc && !playing && collapsedScene === sc.id;
   if (collapsed && sc) {

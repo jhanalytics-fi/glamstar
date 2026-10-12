@@ -216,7 +216,7 @@ Week actions change each member's energy, mood and habit by the listed amount ±
 
 ## Pacing
 
-No hurry. The week's report is read out at reading speed: each line stays alone for its length / 26 characters a second (1.3-4.2 s), a bit longer for gigs and trips. The header figures (money, fans, buzz, tightness) hold the week's starting values until the result lands, then count over to the new ones and glow green or red, so the eye goes to the numbers that moved. A "Pace: relaxed / brisk" switch in the header (brisk is about twice as fast) is remembered per browser; any click still shows everything at once.
+No hurry. The week's report is read out at reading speed: each line stays alone for its length / 18 characters a second (2-6.5 s), the result lands 1.2 s after the last line and stays alone for 3.2 s, a bit longer for gigs and trips. The header figures (money, fans, buzz, tightness) hold the week's starting values until the result lands, then count over to the new ones and glow green or red, so the eye goes to the numbers that moved. A "Pace: relaxed / brisk" switch in the header (brisk is about twice as fast) is remembered per browser; any click still shows everything at once.
 
 ## Meeting the band
 
