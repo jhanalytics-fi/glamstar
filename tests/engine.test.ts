@@ -1012,3 +1012,40 @@ describe('tour venues', () => {
     }
   });
 });
+
+describe('lightning', () => {
+  const base = () => newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 5 });
+  it('masterpieces are rare, better with a great writer, and make a milestone', async () => {
+    const { masterpieceOdds } = await import('../src/game/fate');
+    const s = base();
+    const w = s.members[0];
+    w.writing = 20; const low = masterpieceOdds(s, w);
+    w.writing = 95; w.mood = 90; const high = masterpieceOdds(s, w);
+    expect(low).toBeLessThan(0.03);
+    expect(high).toBeGreaterThan(low);
+    expect(high).toBeLessThanOrEqual(0.06);
+    let hits = 0;
+    for (let seed = 1; seed <= 150; seed++) {
+      let g = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), pending: null };
+      g.members.forEach((m) => { m.writing = 90; m.mood = 90; });
+      g = act(g, { type: 'write', option: 'jam' });
+      if (g.flags.masterpieces) { hits++; expect(g.milestones.some((m) => /The one/.test(m.text))).toBe(true); expect(g.songs.some((x) => x.quality >= 92)).toBe(true); }
+    }
+    expect(hits).toBeGreaterThan(0);
+    expect(hits).toBeLessThan(40);
+  });
+
+  it('a perfect night can become legendary, and some nights the club catches fire', async () => {
+    const { gigFate } = await import('../src/game/fate');
+    const s = base();
+    let legends = 0, disasters = 0;
+    for (let i = 1; i <= 400; i++) {
+      const f = gigFate(s, new Rng(i), i % 2 ? 97 : 60, 150);
+      if (f?.kind === 'legend') legends++;
+      if (f?.kind === 'disaster') disasters++;
+    }
+    expect(legends).toBeGreaterThan(50);
+    expect(disasters).toBeGreaterThan(3);
+    expect(disasters).toBeLessThan(40);
+  });
+});

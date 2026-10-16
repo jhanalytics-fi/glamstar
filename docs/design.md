@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.13)
+## Prototype status (v0.14)
 
 Playable in the browser. Implemented:
 
@@ -302,3 +302,11 @@ Luxury options appear in Rest and Party as the bank balance grows: each shows as
 - **Eccentric purchase** (£15,000+ in the bank): a member buys a tank, a church organ, a racehorse, a lighthouse... for a quarter of the account. Let it go, force a sale (half back, a sulk) or take it from their share (loyalty down).
 - **The court** (`court`, 8,000+ fans): the entourage. Keep (weekly rent +£150, image +2) or sack (-£50, mood -3).
 - **Where the money goes**: the Business tab lists the weekly bill by line (rent, wages, habits, living like a star), the manager's cut, label debt, producer points and the tax rule.
+
+## Lightning (v0.14)
+
+`src/game/fate.ts`. Rare things that make a career memorable, both ways.
+
+- **Masterpiece:** every song written has a small chance (0.4% to 6%, rising with the writer's skill and mood and the band's chemistry) of coming out at 92-99. It gets its own beat in the report, a milestone ("The one"), mood +10 for everyone, and when it is released the press goes wild (buzz +8).
+- **Legendary gig:** a home gig with performance 95+ has a 50% chance (85+, 8%) of becoming the night they still talk about: buzz +15, fans +50% of the crowd, mood +12, image +1, a milestone. Verdict "Legendary".
+- **Disaster:** 3.5% of home gigs go wrong through no fault of yours: kitchen fire, power cut, the PA blowing up, the singer's voice going, a double booking, a fight, a burst pipe, the van broken into. Performance drops 30-65%, sometimes the crowd too, sometimes a bill. Verdict "Disaster".

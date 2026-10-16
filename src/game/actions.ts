@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
-import { addBuzz, adjust, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
+import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
 import { hotGenres, trend } from './world';
 import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
@@ -12,6 +12,7 @@ import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost } from './managers';
 import { takeProducer } from './moneyEvents';
+import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
 import type { Action, ActionType, GameState, Genre, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -278,14 +279,24 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
     if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
-  const perf = performance(s, wasted);
+  let perf = performance(s, wasted);
+  const fate = gigFate(s, rng, perf, g.capacity);
+  let crowdMult = 1;
+  if (fate?.kind === 'disaster') { perf = Math.round(perf * fate.perfMult); crowdMult = fate.crowdMult; }
   // Play the same London rooms every week and people stop coming: they saw you last Friday.
   const overexposed = 1 / (1 + (s.flags.homeHeat ?? 0) * 0.15);
-  const crowd = clamp(Math.round(g.crowd(s, rng) * overexposed), 6, g.capacity);
+  const crowd = clamp(Math.round(g.crowd(s, rng) * overexposed * crowdMult), 6, g.capacity);
   s.flags.homeHeat = (s.flags.homeHeat ?? 0) + 1;
   if (overexposed < 0.6 && rng.chance(0.3)) log(s, 'Half the regulars stayed home. "We saw you last week," says the barman. "And the week before."', 'neutral');
   const wastedMembers = available(s).filter((m) => wasted.has(m.id));
   gigCommentary(s, rng, { venue: g.venue, crowd, capacity: g.capacity, perf, wasted: wastedMembers });
+  if (fate?.kind === 'disaster') {
+    beat(s, undefined, fate.text, 'bad');
+    s.money -= fate.cost;
+    addBuzz(s, fate.buzz);
+    for (const m of available(s)) adjust(m, 'mood', -5);
+    log(s, `Disaster at ${g.venue}: ${fate.text.split('.')[0]}.`, 'bad');
+  }
   for (const m of wastedMembers) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
   // A manager with clout squeezes promoters, then takes their cut.
   const pay = Math.round((g.fee + Math.round(crowd * 2 * g.door)) * feeBoost(s));
@@ -300,8 +311,10 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   addBuzz(s, Math.max(0, (perf - 45) / 5) + crowd / 60 + g.buzzBonus);
   if (s.lastGigWeek === null) milestone(s, 'career', `First gig: ${g.venue}, ${crowd} people.`);
   s.lastGigWeek = s.week;
-  const verdict = perf >= 75 ? 'Storming.' : perf >= 55 ? 'A solid night.' : perf >= 40 ? 'Ropey.' : 'A shambles.';
-  setVerdict(s, perf >= 75 ? 'Storming' : perf >= 55 ? 'Solid' : perf >= 40 ? 'Ropey' : 'Shambles', perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
+  const legend = fate?.kind === 'legend';
+  const verdict = legend ? 'Legendary.' : fate?.kind === 'disaster' ? 'Disaster.' : perf >= 75 ? 'Storming.' : perf >= 55 ? 'A solid night.' : perf >= 40 ? 'Ropey.' : 'A shambles.';
+  setVerdict(s, legend ? 'Legendary' : fate?.kind === 'disaster' ? 'Disaster' : perf >= 75 ? 'Storming' : perf >= 55 ? 'Solid' : perf >= 40 ? 'Ropey' : 'Shambles', legend || perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
+  if (legend) applyLegend(s, rng, g.venue, crowd);
   headline(s, 'Crowd', `${crowd} / ${g.capacity}`);
   log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
 
@@ -443,10 +456,11 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
   grow(writer, 'writing', 1, rng, 0.5);
   const song: Song = { title: songTitle(rng), quality: clamp(Math.round(quality), 1, 99), writer: writer.id, kind, genre, released: false };
   s.songs.push(song);
+  if (rng.chance(masterpieceOdds(s, writer))) strikeMasterpiece(s, rng, song, writer);
   const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : 'song';
   log(s, `New ${kindText}: "${song.title}" (${song.quality}), mostly ${writer.isPlayer ? 'yours' : `${first(writer)}'s`}.`, song.quality >= 55 ? 'good' : 'neutral');
   headline(s, 'New song', `${song.quality}`);
-  setVerdict(s, song.quality >= 65 ? 'A belter' : song.quality >= 50 ? 'Keeper' : 'Filler', song.quality >= 50 ? 'good' : 'neutral');
+  setVerdict(s, song.quality >= 92 ? 'The one' : song.quality >= 65 ? 'A belter' : song.quality >= 50 ? 'Keeper' : 'Filler', song.quality >= 50 ? 'good' : 'neutral');
   return song;
 }
 
@@ -544,6 +558,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   s.releases.push(rec);
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
   milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ` on ${labelName}`}.`);
+  if (kind !== 'demo') masterpiecePress(s, rng, songs);
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
   for (const m of available(s)) {
