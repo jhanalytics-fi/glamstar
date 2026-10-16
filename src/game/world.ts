@@ -42,6 +42,8 @@ export interface ChartEntry {
   last: number | null;
   weeks: number;
   isPlayer: boolean;
+  /** Internal chart score, so the UI can say what it takes to get in. */
+  score?: number;
 }
 
 export interface World {
@@ -297,7 +299,7 @@ function setChart(w: World, id: ChartId, rows: { id: string; artist: string; tit
     .filter((r) => r.score > 0)
     .map((r, i) => {
       const before = prev.get(r.id + (r.title ?? ''));
-      return { id: r.id, artist: r.artist, title: r.title, origin: r.origin, pos: i + 1, last: before?.pos ?? null, weeks: (before?.weeks ?? 0) + 1, isPlayer: r.isPlayer };
+      return { id: r.id, artist: r.artist, title: r.title, origin: r.origin, pos: i + 1, last: before?.pos ?? null, weeks: (before?.weeks ?? 0) + 1, isPlayer: r.isPlayer, score: r.score };
     });
 }
 
@@ -312,6 +314,17 @@ export function ageCharts(w: World, rng: Rng): void {
       if (e.weeks === 1) e.last = null;
     }
   }
+}
+
+/** Roughly how many copies a week a record needs to sell to enter a chart right now. */
+export function entryUnits(w: World, id: ChartId, reach = 1): number | null {
+  if (id === 'london') return null;
+  const rows = w.charts[id];
+  if (!rows.length) return null;
+  const last = rows[rows.length - 1].score ?? 0;
+  const per = id === 'albums' ? 450 : 650;
+  const weight = id === 'albums' || id === 'uk' ? 1 : ORIGIN_WEIGHT[id]('UK') * reach;
+  return Math.round((last * per) / Math.max(0.05, weight) / 100) * 100;
 }
 
 export function playerPosition(w: World, id: ChartId): number | null {

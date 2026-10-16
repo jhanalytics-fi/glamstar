@@ -614,6 +614,18 @@ interface PartyCtx {
 type PartySlot = 'arrive' | 'mid' | 'wild' | 'late';
 
 const PARTY: Record<string, Record<PartySlot, Line<PartyCtx>[]>> = {
+  penthouse: {
+    arrive: ['A penthouse in Mayfair, keys handed over by a man who asks you not to break the chandelier.', 'Caterers, a DJ, a doorman with a clipboard and a guest list longer than the album credits.', 'The lift opens on a room the size of a venue. {band} walk in like they own it, which for the weekend they do.'],
+    mid: ['Two gossip columnists, a soap actor and someone who claims to be a minor royal. {w} is telling the royal about the van.', 'Champagne in the bath. {mate} in the bath. Both at once, eventually.', 'The DJ plays your single. The room sings it. {w} cries, slightly.'],
+    wild: ['Three in the morning: {w} and the chandelier are no longer on speaking terms.', 'The doorman has given up. The neighbours have given in. Someone is on the roof.', 'A photographer got in. The pictures will be in the Sunday papers, and they are not flattering, and they are brilliant.'],
+    late: ['Sunday afternoon. The caterers have gone, the DJ is asleep in the bath, and the bill is under the door.', 'Checkout. The man with the chandelier looks at the chandelier for a long time.'],
+  },
+  yacht: {
+    arrive: ['Antibes. A yacht the length of the Crown & Gutter with a crew in white shorts.', 'Champagne on deck before the ropes are off. {w} has already fallen asleep in the sun.', 'The captain explains the rules. {band} nod. The rules last until lunchtime.'],
+    mid: ['Day three, somewhere off Cannes. {mate} has not worn a shirt since Monday. Nobody has seen the drummer.', 'A speedboat of photographers circles at dusk. {w} waves with a bottle.', 'Dinner in Saint-Tropez. The bill arrives. {w} laughs for a full minute.'],
+    wild: ['{w} went overboard at midnight and came back up still holding the glass.', 'The captain has threatened to turn back. {band} have threatened to buy the boat.', 'A jet ski, a borrowed one, in a harbour, at speed. The harbourmaster will write to the label.'],
+    late: ['Back in port a week later, sunburnt, salt-stained and famous in three countries for the wrong reasons.', 'The crew wave you off with real relief. The bill follows by telex.'],
+  },
   cans: {
     arrive: [
       `A crate of lager and the ghetto blaster on full.`,
@@ -874,12 +886,12 @@ const MORNING_AFTER: string[] = [
 ];
 
 export function partyCommentary(s: GameState, rng: Rng, option: string, wildest: Musician): void {
-  const trippy = option === 'soho' || option === 'throw' || (option === 'squat' && wildest.hidden.vice >= 70);
+  const trippy = option === 'soho' || option === 'throw' || option === 'penthouse' || option === 'yacht' || (option === 'squat' && wildest.hidden.vice >= 70);
   if (trippy) setVibe(s, 'trip');
   const lines = PARTY[option] ?? PARTY.cans;
   const [mate] = mates(s, rng);
   const c: PartyCtx = { w: who(wildest), band: s.bandName, mate, bassist: roleName(s, 'bass', 'The bass player') };
-  const start: Record<string, [number, number]> = { cans: [20, 0], squat: [22, 0], soho: [22, 30], throw: [21, 0] };
+  const start: Record<string, [number, number]> = { cans: [20, 0], squat: [22, 0], soho: [22, 30], throw: [21, 0], penthouse: [21, 0], yacht: [18, 0] };
   const [h, m] = start[option] ?? start.cans;
   beat(s, clock(rng, h, m, 10), pickLine(rng, lines.arrive, c));
   beat(s, clock(rng, h + 1, m + 30, 15), pickLine(rng, lines.mid, c));
@@ -1186,6 +1198,21 @@ export function writingCommentary(s: GameState, rng: Rng, option: string): void 
 // ================================================================ REST
 
 const REST: Record<string, { mon: Line<MateCtx>[]; mid: Line<MateCtx>[]; end: Line<MateCtx>[] }> = {
+  spa: {
+    mon: ['A country house hotel, gravel drive, a man in a waistcoat carrying the bass.', 'Check-in at a spa in the Cotswolds. The receptionist has never seen so much leather.', 'Fluffy robes all round. {mate} wears theirs to the bar.'],
+    mid: ['Mud wraps, cold plunges and a masseur who calls everyone "young man", including {mate2}.', 'The minibar is padlocked by order of the manager. {mate} has found the sauna and will not come out.', 'Afternoon tea on the lawn. A duck steals {mate}\'s scone. Nobody has felt this calm in years.'],
+    end: ['Checked out glowing, clear-eyed and smelling faintly of eucalyptus.', 'Home with clean livers and a bill that made {mate} sit down.', 'Back to London, rested, and oddly polite to each other.'],
+  },
+  bahamas: {
+    mon: ['Heathrow at dawn. First class. {mate} asks if the champagne is free and does not wait for the answer.', 'Touchdown in Nassau. Heat like an open oven and a steel band at the airport.', 'A villa on the beach. White sand, blue sea, a fridge the size of the rehearsal room.'],
+    mid: ['Day four. Nobody has worn shoes. {mate2} has learned to snorkel and talks of nothing else.', 'A rum punch at eleven in the morning is, {mate} explains, "cultural".', 'Sunset on the beach with acoustic guitars. For once, nobody is showing off.'],
+    end: ['Two weeks gone in a blink. Brown, rested and talking about "the next record" like a band again.', 'The flight home is quiet. Everyone sleeps. Everyone is, for once, fine.', 'Home with a tan, a conch shell and the best mood the band has had in years.'],
+  },
+  retreat: {
+    mon: ['A villa above the sea in Ibiza. A pool, a terrace, and a grand piano nobody admits to being able to play.', 'The hire car does not survive the track up to the villa. The gear does. {mate} walks the last mile with the cymbals.', 'Guitars out on the terrace by sundown. The cicadas are in a different key.'],
+    mid: ['A song by the pool before breakfast, another after lunch. The piano turns out to be in tune and {mate2} turns out to play it.', 'A night at a club in town. Nobody writes anything the next day. The day after, two songs.', 'The chorus came to {mate} underwater. The lyrics came to you on the terrace at three a.m.'],
+    end: ['Home with a tape, a tan and more songs than you went out with.', 'The villa owner found the piano full of sand and a lyric sheet. He kept the lyric sheet.', 'Back in London tighter, browner and with a record in the bag.'],
+  },
   sleep: {
     mon: [
       'Curtains shut, phone off the hook.',

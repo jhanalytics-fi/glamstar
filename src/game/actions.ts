@@ -675,8 +675,7 @@ function rest(s: GameState, rng: Rng, option: string): void {
   if (option === 'retreat') {
     const best = [...s.members].sort((x, y) => y.writing - x.writing)[0];
     for (let i = 0; i < 2; i++) {
-      const song = newSong(s, rng, best.writing * 0.8 + 12 + rng.int(-6, 12), best, 'standard', player(s).style);
-      log(s, `New song from the villa: "${song.title}" (${song.quality}).`, 'good');
+      newSong(s, rng, best.writing * 0.8 + 12 + rng.int(-6, 12), best, 'standard', player(s).style);
     }
   }
   if (option === 'mum') {

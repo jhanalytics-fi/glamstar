@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
-import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
+import { MAX_MEMBERS, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -817,6 +817,19 @@ function reducedMotion(): boolean {
   try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
 }
 
+/** What it takes to get into a sales chart, against what your latest record is doing. */
+function chartNeed(s: GameState): string {
+  const album = chartTab === 'albums';
+  const r = reach(s);
+  const need = entryUnits(s.world, chartTab, chartTab === 'europe' ? r.europe : chartTab === 'world' ? r.world : 1);
+  const latest = [...s.releases].reverse().find((x) => (album ? x.kind === 'album' : x.kind === 'single' || x.kind === 'ep'));
+  const kind = album ? 'an album' : 'a single';
+  if (!latest) return `Only records chart here. Release ${kind} that sells${need ? `: the bottom of the chart is selling about ${need.toLocaleString('en-GB')} copies a week` : ''}.`;
+  const age = s.week - latest.week;
+  const abroad = chartTab === 'europe' || chartTab === 'world';
+  return `"${esc(latest.title)}" sold ${latest.lastWeek.toLocaleString('en-GB')} copies last week${age > 12 ? ' and is fading: records sell for a few months, then it takes a new one' : ''}. ${need ? `The bottom of this chart is selling about ${need.toLocaleString('en-GB')}.` : ''}${abroad ? ' Abroad, only a label with distribution, touring the region and big videos carry your records.' : ' A label with promotion multiplies sales.'}`;
+}
+
 function chartsSection(s: GameState): string {
   const tabs = (Object.keys(CHART_NAME) as ChartId[])
     .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'National' : id === 'albums' ? 'Albums' : id === 'europe' ? 'Europe' : 'World'}</button>`)
@@ -829,7 +842,7 @@ function chartsSection(s: GameState): string {
   const note =
     chartTab === 'london'
       ? mine ? `You're at #${mine.pos}.` : 'Ranked by fans and buzz on the gig circuit. Keep gigging to break in.'
-      : mine ? `Your record is at #${mine.pos}.` : chartTab === 'albums' ? 'Release an album that sells and you could chart here.' : 'Release a single that sells and you could chart here.';
+      : mine ? `Your record is at #${mine.pos}.` : chartNeed(s);
   const hot = hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ');
   return `
     <section class="charts">
