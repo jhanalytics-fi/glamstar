@@ -253,7 +253,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     }
     const wasted = new Set<string>();
     for (const m of available(s)) {
-      const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
+      const p = ((m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15) * (1.4 - m.hidden.stamina / 125);
       if (rng.chance(p * 0.5 * (tour.policy === 'wild' ? 1.4 : tour.policy === 'clean' ? 0.5 : 1))) wasted.add(m.id);
     }
     let perf = Math.round(performance(s, wasted) * (gaps.length ? 0.9 : 1));

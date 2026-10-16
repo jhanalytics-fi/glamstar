@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.15)
+## Prototype status (v0.16)
 
 Playable in the browser. Implemented:
 
@@ -318,3 +318,11 @@ On tour (v0.14.1): 3% of dates are cancelled through no fault of yours (lost lic
 ## Singles from the album (v0.15)
 
 An album records its tracks (`song.album`). While the latest album is under a year old, Release offers "Lift <best remaining track> from the album as a single" (£150 self-financed, free on a label): no new songs, no studio week, the track goes to the singles chart with the album's appeal. Each track can be lifted once, best first. This is how a number-one album turns into National Top 40 singles.
+
+## Fame changes the menu (v0.16)
+
+- **Play the rest of the tour:** one button plays every remaining week with the current policy and leaves a summary scene (one line per week, plus legends, disasters and cancellations). It stops when a situation needs a decision; answer it and press again.
+- **Famous (20,000+ fans):** the open mic, the small rooms, support slots and pay-to-play disappear from Gig. In their place: a secret gig at the Crown & Gutter under a false name (80 people, buzz +12). Mum's gets a limo. **Loaded (£100,000+):** cans and the squat drop off Party.
+- **Inspiration:** songwriting gets a bonus from the band's state: mood and energy (+-5 and +-3 around 55), habit 35-65 adds +4 ("writing on something stronger than tea"), habit 65+ costs 7. The Write menu shows it ("Band: inspired (+9)").
+- **Stamina is tolerance:** the wasted-on-stage chance from a habit scales by 1.4 - stamina/125, and party energy loss by 1.3 - stamina/150. Same habit, different bodies.
+- The goal line no longer counts "N of 21"; the ladder is still there, it just stops looking like a checklist.

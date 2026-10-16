@@ -99,7 +99,11 @@ function gigSpecs(s: GameState): Record<string, GigSpec> {
         } satisfies GigSpec,
       ]),
     ),
-    openmic: {
+    openmic: famous(s) ? {
+      venue: 'a secret gig at The Crown & Gutter',
+      capacity: 80, fee: 0, door: 0, cost: 0, fanMult: 0.2, energyMult: 0.6, buzzBonus: 12,
+      crowd: () => 80,
+    } : {
       venue: 'open mic night at The Crown & Gutter',
       capacity: 45, fee: 0, door: 0, cost: 0, fanMult: 0.6, energyMult: 0.6, buzzBonus: 0,
       crowd: (st, rng) => Math.round(18 + st.fans * 0.2 + rng.int(-5, 8)),
@@ -131,6 +135,29 @@ function lessonTarget(s: GameState): Musician | null {
   return here.length ? [...here].sort((a, b) => overall(a) - overall(b))[0] : null;
 }
 
+/**
+ * Where songs come from. A rested, happy band in the zone writes better; so, for a while, does a
+ * band running on chemicals. Past that it is just noise and missed sessions.
+ */
+export function inspiration(s: GameState): { bonus: number; text: string; label: string } {
+  const here = available(s);
+  if (!here.length) return { bonus: 0, text: '', label: '' };
+  const avg = (k: 'mood' | 'energy' | 'habit') => here.reduce((a, m) => a + m[k], 0) / here.length;
+  const mood = avg('mood'), energy = avg('energy'), habit = avg('habit');
+  let bonus = ((mood - 55) / 45) * 5 + ((energy - 55) / 45) * 3;
+  let text = '';
+  if (habit >= 35 && habit < 65) { bonus += 4; text = 'The band is writing on something stronger than tea. The ideas come fast and strange.'; }
+  else if (habit >= 65) { bonus -= 7; text = 'Half the band is too far gone to finish a verse. The tape is mostly giggling.'; }
+  if (mood >= 70 && energy >= 70 && habit < 35) text = 'Rested, happy and sharp: the band is in the zone.';
+  else if (mood < 35 || energy < 30) text = text || 'Tired and miserable. The songs come out that way too.';
+  const label = bonus >= 5 ? 'Inspired' : bonus >= 1 ? 'In decent shape' : bonus > -3 ? 'Flat' : 'Running on fumes';
+  return { bonus: Math.round(bonus), text, label };
+}
+
+/** A big band does not play the back room of a pub, or drink cans in the rehearsal room. Mostly. */
+export const famous = (s: GameState) => s.fans >= 20000;
+export const loaded = (s: GameState) => s.money >= 100000;
+
 export function actionOptions(s: GameState, type: ActionType): ActionOption[] {
   const opts = rawOptions(s, type);
   for (const o of opts) if (!o.locked && o.cost > 0 && s.money < o.cost) o.locked = `Costs £${o.cost}. You have £${s.money}.`;
@@ -158,25 +185,29 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
       }));
     }
     case 'gig': {
-      const opts: ActionOption[] = [
-        { id: 'openmic', label: 'Open mic night', cost: 0, hint: 'No pay. Small crowd, low pressure, easy on the legs.' },
-        ...weeklyOffers(s).map((o) => ({ id: `offer_${o.id}`, label: `This week only: ${o.label}`, cost: 0, hint: `£${o.fee}. ${o.hint}` })),
-      ];
+      const big = famous(s);
+      const opts: ActionOption[] = big
+        ? [{ id: 'openmic', label: 'Secret gig at the Crown & Gutter, under a false name', cost: 0, hint: 'For old times\' sake. Forty people, a leaked rumour, the papers go mad.' }]
+        : [
+          { id: 'openmic', label: 'Open mic night', cost: 0, hint: 'No pay. Small crowd, low pressure, easy on the legs.' },
+          ...weeklyOffers(s).map((o) => ({ id: `offer_${o.id}`, label: `This week only: ${o.label}`, cost: 0, hint: `£${o.fee}. ${o.hint}` })),
+        ];
       VENUES.forEach((v, i) => {
+        if (big && i < VENUES.length - 2) return;
         if (s.fans >= v.minFans) {
           opts.push({ id: `venue${i}`, label: `Headline ${v.name}`, cost: 0, hint: `Up to ${v.capacity} people. £${v.fee} plus a cut of the door.` });
         } else if (i > 0 && s.fans >= VENUES[i - 1].minFans) {
           opts.push({ id: `venue${i}`, label: `Headline ${v.name}`, cost: 0, hint: `Up to ${v.capacity} people.`, locked: `The promoter wants ${v.minFans} fans. You have ${s.fans}.` });
         }
       });
-      const sup = supportAct(s);
+      const sup = big ? null : supportAct(s);
       if (sup) {
         opts.push({
           id: 'support', label: `Support ${sup.name}`, cost: 0, hint: 'Their crowd, not yours. £15 fee and a chance to steal some fans.',
           locked: s.fans < 40 ? 'Their manager has never heard of you. Get 40 fans first.' : undefined,
         });
       }
-      opts.push({ id: 'paytoplay', label: 'Pay to play at The Velvet Cellar', cost: 60, hint: 'You keep nothing. A proper Soho stage looks good.' });
+      if (!big) opts.push({ id: 'paytoplay', label: 'Pay to play at The Velvet Cellar', cost: 60, hint: 'You keep nothing. A proper Soho stage looks good.' });
       const miss = missingForGig(s);
       if (miss.length) for (const o of opts) o.locked = `You need ${miss.join(' and ')} to gig.`;
       return opts;
@@ -191,8 +222,10 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
       ];
     case 'write': {
       const hot = hotGenres(s.week)[0];
+      const insp = inspiration(s);
+      const mood = insp.label ? ` Band: ${insp.label.toLowerCase()} (${insp.bonus >= 0 ? '+' : ''}${insp.bonus}).` : '';
       return [
-        { id: 'jam', label: 'Jam it out together', cost: 0, hint: 'Best writers lead. Good for the band, may produce nothing.' },
+        { id: 'jam', label: 'Jam it out together', cost: 0, hint: `Best writers lead. Good for the band, may produce nothing.${mood}` },
         { id: 'solo', label: 'Write it yourself', cost: 0, hint: 'Your song, your way. The others may sulk.' },
         { id: 'trend', label: `Chase the trend: ${GENRE_LABEL[hot].toLowerCase()}`, cost: 0, hint: 'Sells better right now. Purists in the band will hate it.' },
         { id: 'ballad', label: 'Write a power ballad', cost: 0, hint: 'Hit or embarrassment. Lighters up, credibility down.' },
@@ -222,8 +255,10 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
     }
     case 'party':
       return [
-        { id: 'cans', label: 'Cans in the rehearsal room', cost: 5, hint: 'Cheap, cheerful, nobody gets hurt. Probably.' },
-        { id: 'squat', label: 'Party at the squat', cost: 15, hint: 'Good for morale, bad for livers.' },
+        ...(loaded(s) ? [] : [
+          { id: 'cans', label: 'Cans in the rehearsal room', cost: 5, hint: 'Cheap, cheerful, nobody gets hurt. Probably.' },
+          { id: 'squat', label: 'Party at the squat', cost: 15, hint: 'Good for morale, bad for livers.' },
+        ]),
         { id: 'soho', label: 'Night out in the Soho clubs', cost: 40, hint: 'Be seen with the right people. Easy to lose the plot.' },
         { id: 'throw', label: 'Throw your own party', cost: 90, hint: 'Everyone will talk about it. Neighbours may call the police.' },
         ...luxury(s, [
@@ -236,7 +271,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'sleep', label: 'Sleep it off', cost: 0, hint: 'Energy back, a little drier.' },
         { id: 'seaside', label: 'Day trip to Brighton', cost: 25, hint: 'Chips, sea air and band bonding.' },
         { id: 'dry', label: 'Lock the drinks cupboard', cost: 0, hint: 'Habits drop fast. Withdrawal is grim.' },
-        { id: 'mum', label: "Everyone goes home to their mum's", cost: 0, hint: 'Full recovery and a fiver each. The scene forgets you a bit.' },
+        { id: 'mum', label: famous(s) ? "Everyone goes home to their mum's, in a limo" : "Everyone goes home to their mum's", cost: 0, hint: famous(s) ? 'Sunday roast, clean laundry, the neighbours at the window. Mum still gives you a fiver.' : 'Full recovery and a fiver each. The scene forgets you a bit.' },
         ...luxury(s, [
           { id: 'spa', label: 'A week at a country spa hotel', cost: 600, unlock: 2000, hint: 'Massages, mud and no minibar. Energy, mood and a clear head.' },
           { id: 'bahamas', label: 'Fly the band to the Bahamas', cost: 3000, unlock: 10000, hint: 'Two weeks of sun, sea and nothing. The band comes back new. Costs a fortune.' },
@@ -292,7 +327,8 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
 function gig(s: GameState, rng: Rng, g: GigSpec): void {
   const wasted = new Set<string>();
   for (const m of available(s)) {
-    const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
+    // Tolerance: a strong constitution carries a habit on stage; a weak one shows it by the second song.
+    const p = ((m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15) * (1.4 - m.hidden.stamina / 125);
     if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
   let perf = performance(s, wasted);
@@ -488,7 +524,9 @@ function write(s: GameState, rng: Rng, option: string): void {
   const best = writers[0];
   const second = writers[1] ?? best;
   const chem = chemistry(s).total;
-  const base = best.writing * 0.45 + second.writing * 0.25 + chem * 0.2;
+  const insp = inspiration(s);
+  const base = best.writing * 0.45 + second.writing * 0.25 + chem * 0.2 + insp.bonus;
+  if (insp.text) log(s, insp.text, insp.bonus > 0 ? 'good' : 'neutral');
 
   if (option === 'solo') {
     me.energy = clamp(me.energy - 10, 0, 100);
@@ -598,7 +636,7 @@ function party(s: GameState, rng: Rng, option: string): void {
   const p = { cans: [7, 4, [0, 3]], squat: [14, 12, [2, 8]], soho: [16, 18, [4, 10]], throw: [20, 20, [5, 12]], penthouse: [28, 22, [6, 14]], yacht: [40, 15, [6, 16]] }[option] as [number, number, [number, number]];
   for (const m of here) {
     adjust(m, 'mood', wobble(rng, p[0]));
-    adjust(m, 'energy', wobble(rng, -p[1]));
+    adjust(m, 'energy', wobble(rng, -p[1] * (1.3 - m.hidden.stamina / 150)));
     adjust(m, 'habit', wobble(rng, (m.hidden.vice / 100) * rng.int(p[2][0], p[2][1])));
   }
   forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, rng.int(1, option === 'cans' ? 3 : 6)));

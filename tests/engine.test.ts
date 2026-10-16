@@ -1071,3 +1071,62 @@ describe('singles from the album', () => {
     expect(s.songs.filter((x) => x.lifted).length).toBe(2);
   });
 });
+
+describe('finishing a tour in one go', () => {
+  it('plays the remaining weeks, stops for a decision, and leaves a summary', async () => {
+    const { finishTour } = await import('../src/game/engine');
+    let s: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 11 }), fans: 600, money: 5000, buzz: 30, pending: null, releases: [{ id: 'r', kind: 'single', title: 'T', quality: 60, appeal: 1, week: 0, sold: 0, lastWeek: 0 }] };
+    s = act(s, { type: 'tour', option: 'clubs', weeks: 4, policy: 'steady' });
+    while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
+    const w0 = s.week;
+    let guard = 0;
+    while (s.tour && guard++ < 10) {
+      s = finishTour(s, 'steady');
+      while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
+    }
+    expect(s.tour).toBeNull();
+    expect(s.week).toBe(w0 + 3);
+    expect(s.scene!.title).toMatch(/weeks/);
+    expect(s.scene!.beats.length).toBeGreaterThan(1);
+  });
+});
+
+describe('fame, inspiration and constitution', () => {
+  const base = () => newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 19 });
+  it('a famous band is offered a secret pub gig instead of the open mic and the small rooms', () => {
+    const small = actionOptions(base(), 'gig').map((o) => o.id);
+    expect(small).toContain('paytoplay');
+    const big = actionOptions({ ...base(), fans: 50000 }, 'gig');
+    expect(big.find((o) => o.id === 'openmic')!.label).toMatch(/Secret gig/);
+    expect(big.some((o) => o.id === 'paytoplay' || o.id === 'venue0')).toBe(false);
+    expect(actionOptions({ ...base(), money: 200000 }, 'party').some((o) => o.id === 'cans')).toBe(false);
+  });
+  it('a rested, happy band is inspired; a wasted one is not', async () => {
+    const { inspiration } = await import('../src/game/actions');
+    const s = base();
+    s.members.forEach((m) => { m.mood = 90; m.energy = 90; m.habit = 5; });
+    expect(inspiration(s).bonus).toBeGreaterThanOrEqual(5);
+    s.members.forEach((m) => { m.habit = 50; });
+    const chem = inspiration(s).bonus;
+    expect(chem).toBeGreaterThan(5);
+    s.members.forEach((m) => { m.habit = 80; m.mood = 30; m.energy = 25; });
+    expect(inspiration(s).bonus).toBeLessThan(0);
+  });
+  it('stamina decides how a habit shows on stage', async () => {
+    const { performance } = await import('../src/game/chemistry');
+    expect(performance).toBeDefined();
+    const s = base();
+    s.members.forEach((m) => { m.habit = 70; });
+    const count = (stamina: number) => {
+      let wasted = 0;
+      for (let seed = 1; seed <= 60; seed++) {
+        const g: GameState = { ...structuredClone(s), rng: seed, pending: null, fans: 200 };
+        g.members.forEach((m) => { m.hidden.stamina = stamina; });
+        const after = act(g, { type: 'gig', option: 'venue0' });
+        wasted += after.scene!.beats.filter((b) => /out of it|wasted/i.test(b.text)).length;
+      }
+      return wasted;
+    };
+    expect(count(90)).toBeLessThan(count(15));
+  });
+});

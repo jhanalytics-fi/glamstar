@@ -9,7 +9,7 @@ import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
-import type { Action, GameState, Musician, NewGameInput } from './types';
+import type { Action, GameState, LogEntry, Musician, NewGameInput, TourPolicy } from './types';
 
 export { first } from './helpers';
 
@@ -174,6 +174,35 @@ export function act(state: GameState, a: Action): GameState {
     s.scene!.late = true;
     endOfWeek(s, rng);
     s.scene!.recording = false;
+  });
+}
+
+/**
+ * Play the rest of the tour in one go, week after week with the same policy. Stops early when a
+ * situation needs a decision (the player answers it and can press again), or when the band is
+ * wrecked enough that the tour would be abandoned by hand. Leaves a summary scene instead of the
+ * last week's report.
+ */
+export function finishTour(state: GameState, policy: TourPolicy): GameState {
+  if (!state.tour) throw new Error('Not on tour.');
+  let s = state;
+  const from = s.tour!.week + 1;
+  const lines: { text: string; tone: LogEntry['tone'] }[] = [];
+  let weeks = 0;
+  while (s.tour && !s.pending && !s.over && weeks < 30) {
+    s = act(s, { type: 'tour', option: `continue:${policy}` });
+    weeks++;
+    for (const l of s.log.slice(-40)) if (l.week === s.week - 1 && /^(Tour week|Tour over|Tour abandoned|Disaster|Legend)/.test(l.text) && !lines.some((x) => x.text === l.text)) lines.push({ text: l.text, tone: l.tone });
+    for (const l of s.log.slice(-40)) if (l.week === s.week - 1 && /the night they still talk about|cancelled\./.test(l.text) && !lines.some((x) => x.text === l.text)) lines.push({ text: l.text, tone: l.tone });
+  }
+  if (!weeks) return s;
+  return mutate(s, (st) => {
+    const name = st.tour?.name ?? lines[0]?.text.split(':')[0] ?? 'Tour';
+    openScene(st, 'tour', `${name}: weeks ${from} to ${from + weeks - 1}`, 'gig');
+    for (const l of lines) beat(st, undefined, l.text, l.tone === 'good' ? 'good' : l.tone === 'bad' ? 'bad' : 'neutral');
+    if (st.pending) beat(st, undefined, 'The tour stops here for a decision.', 'neutral');
+    else if (st.tour) beat(st, undefined, `${st.tour.weeks - st.tour.week} week${st.tour.weeks - st.tour.week === 1 ? '' : 's'} to go.`, 'neutral');
+    st.scene!.recording = false;
   });
 }
 

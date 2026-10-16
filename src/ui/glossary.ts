@@ -9,7 +9,7 @@ export const GLOSSARY: Record<string, string> = {
   ego: 'Need for the spotlight. Two big egos in one band cost chemistry and start fights.',
   reliability: 'Professionalism: turning up on time and sober. Low reliability means late rehearsals, vanishing for days and playing wasted.',
   vice: 'How easily they slide into drink and drugs. High vice builds habits fast.',
-  stamina: 'How well they handle late nights and touring. Low stamina drains energy faster at gigs.',
+  stamina: 'Constitution: how they take late nights, touring and their habits. High stamina carries a habit on stage and shrugs off a party; low stamina shows it by the second song.',
   loyalty: 'How hard they are to poach, and how likely to stay when unhappy.',
   energy: 'Runs down with gigs, rehearsals and parties. Below 30 they play noticeably worse.',
   mood: 'Happiness in the band. Feeds chemistry. Very unhappy members may quit.',

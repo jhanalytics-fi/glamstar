@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -150,6 +150,7 @@ function onClick(e: Event, root: HTMLElement): void {
         tourTier = null;
         break;
       case 'tourNext': state = act(state!, { type: 'tour', option: `continue:${arg}` }); break;
+      case 'tourFinish': state = finishTour(state!, arg as TourPolicy); break;
       case 'abandon':
         if (armedAbandon) { state = act(state!, { type: 'tour', option: 'abandon' }); armedAbandon = false; }
         else armedAbandon = true;
@@ -214,7 +215,7 @@ function onClick(e: Event, root: HTMLElement): void {
   if (what === 'open' || what === 'tourTier') bringIntoView(root.querySelector('.next .choices, .tour-setup'));
   if (what === 'fold') bringIntoView(root.querySelector('#zone'));
   // Keep the eyes on the action zone after a decision.
-  if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'dismiss' || what === 'startTour' || what === 'tourNext' || (what === 'abandon' && !armedAbandon)) {
+  if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'dismiss' || what === 'startTour' || what === 'tourNext' || what === 'tourFinish' || (what === 'abandon' && !armedAbandon)) {
     const z = document.getElementById('zone');
     if (z && z.getBoundingClientRect().top < 0) z.scrollIntoView({ block: 'start', behavior: reducedMotion() ? 'auto' : 'smooth' });
   }
@@ -747,7 +748,7 @@ function nextBlock(s: GameState): string {
 /** The next rung on the road to rock immortality. */
 function goalLine(s: GameState): string {
   const g = nextGoal(s);
-  return `<p class="goal-line"><span class="goal-step">Road to rock immortality, ${g.step} of ${g.total}</span><strong>Next: ${esc(g.text)}</strong></p>`;
+  return `<p class="goal-line"><span class="goal-step">Road to rock immortality</span><strong>Next: ${esc(g.text)}</strong></p>`;
 }
 
 function tourSub(s: GameState): string {
@@ -802,6 +803,10 @@ function tourPanel(s: GameState): string {
           <span class="choice-head"><strong>Next week: ${esc(POLICY_LABEL[p].toLowerCase())}</strong>${tour.policy === p ? '<span class="cost free">current</span>' : ''}</span>
           <span class="choice-hint">${esc(POLICY_HINT[p])}</span>
         </button>`).join('')}
+        <button class="choice" data-do="tourFinish" data-arg="${tour.policy}">
+          <span class="choice-head"><strong>Play the rest of the tour: ${esc(POLICY_LABEL[tour.policy].toLowerCase())}</strong><span class="cost free">${tour.weeks - tour.week} wk</span></span>
+          <span class="choice-hint">Week after week with the same policy. Stops if something needs a decision.</span>
+        </button>
         <button class="choice danger" data-do="abandon">
           <span class="choice-head"><strong>${armedAbandon ? 'Really abandon the tour?' : 'Abandon the tour'}</strong></span>
           <span class="choice-hint">${armedAbandon ? 'Click again to go home. Cancellation fees and angry promoters.' : 'Go home now. Costs money, buzz and fans.'}</span>
