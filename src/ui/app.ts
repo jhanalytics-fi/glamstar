@@ -185,6 +185,17 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'skip': playedScene = state?.scene?.id ?? null; break;
       case 'chartAll': chartAll = !chartAll; break;
       case 'newGame': state = null; break;
+      case 'exportSave': {
+        const text = JSON.stringify(state);
+        const blob = new Blob([text], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `glamstar-${state!.bandName.replace(/[^a-z0-9]+/gi, '_')}-week${state!.week}.json`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        try { void navigator.clipboard?.writeText(text); } catch { /* fine */ }
+        break;
+      }
       case 'debug':
         debug = !debug;
         try { localStorage.setItem(DEBUG_KEY, debug ? '1' : '0'); } catch { /* fine */ }
@@ -359,7 +370,7 @@ function renderGame(s: GameState): string {
     <header class="top">
       <div>
         <h1 class="bandname">${esc(s.bandName)}</h1>
-        <p class="when">${dateLabel(s.week)}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="pace" title="How fast the week's report is read out. Any click shows it all at once.">${pace === 'relaxed' ? 'Pace: relaxed' : 'Pace: brisk'}</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a></p>
+        <p class="when">${dateLabel(s.week)}. <a href="#" data-do="newGame">New game</a> <span class="version">v${__APP_VERSION__}</span> <a href="#" data-do="pace" title="How fast the week's report is read out. Any click shows it all at once.">${pace === 'relaxed' ? 'Pace: relaxed' : 'Pace: brisk'}</a> <a href="#" data-do="debug" class="debug-toggle" title="Development aid: shows true values and hidden changes. * marks values you would not know yet.">${debug ? 'Debug on' : 'Debug off'}</a>${debug ? ' <a href="#" data-do="exportSave" title="Copy the whole save to the clipboard, or download it, to send for analysis.">Export save</a>' : ''}</p>
       </div>
       <dl class="stats">
         <div><dt>${tip('Money', 'money')}</dt><dd class="${s.money < 0 ? 'neg' : ''}" data-stat="money">${s.money < 0 ? '-' : ''}£${Math.abs(s.money)}</dd></div>
