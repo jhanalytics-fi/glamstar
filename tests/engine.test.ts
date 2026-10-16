@@ -1026,7 +1026,7 @@ describe('lightning', () => {
     expect(high).toBeLessThanOrEqual(0.06);
     let hits = 0;
     for (let seed = 1; seed <= 150; seed++) {
-      let g = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), pending: null };
+      let g: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), pending: null };
       g.members.forEach((m) => { m.writing = 90; m.mood = 90; });
       g = act(g, { type: 'write', option: 'jam' });
       if (g.flags.masterpieces) { hits++; expect(g.milestones.some((m) => /The one/.test(m.text))).toBe(true); expect(g.songs.some((x) => x.quality >= 92)).toBe(true); }
