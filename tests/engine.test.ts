@@ -263,6 +263,8 @@ describe('choice events', () => {
     album_producer: (s) => { s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `A${i}`, quality: 50, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false })); },
     eccentric_purchase: (s) => { s.money = 20000; },
     court: (s) => { s.fans = 9000; },
+    crowd_riot: (s) => { s.fans = 5000; },
+    venue_burned: (s) => { s.fans = 200; },
     xmas_single: (s) => later(s, 95),
     manager_clause: (s) => { s.manager = { name: 'Clive', honesty: 20, clout: 30, cut: 0.2, signed: 40, read: false, taken: 0 }; },
     ar_single: (s) => { signed(s); },
@@ -283,7 +285,7 @@ describe('choice events', () => {
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
         SETUP[id]?.(s);
-        if (TOUR_EVENT_IDS.includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
+        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad'].includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;

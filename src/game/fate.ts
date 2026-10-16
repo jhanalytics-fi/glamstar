@@ -77,3 +77,17 @@ export function applyLegend(s: GameState, rng: Rng, venue: string, crowd: number
   milestone(s, 'career', `${venue}: the night they still talk about. ${crowd} people, all of them witnesses.`);
   log(s, `${venue}. The gig. ${PRESS} will call it "legendary" for years and be right.`, 'good');
 }
+
+/** On the road: now and then a date simply does not happen. Returns a reason, or null. */
+export function tourHiccup(rng: Rng, city: string): { text: string; refund: number } | null {
+  if (!rng.chance(0.03)) return null;
+  const text = rng.pick([
+    `${city}: cancelled. The venue lost its licence on Tuesday.`,
+    `${city}: cancelled. Snow on the pass, the bus never got there.`,
+    `${city}: cancelled. The promoter has vanished with the float.`,
+    `${city}: cancelled. A bomb scare cleared the hall before doors.`,
+    `${city}: cancelled. The hall was double-booked with a darts final. The darts won.`,
+    `${city}: cancelled. Fire officer counted the exits and shook his head.`,
+  ]);
+  return { text, refund: rng.chance(0.5) ? 0.5 : 0 };
+}

@@ -1,6 +1,7 @@
 // Going on tour: seven rungs from the pubs of the South East to the stadiums of the world.
 // Cities and countries are real; venues are invented so nothing real gets trashed.
 import { Rng, clamp } from './rng';
+import { applyLegend, gigFate, tourHiccup } from './fate';
 import { seizeTourProfit, tourSupport } from './labels';
 import { commission } from './managers';
 import { available, missingForGig, performance } from './chemistry';
@@ -211,6 +212,7 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 /** One week on the road: travel, the gigs, the damage. */
 export function playTourWeek(s: GameState, rng: Rng): void {
   const tour = s.tour!;
+  if (s.flags.forceAbandon) { delete s.flags.forceAbandon; abandonTour(s); return; }
   const t = tierById(tour.tier)!;
   setVibe(s, tour.policy === 'wild' ? 'trip' : 'gig');
   const stops = tour.route.slice(tour.week * tour.gigsPerWeek, (tour.week + 1) * tour.gigsPerWeek);
@@ -242,17 +244,26 @@ export function playTourWeek(s: GameState, rng: Rng): void {
       weekMoney -= Math.round(t.fee * 0.3);
       return;
     }
+    const hiccup = tourHiccup(rng, stop.city);
+    if (hiccup) {
+      beat(s, day, `${hiccup.text}${hiccup.refund ? ' Half the fee came through anyway.' : ' No fee, no refund, a night in a motorway services.'}`, 'bad');
+      weekMoney += Math.round(t.fee * hiccup.refund);
+      for (const m of available(s)) adjust(m, 'mood', -2);
+      return;
+    }
     const wasted = new Set<string>();
     for (const m of available(s)) {
       const p = (m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15;
       if (rng.chance(p * 0.5 * (tour.policy === 'wild' ? 1.4 : tour.policy === 'clean' ? 0.5 : 1))) wasted.add(m.id);
     }
-    const perf = Math.round(performance(s, wasted) * (gaps.length ? 0.9 : 1));
+    let perf = Math.round(performance(s, wasted) * (gaps.length ? 0.9 : 1));
+    const fate = gigFate(s, rng, perf, stop.capacity);
+    if (fate?.kind === 'disaster') { perf = Math.round(perf * fate.perfMult); weekMoney -= fate.cost; addBuzz(s, fate.buzz); }
     const demand = s.fans / t.fans;
     let fill = clamp(0.18 + 0.35 * Math.min(demand, 2.2) + s.buzz / 300, 0.06, 1);
     if (abroad) fill *= 0.7 + 0.3 * familiar;
     if (cancelledRecently) fill *= 0.9;
-    const crowd = Math.max(8, Math.round(stop.capacity * fill * (0.85 + rng.next() * 0.25)));
+    const crowd = Math.max(8, Math.round(stop.capacity * fill * (0.85 + rng.next() * 0.25) * (fate?.kind === 'disaster' ? fate.crowdMult : 1)));
     const pay = Math.round(t.fee * Math.min(1, crowd / stop.capacity) + crowd * 0.4);
     const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
     // New towns mean new people, until you have played them all to death.
@@ -269,7 +280,9 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     const full = crowd >= stop.capacity * 0.95 ? ' Sold out.' : '';
     const drunk = [...wasted].map((id) => s.members.find((m) => m.id === id)!).filter(Boolean);
     const drunkText = drunk.length ? ` ${drunk.map((m) => (m.isPlayer ? 'You were' : `${first(m)} was`)).join(', ')} out of it.` : '';
-    beat(s, day, `${stop.venue}. ${crowd.toLocaleString('en-GB')} people.${full} ${verdict}${drunkText}`, perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
+    if (fate?.kind === 'disaster') beat(s, day, `${stop.venue}. ${fate.text}`, 'bad');
+    else beat(s, day, `${stop.venue}. ${crowd.toLocaleString('en-GB')} people.${full} ${fate?.kind === 'legend' ? 'Legendary.' : verdict}${drunkText}`, fate?.kind === 'legend' || perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
+    if (fate?.kind === 'legend') applyLegend(s, rng, `${stop.venue}, ${stop.city}`, crowd);
     for (const m of available(s)) {
       adjust(m, 'energy', -9 * (1.4 - m.hidden.stamina / 100) * policyEnergy * (s.flags.roadie ? 0.85 : 1));
       adjust(m, 'habit', (m.hidden.vice / 100) * rng.int(0, 3) * policyHabit);
