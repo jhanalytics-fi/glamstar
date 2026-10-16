@@ -51,6 +51,14 @@ interface GigSpec {
   after?: (s: GameState, rng: Rng, perf: number, crowd: number) => void;
 }
 
+/** Rock-star spending: options that only appear once the bank balance earns them. */
+function luxury(s: GameState, opts: { id: string; label: string; cost: number; unlock: number; hint: string }[]): ActionOption[] {
+  // Each one shows up as a tease at half its threshold, and opens once the bank balance earns it.
+  return opts
+    .filter((o) => s.money >= o.unlock / 2)
+    .map((o) => ({ id: o.id, label: o.label, cost: o.cost, hint: o.hint, locked: s.money < o.unlock ? `Needs £${o.unlock.toLocaleString('en-GB')} in the bank. Rock stars only.` : undefined }));
+}
+
 function supportAct(s: GameState): { name: string; fans: number } | null {
   const top = s.world.charts.london.filter((e) => !e.isPlayer && e.pos <= 10);
   if (!top.length) return null;
@@ -200,6 +208,10 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'squat', label: 'Party at the squat', cost: 15, hint: 'Good for morale, bad for livers.' },
         { id: 'soho', label: 'Night out in the Soho clubs', cost: 40, hint: 'Be seen with the right people. Easy to lose the plot.' },
         { id: 'throw', label: 'Throw your own party', cost: 90, hint: 'Everyone will talk about it. Neighbours may call the police.' },
+        ...luxury(s, [
+          { id: 'penthouse', label: 'Hire a Mayfair penthouse for the weekend', cost: 1500, unlock: 4000, hint: 'Models, a DJ, a chef and a very long guest list. The press will be there.' },
+          { id: 'yacht', label: 'Charter a yacht on the Riviera', cost: 6000, unlock: 20000, hint: 'A week of champagne at sea. Legendary, expensive, and someone always falls in.' },
+        ]),
       ];
     case 'rest':
       return [
@@ -207,6 +219,11 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'seaside', label: 'Day trip to Brighton', cost: 25, hint: 'Chips, sea air and band bonding.' },
         { id: 'dry', label: 'Lock the drinks cupboard', cost: 0, hint: 'Habits drop fast. Withdrawal is grim.' },
         { id: 'mum', label: "Everyone goes home to their mum's", cost: 0, hint: 'Full recovery and a fiver each. The scene forgets you a bit.' },
+        ...luxury(s, [
+          { id: 'spa', label: 'A week at a country spa hotel', cost: 600, unlock: 2000, hint: 'Massages, mud and no minibar. Energy, mood and a clear head.' },
+          { id: 'bahamas', label: 'Fly the band to the Bahamas', cost: 3000, unlock: 10000, hint: 'Two weeks of sun, sea and nothing. The band comes back new. Costs a fortune.' },
+          { id: 'retreat', label: 'Rent a villa in Ibiza for the writing', cost: 9000, unlock: 40000, hint: 'Sun, a pool and a grand piano. The band comes back rested, closer and with songs.' },
+        ]),
       ];
     case 'advertise':
       return [
@@ -538,7 +555,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
 
 function party(s: GameState, rng: Rng, option: string): void {
   const here = available(s);
-  const p = { cans: [7, 4, [0, 3]], squat: [14, 12, [2, 8]], soho: [16, 18, [4, 10]], throw: [20, 20, [5, 12]] }[option] as [number, number, [number, number]];
+  const p = { cans: [7, 4, [0, 3]], squat: [14, 12, [2, 8]], soho: [16, 18, [4, 10]], throw: [20, 20, [5, 12]], penthouse: [28, 22, [6, 14]], yacht: [40, 15, [6, 16]] }[option] as [number, number, [number, number]];
   for (const m of here) {
     adjust(m, 'mood', wobble(rng, p[0]));
     adjust(m, 'energy', wobble(rng, -p[1]));
@@ -551,12 +568,21 @@ function party(s: GameState, rng: Rng, option: string): void {
     squat: `Party at the squat. ${subj(wildest, 'were', 'was')} still going at six in the morning.`,
     soho: `A night in the Soho clubs. ${subj(wildest, 'were', 'was')} spotted dancing on a table at three a.m.`,
     throw: `${s.bandName} threw a party. Half of Camden came, the other half heard it.`,
+    penthouse: `A Mayfair penthouse, a weekend, no rules. ${subj(wildest, 'were', 'was')} last seen in the lift with a bottle and a traffic cone.`,
+    yacht: `A week on a yacht off Antibes. ${subj(wildest, 'were', 'was')} rescued from the sea twice, once on purpose.`,
   };
   partyCommentary(s, rng, option, wildest);
   log(s, text[option], 'neutral');
   if (option !== 'cans') revealLog(s, wildest, 'vice', 1);
-  const buzzChance = { cans: 0.03, squat: 0.2, soho: 0.45, throw: 1 }[option]!;
-  if (rng.chance(buzzChance)) {
+  const buzzChance = { cans: 0.03, squat: 0.2, soho: 0.45, throw: 1, penthouse: 1, yacht: 1 }[option]!;
+  if (option === 'penthouse' || option === 'yacht') {
+    // Legendary excess: the tabloids love it, and so does everyone's image.
+    addBuzz(s, option === 'yacht' ? 18 : 12);
+    for (const m of here) adjust(m, 'image', option === 'yacht' ? 3 : 2);
+    forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, rng.int(4, 10)));
+    s.flags.fling = s.week;
+    log(s, option === 'yacht' ? 'The yacht made the Sunday papers: "ROCK BAND IN RIVIERA CHAMPAGNE SHAME". Record shops reported a rush.' : 'The penthouse party is the talk of London. Three gossip columns, one broken chandelier.', 'good');
+  } else if (rng.chance(buzzChance)) {
     addBuzz(s, option === 'throw' ? 9 : option === 'soho' ? 6 : 4);
     log(s, option === 'soho' ? 'Someone from the music press saw you. People are talking.' : 'Word gets round. People are talking about the band, if not the music.', 'good');
   }
@@ -600,6 +626,23 @@ function rest(s: GameState, rng: Rng, option: string): void {
         adjust(m, 'mood', wobble(rng, -3));
         adjust(m, 'habit', wobble(rng, -10));
         break;
+      case 'spa':
+        adjust(m, 'energy', wobble(rng, 50));
+        adjust(m, 'mood', wobble(rng, 15));
+        adjust(m, 'habit', wobble(rng, -15));
+        break;
+      case 'bahamas':
+        m.energy = 100;
+        adjust(m, 'mood', wobble(rng, 30));
+        adjust(m, 'habit', wobble(rng, -12));
+        adjust(m, 'image', 1);
+        break;
+      case 'retreat':
+        m.energy = 100;
+        adjust(m, 'mood', wobble(rng, 25));
+        adjust(m, 'habit', wobble(rng, -8));
+        grow(m, 'writing', 3, rng);
+        break;
     }
     if (option === 'sleep' && m.habit >= 50) {
       adjust(m, 'mood', wobble(rng, -6));
@@ -607,6 +650,18 @@ function rest(s: GameState, rng: Rng, option: string): void {
     }
   }
   if (option === 'seaside') forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(2, 6)));
+  if (option === 'spa' || option === 'bahamas' || option === 'retreat') {
+    forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(option === 'spa' ? 4 : 8, option === 'spa' ? 8 : 16)));
+    s.tightness = clamp(s.tightness + (option === 'retreat' ? 6 : 2), 0, 100);
+    if (option !== 'spa') addBuzz(s, 4);
+  }
+  if (option === 'retreat') {
+    const best = [...s.members].sort((x, y) => y.writing - x.writing)[0];
+    for (let i = 0; i < 2; i++) {
+      const song = newSong(s, rng, best.writing * 0.8 + 12 + rng.int(-6, 12), best, 'standard', player(s).style);
+      log(s, `New song from the villa: "${song.title}" (${song.quality}).`, 'good');
+    }
+  }
   if (option === 'mum') {
     s.money += 5 * s.members.length;
     addBuzz(s, -4);
@@ -616,6 +671,9 @@ function rest(s: GameState, rng: Rng, option: string): void {
     seaside: 'Day trip to Brighton. Chips on the pier, a group photo, nobody fell in the sea.',
     dry: 'The drinks cupboard is padlocked. The band is sober, sweaty and short-tempered.',
     mum: "Everyone went home to their mum's. Clean laundry, Sunday roasts and a fiver each.",
+    spa: 'A week at a spa hotel in the Cotswolds. Mud, massages and a padlocked minibar. Everyone came back glowing.',
+    bahamas: 'Two weeks in the Bahamas. Sun, sea and a band that remembered why it liked each other. The tan made the papers.',
+    retreat: 'A villa in Ibiza with a pool and a grand piano. Songs got written. Some of them by the pool.',
   };
   log(s, text[option], option === 'dry' ? 'neutral' : 'good');
 }

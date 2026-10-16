@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.11)
+## Prototype status (v0.12)
 
 Playable in the browser. Implemented:
 
@@ -280,3 +280,15 @@ Design target: a solid UK career is achievable, global stardom is rare and hard 
 - **Charts in real units:** your singles score sales / 650 and albums sales / 450 against the stars, so a UK number one needs about 60,000 copies a week. Bigger markets need bigger hits: star scores are x1.6 on the Euro chart and x3 on the World chart. Your sales count abroad only as far as they travel: **reach** = label distribution (major 1, indie 0.35, shark 0.25, none 0.1) blended with touring the region (Europe, North America, the world).
 
 Sim (40 runs, careful bot): median fans 900 after a year, 6.7k after two, 11.5k after four, 16k at the end (p90 53k). Every bot charts nationally (37 of 40 reach the UK Top 10), 33 reach the Euro chart, 9 the World chart, 2 a World Top 10 hit. Highest tours: Europe 24, arenas 7, North America 9, stadiums 0. Nobody goes bankrupt; median money £7k after a year, £43k after two, £60-80k later.
+
+## Rock-star spending (v0.12)
+
+Luxury options appear in Rest and Party as the bank balance grows: each shows as a locked tease at half its threshold and opens at the threshold. High price, big effect.
+
+| Action | Option | Cost | Opens at | Effect |
+|---|---|---|---|---|
+| Rest | Country spa hotel | £600 | £2,000 | energy +50, mood +15, habit -15, links +4-8 |
+| Rest | Fly the band to the Bahamas | £3,000 | £10,000 | energy to 100, mood +30, habit -12, image +1, links +8-16, buzz +4 |
+| Rest | Villa in Ibiza for the writing | £9,000 | £40,000 | as the Bahamas plus tightness +6 and two new songs from the best writer |
+| Party | Mayfair penthouse weekend | £1,500 | £4,000 | mood +28, energy -22, habit up, buzz +12, image +2, links +4-10, counts as a fling |
+| Party | Yacht on the Riviera | £6,000 | £20,000 | mood +40, buzz +18, image +3, links +4-10, tabloids guaranteed |

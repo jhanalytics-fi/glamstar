@@ -975,3 +975,24 @@ describe('charts at the start', () => {
     expect(moved).toBeGreaterThan(5);
   });
 });
+
+describe('rock-star spending', () => {
+  const rich = (money: number) => ({ ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 17 }), money });
+  it('luxury options unlock with the bank balance', () => {
+    expect(actionOptions(rich(500), 'rest').some((o) => o.id === 'bahamas')).toBe(false);
+    expect(actionOptions(rich(6000), 'rest').find((o) => o.id === 'bahamas')?.locked).toMatch(/Needs/);
+    expect(actionOptions(rich(12000), 'rest').find((o) => o.id === 'bahamas')?.locked).toBeUndefined();
+    expect(actionOptions(rich(25000), 'party').find((o) => o.id === 'yacht')?.locked).toBeUndefined();
+  });
+  it('the Bahamas costs a fortune and brings the band back new', () => {
+    const s0 = rich(12000);
+    for (const m of s0.members) { m.energy = 20; m.mood = 30; }
+    const s1 = act(s0, { type: 'rest', option: 'bahamas' });
+    expect(s1.money).toBeLessThan(12000 - 2900);
+    expect(s1.members.every((m) => m.energy >= 90 && m.mood > 50)).toBe(true);
+  });
+  it('the Ibiza villa writes songs', () => {
+    const s1 = act(rich(50000), { type: 'rest', option: 'retreat' });
+    expect(s1.songs.length).toBe(2);
+  });
+});
