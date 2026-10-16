@@ -264,6 +264,8 @@ A manager (`src/game/managers.ts`) has a hidden honesty, a clout (connections) a
 
 ## Economy (v0.10)
 
+Record demand uses a damped following, fans x 0.25 / (1 + fans / 150,000), so a hit needs buzz, quality and promotion, and even a megastar's single tops out around a few hundred thousand a week (v0.15.2).
+
 Weekly upkeep = £10 + £6 per member + rent rises + **fame** (£0.02 per fan: wages, crew, flats) + **vice** (£0.50 per habit point over 30 per member, scaled up by fame) + **splurge** (2% of everything over £20,000: rock stars spend it). Every April the **Revenue** takes 40% of the year's gain above a £5,000 allowance (capped at what is in the bank; the accountant finds a loophole for the rest). Skint bands (under £50) pull shifts that cover basic upkeep, but only for so long: 16 skint weeks in a row (warnings at 6 and 12; £100 in the bank resets the count) and the landlord changes the locks. Partying your money away and living on shifts is a slow death, not a lifestyle. The overdraft grows with fame: game over below -£250 minus £0.10 per fan.
 
 Gigs: playing London every week wears it out (home heat: each gig +1, x0.85 a week; crowd divided by 1 + 0.15 x heat). On tour a missing player is covered by a session musician (4% of the weekly cost, 10% worse shows) instead of cancelling; cancelling a tour costs 15% of the remaining fees. Upper tour tiers cost less a week than before (arenas £22k, America £24k, stadiums £140k), and a label covers part of a losing tour week (majors 50%, indies 30%, sharks nothing) as recoupable tour support.
@@ -308,7 +310,7 @@ Luxury options appear in Rest and Party as the bank balance grows: each shows as
 `src/game/fate.ts`. Rare things that make a career memorable, both ways.
 
 - **Masterpiece:** every song written has a small chance (0.4% to 6%, rising with the writer's skill and mood and the band's chemistry) of coming out at 92-99. It gets its own beat in the report, a milestone ("The one"), mood +10 for everyone, and when it is released the press goes wild (buzz +8).
-- **Legendary gig:** a home gig with performance 95+ has a 50% chance (85+, 8%) of becoming the night they still talk about: buzz +15, fans +50% of the crowd, mood +12, image +1, a milestone. Verdict "Legendary".
+- **Legendary gig:** performance 100+ has a 6% chance (90+, 1.5%) of becoming the night they still talk about, and each one you have had halves the odds of the next (v0.15.2; the first cut let a tight band rack up 131 of them). Buzz +15, fans +30% of the crowd capped at 5,000, mood +12, image +1, a milestone. Verdict "Legendary".
 - **Disaster:** 3.5% of home gigs go wrong through no fault of yours: kitchen fire, power cut, the PA blowing up, the singer's voice going, a double booking, a fight, a burst pipe, the van broken into. Performance drops 30-65%, sometimes the crowd too, sometimes a bill. Verdict "Disaster".
 
 On tour (v0.14.1): 3% of dates are cancelled through no fault of yours (lost licence, snow, the promoter vanished, a bomb scare, a darts final), half of them with half the fee paid; the same disasters and legendary nights as at home can strike any tour date. Bigger blows come as choice events (`src/game/calamityEvents.ts`): the Rat Pit burns down (benefit gig?), the tour bus in a ditch (hire a bus, fly the band, or call the tour off), a crowd riot (pay up, blame the promoter, or sell "the most dangerous band in Britain"), and a member in a foreign cell (lawyer and bail, or let them sweat).

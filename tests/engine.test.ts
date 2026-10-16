@@ -1042,11 +1042,16 @@ describe('lightning', () => {
     const s = base();
     let legends = 0, disasters = 0;
     for (let i = 1; i <= 400; i++) {
-      const f = gigFate(s, new Rng(i), i % 2 ? 97 : 60, 150);
+      const f = gigFate(s, new Rng(i), i % 2 ? 105 : 60, 150);
       if (f?.kind === 'legend') legends++;
       if (f?.kind === 'disaster') disasters++;
     }
-    expect(legends).toBeGreaterThan(50);
+    expect(legends).toBeGreaterThan(3);
+    expect(legends).toBeLessThan(30);
+    const jaded = { ...s, flags: { ...s.flags, legendaryGigs: 20 } };
+    let later = 0;
+    for (let i = 1; i <= 400; i++) if (gigFate(jaded, new Rng(i), 105, 150)?.kind === 'legend') later++;
+    expect(later).toBeLessThan(legends);
     expect(disasters).toBeGreaterThan(3);
     expect(disasters).toBeLessThan(40);
   });

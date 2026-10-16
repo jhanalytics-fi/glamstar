@@ -46,8 +46,11 @@ export type GigFate = { kind: 'legend' } | { kind: 'disaster'; text: string; per
 
 /** The night the band, or life, decides. */
 export function gigFate(s: GameState, rng: Rng, perf: number, capacity: number): GigFate {
-  if (perf >= 95 && rng.chance(0.5)) return { kind: 'legend' };
-  if (perf >= 85 && rng.chance(0.08)) return { kind: 'legend' };
+  // A legendary night is a once-or-twice-a-career thing, not a Tuesday. The more you have had, the rarer the next.
+  const had = s.flags.legendaryGigs ?? 0;
+  const rarity = 1 / (1 + had * 0.5);
+  if (perf >= 100 && rng.chance(0.06 * rarity)) return { kind: 'legend' };
+  if (perf >= 90 && rng.chance(0.015 * rarity)) return { kind: 'legend' };
   if (!rng.chance(0.035)) return null;
   const big = capacity >= 500;
   const d = rng.pick<Omit<Extract<GigFate, { kind: 'disaster' }>, 'kind'>>([
@@ -68,7 +71,7 @@ export function applyLegend(s: GameState, rng: Rng, venue: string, crowd: number
   setVibe(s, 'gig');
   addBuzz(s, 15);
   for (const m of s.members) { adjust(m, 'mood', 12); adjust(m, 'image', 1); }
-  s.fans += Math.round(crowd * 0.5);
+  s.fans += Math.min(5000, Math.round(crowd * 0.3));
   beat(s, undefined, rng.pick([
     'Something happened tonight that does not happen. The room and the band became one animal. Nobody can say when, only that it did.',
     'Three encores. The house lights came up and nobody left. The barman stopped serving to watch.',

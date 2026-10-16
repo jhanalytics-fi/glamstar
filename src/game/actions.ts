@@ -778,7 +778,9 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
   for (const r of s.releases) {
     if (r.kind === 'demo') continue;
     const age = s.week - r.week;
-    const demand = (s.fans * 0.25 + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind];
+    // Sales grow with the fan base, but a hit needs more than a loyal following and the market has a ceiling.
+    const following = (s.fans * 0.25) / (1 + s.fans / 150000);
+    const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind];
     const raw = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
     // Label records sell harder, but the money goes to the label's ledger first.
     const { units, cash } = labelSales(s, r, raw);
