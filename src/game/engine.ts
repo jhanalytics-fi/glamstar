@@ -220,7 +220,7 @@ export function reach(s: GameState): { europe: number; world: number } {
   const toured = (r: string) => Math.min(1, (s.flags[`toured_${r}`] ?? 0) / 2);
   return {
     europe: Math.min(1, dist * 0.6 + toured('europe') * 0.25 + toured('ukeurope') * 0.25),
-    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2),
+    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
   };
 }
 

@@ -82,7 +82,7 @@ export function makeTerms(s: GameState, l: Label, rng: Rng): DealTerms {
 }
 
 /** What the band actually gets per copy once the deductions have been taken. */
-export const royaltyPerCopy = (t: DealTerms, kind: ReleaseKind) => Math.round(RETAIL[kind] * t.rate * (1 - t.smallPrint.deductions) * 1000) / 1000;
+export const royaltyPerCopy = (t: DealTerms, kind: ReleaseKind, points = 0) => Math.round(RETAIL[kind] * Math.max(0.02, t.rate - points / 100) * (1 - t.smallPrint.deductions) * 1000) / 1000;
 
 /** Cost of walking out of the contract before it ends. */
 export function buyoutCost(s: GameState): number {
@@ -212,7 +212,7 @@ export function labelRelease(s: GameState, kind: ReleaseKind): { studio: number;
 export function tagRelease(s: GameState, r: Release): void {
   if (!s.contract || r.kind === 'demo') return;
   r.label = s.contract.label;
-  r.royalty = royaltyPerCopy(s.contract.terms, r.kind);
+  r.royalty = royaltyPerCopy(s.contract.terms, r.kind, s.flags.producerPoints ?? 0);
 }
 
 /** Label releases sell harder, and the money goes to the label's ledger, not your pocket. */

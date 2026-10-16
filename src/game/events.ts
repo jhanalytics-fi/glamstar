@@ -9,6 +9,7 @@ import type { GameState, HiddenTrait, Musician } from './types';
 import { TOUR_EVENTS } from './tourEvents';
 import { ROMANCE_EVENTS } from './romanceEvents';
 import { LABEL_EVENTS } from './labelEvents';
+import { MONEY_EVENTS } from './moneyEvents';
 
 type Params = Record<string, string | number>;
 
@@ -1896,47 +1897,6 @@ const BASE_EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'producer',
-    weight: 2,
-    when: (s, rng) => ((s.buzz >= 30 || s.releases.length >= 2) && bestUnreleased(s) && !s.flags.producer
-      ? { who: rng.pick(['Sir Ambrose Kettle', 'Dieter "The Wall" Voss', 'Lance Holloway, who made three number ones and a cult']) }
-      : null),
-    title: (_s, p) => `${String(p.who).split(',')[0]} will produce you`,
-    text: (_s, p) => `${p.who} heard you on the radio and would "love to get his hands on you". His fee is £400, cash, plus a case of a very specific Burgundy.`,
-    options: () => [
-      {
-        label: 'Pay the fee',
-        hint: 'Every unreleased song gets better. The band gets drilled.',
-        cost: 400,
-        resolve: (st) => {
-          st.flags.producer = 1;
-          for (const x of st.songs) if (!x.released) x.quality = clamp(x.quality + 6, 1, 99);
-          tighten(st, 4); everyone(st, 'mood', -3);
-          log(st, 'He made you play the same chorus ninety times. The songs sound enormous now.', 'good');
-        },
-      },
-      {
-        label: 'Offer him points instead of cash',
-        hint: 'No money down. He owns a slice of your future.',
-        resolve: (st) => {
-          st.flags.producer = 2; st.flags.producerPoints = 1;
-          for (const x of st.songs) if (!x.released) x.quality = clamp(x.quality + 3, 1, 99);
-          addBuzz(st, 3);
-          log(st, `He took points. ${PRESS} ran "Legendary producer signs up with unknowns". You may regret the percentages.`, 'neutral');
-        },
-      },
-      {
-        label: 'Produce it yourselves',
-        hint: 'Cheap, honest and a bit muddy.',
-        resolve: (st) => {
-          st.flags.producer = 3;
-          tighten(st, 2); adjust(player(st), 'mood', 3);
-          log(st, 'You produced it yourselves. The drums sound like a biscuit tin, but they are your biscuit tins.', 'neutral');
-        },
-      },
-    ],
-  },
-  {
     id: 'jingle',
     weight: 2,
     when: (s, rng) => (s.fans >= 100 && !s.flags.jingle ? { product: rng.pick(['Krunchos cheese puffs', 'Blaze-O oven cleaner', 'Fizzbomb cola', 'Tressmax Mega-Hold mousse']) } : null),
@@ -2401,41 +2361,6 @@ const BASE_EVENTS: EventDef[] = [
     },
   },
   {
-    id: 'video',
-    weight: 3,
-    when: (s) => (year(s) >= 1984 && s.fans >= 150 && !s.flags.video ? {} : null),
-    title: () => 'Rock on the telly, all day long',
-    text: () => 'Word from New York: a cable channel plays rock videos twenty-four hours a day, and the Americans are going mad for British bands with hair. Everybody needs a video. Nobody can afford one.',
-    options: () => [
-      {
-        label: 'A proper video with a director',
-        hint: 'Expensive. Wind machines, a castle, a white horse.',
-        cost: 500,
-        resolve: (st) => {
-          st.flags.video = 1;
-          st.fans += 200; addBuzz(st, 10); everyone(st, 'image', 2);
-          log(st, 'A castle, a wind machine, a white horse and a woman in a ruined wedding dress. The Americans are interested.', 'good');
-        },
-      },
-      {
-        label: 'DIY in a quarry with a smoke machine',
-        hint: 'Cheap, cold and a gamble.',
-        cost: 80,
-        resolve: (st, rng) => {
-          st.flags.video = 2;
-          everyone(st, 'energy', -10);
-          if (rng.chance(0.5)) { st.fans += 80; addBuzz(st, 5); log(st, 'Smoke, a quarry and a borrowed motorbike. It looks a lot more expensive than it was.', 'good'); }
-          else { addBuzz(st, -2); log(st, `${PRESS} printed stills of you lost in fog, captioned "Where are they now?"`, 'bad'); }
-        },
-      },
-      {
-        label: 'Videos are for posers',
-        hint: 'The purists cheer. The future does not wait.',
-        resolve: (st) => { st.flags.video = 3; for (const x of purists(st)) adjust(x, 'mood', 5); addBuzz(st, -3); log(st, 'No video. The band that refused the camera. Very principled, very invisible.', 'neutral'); },
-      },
-    ],
-  },
-  {
     id: 'xmas_single',
     weight: 4,
     when: (s) => {
@@ -2483,13 +2408,14 @@ const BASE_EVENTS: EventDef[] = [
 /** Things that only make sense at home: offers, landlords, the squat, the telly. */
 const HOME_ONLY = new Set([
   'rent', 'transit', 'roadie', 'battle', 'raid', 'tv', 'christmas', 'squat', 'noise', 'benefit', 'euro_gig', 'support_tour',
-  'talent_show', 'xmas_single', 'session_vox', 'video', 'pirate_radio', 'straight_job', 'van', 'gear', 'insurance', 'manager_offer',
+  'talent_show', 'xmas_single', 'session_vox', 'pirate_radio', 'straight_job', 'van', 'gear', 'insurance', 'manager_offer',
 ]);
 
 const EVENTS: EventDef[] = [
   ...BASE_EVENTS.map((e) => (HOME_ONLY.has(e.id) ? { ...e, where: 'home' as const } : e)),
   ...ROMANCE_EVENTS,
   ...LABEL_EVENTS,
+  ...MONEY_EVENTS,
   ...TOUR_EVENTS,
 ];
 

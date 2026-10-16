@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -519,8 +519,35 @@ function managerBlock(s: GameState): string {
 
 const MOOD_WORD = (g: number) => (g >= 75 ? 'They love you' : g >= 50 ? 'Warm' : g >= 30 ? 'Cooling' : 'Frosty: one more flop and you are out');
 
+/** Where the money goes: the weekly bill, line by line, so the player sees what fame costs. */
+function moneyBlock(s: GameState): string {
+  const base = 10 + s.members.length * 6;
+  const all: [string, number, string][] = [
+    ['Rent and food', base + (s.flags.rentUp ?? 0), s.flags.rentUp ? 'The landlord put it up, or the entourage did.' : 'A rehearsal room above a kebab shop.'],
+    ['Wages, crew and flats', Math.round(s.fans * 0.02), 'Grows with the fan base. Fame has staff.'],
+    ['Habits', viceBill(s), 'What the band puts up its nose and down its neck.'],
+    ['Living like a star', splurge(s), 'Two per cent of everything over £20,000, every week.'],
+  ];
+  const rows = all.filter((r) => r[1] > 0);
+  const total = upkeep(s);
+  const debt = s.contract ? s.contract.unrecouped : 0;
+  const points = s.flags.producerPoints ?? 0;
+  return `<h3 class="sub">Where the money goes</h3>
+    <article class="deal-card">
+      <dl class="deal">
+        ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
+        <div><dt>Every week, all in</dt><dd class="${total > 500 ? 'neg' : ''}">${money(total)}</dd></div>
+        ${s.manager ? `<div><dt>Manager's cut</dt><dd>${Math.round(s.manager.cut * 100)}% of all income</dd></div>` : ''}
+        ${debt ? `<div><dt>Owed to the label</dt><dd class="neg">${money(debt)}</dd></div>` : ''}
+        ${points ? `<div><dt>Producer points</dt><dd>${points}% off every royalty</dd></div>` : ''}
+        <div><dt>Tax</dt><dd>40% of the year's gain over £5,000, every April</dd></div>
+      </dl>
+      <p class="hint">Videos, producers and the label's studio bills go on the tab, not the weekly bill. Eccentric purchases go wherever the drummer parks them.</p>
+    </article>`;
+}
+
 function labelSection(s: GameState): string {
-  return labelDeals(s) + managerBlock(s);
+  return labelDeals(s) + managerBlock(s) + moneyBlock(s);
 }
 
 function labelDeals(s: GameState): string {

@@ -195,3 +195,32 @@ describe('managers', () => {
     expect(commission(s, 100)).toBe(25);
   });
 });
+
+describe('videos and producers', () => {
+  it('a big video goes on the label tab, lifts the record and carries it to America', async () => {
+    const { reach } = await import('../src/game/engine');
+    const { forceEvent, resolvePending, viewPending } = await import('../src/game/events');
+    let s = signOffer(withOffer(fresh(), 'badpenny'), 'o1');
+    s = { ...s, week: 100, releases: [{ id: 'sg', kind: 'single', title: 'Hit', quality: 60, appeal: 1, week: 100, sold: 0, lastWeek: 0, label: 'badpenny', royalty: 0.2 }] };
+    const owed = s.contract!.unrecouped;
+    const ev = forceEvent(s, 'video_shoot');
+    const i = viewPending(ev)!.options.findIndex((o) => /full treatment/.test(o.label));
+    const after = resolvePending(ev, i);
+    expect(after.contract!.unrecouped).toBe(owed + 8000);
+    expect(after.releases[0].appeal).toBeCloseTo(1.25);
+    expect(reach(after).world).toBeGreaterThan(reach(s).world);
+  });
+
+  it('the legend producer makes the album better and takes points off royalties', async () => {
+    const { forceEvent, resolvePending, viewPending } = await import('../src/game/events');
+    let s = signOffer(withOffer(fresh(), 'imperial'), 'o1');
+    s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `S${i}`, quality: 60, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    const plain = act(structuredClone(s), { type: 'release', option: 'album' }).releases.at(-1)!;
+    const ev = forceEvent(s, 'album_producer');
+    s = resolvePending(ev, viewPending(ev)!.options.findIndex((o) => /legend/.test(o.label)));
+    expect(s.flags.producerPoints).toBe(2);
+    const produced = act(s, { type: 'release', option: 'album' }).releases.at(-1)!;
+    expect(produced.quality).toBeGreaterThan(plain.quality + 5);
+    expect(produced.royalty!).toBeLessThan(plain.royalty!);
+  });
+});

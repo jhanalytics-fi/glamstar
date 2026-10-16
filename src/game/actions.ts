@@ -11,6 +11,7 @@ import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, 
 import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost } from './managers';
+import { takeProducer } from './moneyEvents';
 import type { Action, ActionType, GameState, Genre, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
@@ -521,6 +522,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   const pool = kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
   const deal = labelRelease(s, kind);
+  const prod = kind === 'album' ? takeProducer(s) : { quality: 0, tight: 0 };
   const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0);
   let appeal =
     songs.reduce((a, x) => a + (x.kind === 'ballad' ? 1.25 : 1) * (0.7 + trend(x.genre, s.week) * 0.5), 0) / songs.length;
@@ -530,7 +532,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
     if (s.flags.arPush) { appeal *= 1.2; delete s.flags.arPush; }
     if (s.flags.sessionPlayer) { polish = 4; delete s.flags.sessionPlayer; }
   }
-  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + polish + rng.int(-4, 4)), 1, 99);
+  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + polish + prod.quality + rng.int(-4, 4)), 1, 99);
   const title = songs[0].title;
   if (kind === 'demo') {
     s.releases = s.releases.filter((r) => r.kind !== 'demo');
@@ -549,7 +551,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
     grow(m, 'skill', 1, rng, 0.35);
     grow(m, 'writing', 1, rng, 0.2);
   }
-  s.tightness = clamp(s.tightness + 3, 0, 100);
+  s.tightness = clamp(s.tightness + 3 + prod.tight, 0, 100);
   log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : rec.label ? ` Out now on ${labelName}, with posters on every bus shelter they could afford.` : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
 }
 

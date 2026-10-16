@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.12)
+## Prototype status (v0.13)
 
 Playable in the browser. Implemented:
 
@@ -292,3 +292,13 @@ Luxury options appear in Rest and Party as the bank balance grows: each shows as
 | Rest | Villa in Ibiza for the writing | £9,000 | £40,000 | as the Bahamas plus tightness +6 and two new songs from the best writer |
 | Party | Mayfair penthouse weekend | £1,500 | £4,000 | mood +28, energy -22, habit up, buzz +12, image +2, links +4-10, counts as a fling |
 | Party | Yacht on the Riviera | £6,000 | £20,000 | mood +40, buzz +18, image +3, links +4-10, tabloids guaranteed |
+
+## Videos, producers and other money pits (v0.13)
+
+`src/game/moneyEvents.ts`. Costs are paid by the label and put on the tab when signed, otherwise from the band account.
+
+- **Video** (`video_shoot`): offered the week after every single or album from 1983. None; cheap warehouse clip (£600, buzz +5, appeal x1.08); full treatment (£8,000, £25,000 at a major: buzz +14, image +3, appeal x1.25, and each big video adds 0.15 to World-chart reach, up to 0.3). The old one-off video and producer events are gone.
+- **Producer** (`album_producer`): when eight songs are ready. Your mate (free, +1 quality); a name producer (£2,500, £6,000 signed: +6 quality, tightness +3); the legend (£8,000, £20,000 signed, plus 2 points off every royalty for good: +12 quality, tightness +6, skill +2 for everyone).
+- **Eccentric purchase** (£15,000+ in the bank): a member buys a tank, a church organ, a racehorse, a lighthouse... for a quarter of the account. Let it go, force a sale (half back, a sulk) or take it from their share (loyalty down).
+- **The court** (`court`, 8,000+ fans): the entourage. Keep (weekly rent +£150, image +2) or sack (-£50, mood -3).
+- **Where the money goes**: the Business tab lists the weekly bill by line (rent, wages, habits, living like a star), the manager's cut, label debt, producer points and the tax rule.
