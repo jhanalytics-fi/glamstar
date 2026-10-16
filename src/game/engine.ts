@@ -122,6 +122,12 @@ export function upgradeSave(s: GameState): GameState {
       ? { name: 'Clive Sparrowhawk', honesty: f === 1 ? 65 : 20, clout: 35, cut: 0.2, signed: s.flags.managerWeek ?? s.week, read: f !== 2, taken: 0 }
       : null;
   }
+  // Older saves: albums did not record their tracks. Give each album its eight best unassigned released songs.
+  if (s.songs.some((x) => x.released && !x.album)) {
+    for (const album of [...(s.releases ?? [])].filter((r) => r.kind === 'album').reverse()) {
+      for (const x of s.songs.filter((y) => y.released && !y.album).sort((p, q) => q.quality - p.quality).slice(0, 8)) x.album = album.id;
+    }
+  }
   for (const song of s.songs) {
     song.kind ??= 'standard';
     song.genre ??= s.members[0].style;

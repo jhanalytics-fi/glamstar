@@ -53,6 +53,10 @@ export interface Song {
   kind: SongKind;
   genre: Genre;
   released: boolean;
+  /** The album this song came out on, if any. */
+  album?: string;
+  /** Already lifted from the album as a single. */
+  lifted?: boolean;
 }
 
 export type ReleaseKind = 'demo' | 'single' | 'ep' | 'album';

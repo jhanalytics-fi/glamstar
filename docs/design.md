@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.14)
+## Prototype status (v0.15)
 
 Playable in the browser. Implemented:
 
@@ -312,3 +312,7 @@ Luxury options appear in Rest and Party as the bank balance grows: each shows as
 - **Disaster:** 3.5% of home gigs go wrong through no fault of yours: kitchen fire, power cut, the PA blowing up, the singer's voice going, a double booking, a fight, a burst pipe, the van broken into. Performance drops 30-65%, sometimes the crowd too, sometimes a bill. Verdict "Disaster".
 
 On tour (v0.14.1): 3% of dates are cancelled through no fault of yours (lost licence, snow, the promoter vanished, a bomb scare, a darts final), half of them with half the fee paid; the same disasters and legendary nights as at home can strike any tour date. Bigger blows come as choice events (`src/game/calamityEvents.ts`): the Rat Pit burns down (benefit gig?), the tour bus in a ditch (hire a bus, fly the band, or call the tour off), a crowd riot (pay up, blame the promoter, or sell "the most dangerous band in Britain"), and a member in a foreign cell (lawyer and bail, or let them sweat).
+
+## Singles from the album (v0.15)
+
+An album records its tracks (`song.album`). While the latest album is under a year old, Release offers "Lift <best remaining track> from the album as a single" (£150 self-financed, free on a label): no new songs, no studio week, the track goes to the singles chart with the album's appeal. Each track can be lifted once, best first. This is how a number-one album turns into National Top 40 singles.

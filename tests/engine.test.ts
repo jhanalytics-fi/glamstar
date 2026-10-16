@@ -1051,3 +1051,18 @@ describe('lightning', () => {
     expect(disasters).toBeLessThan(40);
   });
 });
+
+describe('singles from the album', () => {
+  it('an album track can be lifted as a single, best first, each only once', () => {
+    let s: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 7 }), money: 5000, pending: null };
+    s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `T${i}`, quality: 50 + i * 5, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    s = act(s, { type: 'release', option: 'album' });
+    expect(actionOptions({ ...s, pending: null }, 'release').some((o) => o.id === 'lift')).toBe(true);
+    s = act({ ...s, pending: null }, { type: 'release', option: 'lift' });
+    expect(s.releases.at(-1)!.kind).toBe('single');
+    expect(s.releases.at(-1)!.title).toBe('T7');
+    s = act({ ...s, pending: null }, { type: 'release', option: 'lift' });
+    expect(s.releases.at(-1)!.title).toBe('T6');
+    expect(s.songs.filter((x) => x.lifted).length).toBe(2);
+  });
+});

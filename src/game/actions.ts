@@ -53,6 +53,20 @@ interface GigSpec {
   after?: (s: GameState, rng: Rng, perf: number, crowd: number) => void;
 }
 
+/** Album tracks that could still be lifted as singles: from the latest album, under a year old, best first. */
+function liftOption(s: GameState, cost: number): ActionOption[] {
+  const songs = liftable(s);
+  if (!songs.length) return [];
+  const n = s.songs.filter((x) => x.album === songs[0].album && x.lifted).length;
+  return [{ id: 'lift', label: `Lift "${songs[0].title}" from the album as a single`, cost, hint: `${n ? `Single ${n + 1} from the album. ` : ''}No new songs needed: the album track, a B-side and a sleeve.` }];
+}
+
+export function liftable(s: GameState): Song[] {
+  const album = [...s.releases].reverse().find((r) => r.kind === 'album' && s.week - r.week <= 52);
+  if (!album) return [];
+  return s.songs.filter((x) => x.album === album.id && !x.lifted).sort((x, y) => y.quality - x.quality);
+}
+
 /** Rock-star spending: options that only appear once the bank balance earns them. */
 function luxury(s: GameState, opts: { id: string; label: string; cost: number; unlock: number; hint: string }[]): ActionOption[] {
   // Each one shows up as a tease at half its threshold, and opens once the bank balance earns it.
@@ -195,6 +209,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
           { id: 'single', label: `Single on ${l.name}`, cost: 0, hint: `Proper studio, proper promotion. ${bill(0.15)}.`, locked: need(2) },
           { id: 'ep', label: `EP on ${l.name}`, cost: 0, hint: `Four songs, label muscle. ${bill(0.35)}.`, locked: need(4) },
           { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.`, locked: need(8) },
+          ...liftOption(s, 0),
         ];
       }
       return [
@@ -202,6 +217,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'single', label: 'Self-financed 7" single', cost: 300, hint: 'A real record in real shops. Can chart if enough people buy it.', locked: need(2) },
         { id: 'ep', label: 'Self-financed 12" EP', cost: 650, hint: 'Four songs. Sells slower, earns more per copy.', locked: need(4) },
         { id: 'album', label: 'Self-financed album', cost: 1500, hint: 'Eight songs. Huge risk without a label behind you.', locked: need(8) },
+        ...liftOption(s, 150),
       ];
     }
     case 'party':
@@ -259,7 +275,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
     case 'gig': return gig(s, rng, gigSpecs(s)[a.option]);
     case 'rehearse': return rehearse(s, rng, a.option);
     case 'write': return write(s, rng, a.option);
-    case 'release': return release(s, rng, a.option as ReleaseKind);
+    case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : release(s, rng, a.option as ReleaseKind);
     case 'party': return party(s, rng, a.option);
     case 'rest': return rest(s, rng, a.option);
     case 'advertise': return advertise(s, rng, a.role ?? 'guitar', a.option);
@@ -531,10 +547,11 @@ function write(s: GameState, rng: Rng, option: string): void {
 export const RELEASE_SONGS: Record<ReleaseKind, number> = { demo: 3, single: 2, ep: 4, album: 8 };
 const RELEASE_LABEL: Record<ReleaseKind, string> = { demo: 'demo tape', single: '7" single', ep: '12" EP', album: 'album' };
 
-function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
+function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void {
   releaseCommentary(s, kind, rng);
-  const pool = kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
+  const pool = lift ? liftable(s).slice(0, 1) : kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
   const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
+  if (!songs.length) throw new Error('Nothing to release.');
   const deal = labelRelease(s, kind);
   const prod = kind === 'album' ? takeProducer(s) : { quality: 0, tight: 0 };
   const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0);
@@ -550,10 +567,13 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   const title = songs[0].title;
   if (kind === 'demo') {
     s.releases = s.releases.filter((r) => r.kind !== 'demo');
+  } else if (lift) {
+    for (const x of songs) x.lifted = true;
   } else {
     for (const x of songs) x.released = true;
   }
   const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 };
+  if (kind === 'album') for (const x of songs) x.album = rec.id;
   tagRelease(s, rec);
   s.releases.push(rec);
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
@@ -561,13 +581,16 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind): void {
   if (kind !== 'demo') masterpiecePress(s, rng, songs);
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
-  for (const m of available(s)) {
-    adjust(m, 'energy', wobble(rng, -8));
-    grow(m, 'skill', 1, rng, 0.35);
-    grow(m, 'writing', 1, rng, 0.2);
+  if (!lift) {
+    for (const m of available(s)) {
+      adjust(m, 'energy', wobble(rng, -8));
+      grow(m, 'skill', 1, rng, 0.35);
+      grow(m, 'writing', 1, rng, 0.2);
+    }
+    s.tightness = clamp(s.tightness + 3 + prod.tight, 0, 100);
   }
-  s.tightness = clamp(s.tightness + 3 + prod.tight, 0, 100);
-  log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : rec.label ? ` Out now on ${labelName}, with posters on every bus shelter they could afford.` : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
+  if (lift) log(s, `"${title}" is lifted from the album as a single, with a B-side nobody will play and a sleeve everyone will.`, 'good');
+  else log(s, `${s.bandName} recorded a ${RELEASE_LABEL[kind]}: "${title}" (${quality}).${kind === 'demo' ? ' Tapes go on the merch table.' : rec.label ? ` Out now on ${labelName}, with posters on every bus shelter they could afford.` : ' Out now on your own label, Kebab Shop Records.'}`, 'good');
 }
 
 function party(s: GameState, rng: Rng, option: string): void {
