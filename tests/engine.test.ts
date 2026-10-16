@@ -999,3 +999,16 @@ describe('rock-star spending', () => {
     expect(s1.songs.length).toBe(2);
   });
 });
+
+describe('tour venues', () => {
+  it('European clubs are named in the local language', () => {
+    const s = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 3 }), fans: 5000, buzz: 60, money: 30000, releases: [{ id: 'r', kind: 'single' as const, title: 'T', quality: 60, appeal: 1, week: 0, sold: 0, lastWeek: 0 }] };
+    startTour(s, new Rng(9), 'europe', 6, 'steady');
+    for (const stop of s.tour!.route) {
+      const name = stop.venue.split(',')[0];
+      if (stop.country === 'Italy') expect(name).not.toMatch(/Klubi|Klubben|Rockhaus|De Kelder|Le /);
+      if (stop.country === 'France') expect(name).not.toMatch(/Klubi|Rockhaus|Teatro|Sala/);
+      if (stop.country === 'Finland') expect(name).toMatch(/Klubi|Tavastia|Kellari|Rockkeidas|Tehdas/);
+    }
+  });
+});

@@ -101,20 +101,42 @@ function citiesFor(region: Region): [string, string][] {
 const PUBS = ['The Red Lion', 'The Railway Tavern', 'The Black Swan', "The King's Head", 'The Crown', 'The Fleece', 'The Anchor', 'The Plough', 'The Royal Oak', 'The Wheatsheaf', 'The White Hart', 'The Bell', 'The George', 'The Feathers', 'The Three Tuns', 'The Nag\'s Head', 'The Coach and Horses', 'The Lamb'];
 const CLUBS = ['The Boiler Room', 'The Furnace', 'The Basement', 'Club Zero', 'The Rumble', 'The Pit', 'The Vault', 'The Engine Shed', 'The Tin Hut', 'The Cellar Bar', 'Riverside Club', 'The Shoebox', 'The Lighthouse', 'The Coal Hole', 'The Mill'];
 const THEATRES = ['Polytechnic Students\' Union', 'Majestic', 'Assembly Rooms', 'Palace Theatre', 'University Great Hall', 'Kings Hall', 'Victoria Rooms', 'Empire Ballroom', 'Odeum', 'Regal'];
-const EUROCLUBS = ['Rockhaus', 'Kulturhalle Nord', 'Le Bateau Noir', 'Klubben Øst', 'Sala Rayo', 'De Kelder', 'Halle 7', 'Club Vulkan', 'Le Hangar', 'Teatro Fumo', 'Klubi Pohjoinen', 'Die Garage', 'Salle Mercure', 'Rockfabriek'];
-const ARENAS = ['Exhibition Hall', 'Ice Arena', 'Sportshall', 'International Arena', 'Showground Hall', 'Palais des Sports', 'Olympiahalle', 'Ice Stadium'];
+/** Club names in the local language, so a Finnish club does not turn up in Italy. */
+const EUROCLUBS: Record<string, string[]> = {
+  'West Germany': ['Rockhaus', 'Kulturhalle Nord', 'Halle 7', 'Club Vulkan', 'Die Garage', 'Rockfabrik', 'Zeche Sieben', 'Kellerklub'],
+  Austria: ['Rockhaus', 'Die Garage', 'Kulturkeller', 'Arena Halle'],
+  Switzerland: ['Rockfabrik', 'Kulturhalle', 'Le Hangar', 'Salle Mercure'],
+  Netherlands: ['De Kelder', 'Rockfabriek', 'Paradijs', 'De Fabriek', 'Het Pakhuis'],
+  Belgium: ['De Kelder', 'Le Hangar', 'Club Vulcain', 'Het Depot'],
+  France: ['Le Bateau Noir', 'Le Hangar', 'Salle Mercure', 'La Cave', "L'Usine", 'Le Zénith Rock'],
+  Denmark: ['Klubben Øst', 'Rockhuset', 'Fabrikken', 'Loppen'],
+  Sweden: ['Klubben Öst', 'Rockhuset', 'Fabriken', 'Kåren'],
+  Norway: ['Klubben Øst', 'Rockehuset', 'Fabrikken', 'Hulen'],
+  Finland: ['Klubi Pohjoinen', 'Tavastia-sali', 'Kellari', 'Rockkeidas', 'Tehdas'],
+  Italy: ['Teatro Fumo', 'Il Magazzino', 'Rock Club Vesuvio', 'La Fabbrica'],
+  Spain: ['Sala Rayo', 'La Fábrica', 'Sala Volcán', 'El Sótano'],
+  Portugal: ['Sala Rayo', 'A Fábrica', 'O Porão'],
+};
+const EUROCLUB_FALLBACK = ['Rock Club', 'The Factory', 'The Cellar'];
+const ARENAS = ['Exhibition Hall', 'Ice Arena', 'Sportshall', 'International Arena', 'Showground Hall', 'Ice Stadium'];
+const EUROARENAS: Record<string, string[]> = {
+  'West Germany': ['Olympiahalle', 'Stadthalle', 'Festhalle', 'Eissporthalle'], Austria: ['Stadthalle', 'Eishalle'], Switzerland: ['Hallenstadion', 'Eishalle'],
+  Netherlands: ['Sportpaleis', 'IJsselhal'], Belgium: ['Sportpaleis', 'Forest National Hall'], France: ['Palais des Sports', 'Zénith', 'Palais Omnisports'],
+  Denmark: ['Forum', 'Idrætshal'], Sweden: ['Isstadion', 'Idrottshallen', 'Scandinavium Hall'], Norway: ['Ishallen', 'Idrettshall'], Finland: ['Jäähalli', 'Messuhalli'],
+  Italy: ['Palasport', 'Palazzetto dello Sport'], Spain: ['Palacio de Deportes', 'Pabellón'], Portugal: ['Pavilhão', 'Coliseu'],
+};
 const USVENUES = ['Civic Auditorium', 'Coliseum', 'Music Hall', 'Memorial Arena', 'Amphitheater', 'Armory', 'Palladium', 'Fairgrounds Pavilion'];
 const STADIUMS = ['Olympic Stadium', 'National Stadium', 'Municipal Stadium', 'Football Ground', 'Speedway Bowl', 'Racecourse'];
 
-function venueName(rng: Rng, type: VenueType, city: string): string {
+function venueName(rng: Rng, type: VenueType, city: string, country = ''): string {
   switch (type) {
     case 'pub': return `${rng.pick(PUBS)}, ${city}`;
     case 'club': return `${rng.pick(CLUBS)}, ${city}`;
     case 'theatre': return `${city} ${rng.pick(THEATRES)}`;
-    case 'euroclub': return `${rng.pick(EUROCLUBS)}, ${city}`;
-    case 'arena': return `${city} ${rng.pick(ARENAS)}`;
+    case 'euroclub': return `${rng.pick(EUROCLUBS[country] ?? EUROCLUB_FALLBACK)}, ${city}`;
+    case 'arena': return `${city} ${rng.pick(EUROARENAS[country] ?? ARENAS)}`;
     case 'usvenue': return `${city} ${rng.pick(USVENUES)}`;
-    case 'stadium': return `${city} ${rng.pick(STADIUMS)}`;
+    case 'stadium': return `${city} ${rng.pick(country === 'France' ? ['Parc des Sports', 'Stade Municipal'] : country === 'West Germany' ? ['Olympiastadion', 'Waldstadion'] : country === 'Italy' ? ['Stadio Comunale', 'Stadio Olimpico'] : country === 'Spain' ? ['Estadio Municipal'] : STADIUMS)}`;
   }
 }
 
@@ -174,7 +196,7 @@ export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number,
   for (let i = 0; i < n; i++) {
     const [city, country] = pool[i % pool.length];
     const cap = rng.int(t.capacity[0], t.capacity[1]);
-    route.push({ city, country, venue: venueName(rng, t.venue, city), capacity: Math.round(cap / 10) * 10 });
+    route.push({ city, country, venue: venueName(rng, t.venue, city, country), capacity: Math.round(cap / 10) * 10 });
   }
   s.tour = { tier: t.id, name: t.name, weeks: w, week: 0, policy, route, gigsPerWeek: t.gigsPerWeek, gigsPlayed: 0, people: 0, fansGained: 0, startMoney: s.money };
   log(s, `${s.bandName} set off on the ${t.name}: ${w} week${w === 1 ? '' : 's'}, ${n} dates. ${POLICY_LABEL[policy]}.`, 'neutral');
