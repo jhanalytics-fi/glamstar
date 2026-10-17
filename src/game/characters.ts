@@ -135,8 +135,8 @@ function genreNear(rng: Rng, base: Genre): Genre {
   return rng.pick(GENRES);
 }
 
-export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = []): Musician {
-  const mean = TIER_MEAN[tier];
+export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = [], boost = 0): Musician {
+  const mean = Math.min(88, TIER_MEAN[tier] + boost);
   const real = personName(rng, takenNames);
   const age = rng.int(18, 29);
   const skill = rng.around(mean, 14);

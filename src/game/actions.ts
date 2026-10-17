@@ -762,6 +762,9 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
   const style = player(s).style;
   const taken = s.members.flatMap((m) => [m.name, m.realName]);
   const base = clamp(0.2 + s.fans / 2000 + s.buzz / 300, 0, 0.7);
+  // Word gets round: a famous band, or a band of good players, hears from better musicians.
+  const avgOvr = s.members.reduce((x, m) => x + overall(m), 0) / Math.max(1, s.members.length);
+  const boost = Math.round(clamp(5 * Math.log10(Math.max(1, s.fans) / 100), 0, 20) + clamp((avgOvr - 55) / 3, 0, 8));
   const spec = {
     newsagent: { n: 2, pGood: base * 0.35, pAvg: 0.35 },
     classified: { n: 3, pGood: base, pAvg: 0.45 },
@@ -771,7 +774,7 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
   s.candidates = Array.from({ length: spec.n }, () => {
     const r = rng.next();
     const tier: Tier = r < spec.pGood ? 'good' : r < spec.pGood + spec.pAvg ? 'average' : 'weak';
-    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, style, taken);
+    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, style, taken, boost);
     taken.push(c.name, c.realName);
     c.seen = option === 'poach' ? 60 : option === 'bar' ? 40 : 35;
     if (option === 'poach') {

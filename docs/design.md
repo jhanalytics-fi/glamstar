@@ -326,3 +326,7 @@ An album records its tracks (`song.album`). While the latest album is under a ye
 - **Inspiration:** songwriting gets a bonus from the band's state: mood and energy (+-5 and +-3 around 55), habit 35-65 adds +4 ("writing on something stronger than tea"), habit 65+ costs 7. The Write menu shows it ("Band: inspired (+9)").
 - **Stamina is tolerance:** the wasted-on-stage chance from a habit scales by 1.4 - stamina/125, and party energy loss by 1.3 - stamina/150. Same habit, different bodies.
 - The goal line no longer counts "N of 21"; the ladder is still there, it just stops looking like a checklist.
+
+## Who answers the advert (v0.16.1)
+
+Applicant quality was capped at the "good" tier (mean 62) from 1,000 fans on. Now every applicant's mean rating gets a boost: +5 x log10(fans / 100), capped at 20 (1,000 fans +5, 10,000 +10, 100,000 +15), plus up to +8 when the band's own average overall is above 55. A famous band of good players is answered by musicians of their own level; a pub band still gets hopefuls.

@@ -1130,3 +1130,19 @@ describe('fame, inspiration and constitution', () => {
     expect(count(90)).toBeLessThan(count(15));
   });
 });
+
+describe('who answers the advert', () => {
+  it('a famous band of good players hears from better musicians', () => {
+    const avg = (fans: number, skill: number) => {
+      let total = 0, n = 0;
+      for (let seed = 1; seed <= 25; seed++) {
+        const s: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), fans, money: 5000, pending: null };
+        s.members.forEach((m) => { m.skill = skill; m.stage = skill; m.writing = skill; });
+        const after = act(s, { type: 'advertise', option: 'classified', role: 'guitar' });
+        for (const c of after.candidates) { total += overall(c); n++; }
+      }
+      return total / n;
+    };
+    expect(avg(100000, 80)).toBeGreaterThan(avg(300, 45) + 12);
+  });
+});
