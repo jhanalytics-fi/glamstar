@@ -328,7 +328,8 @@ describe('choice events', () => {
   /** Per-event setup for situations that need a later year, a season or a follow-up flag. */
   const later = (s: GameState, week: number) => { s.week = week; s.lastGigWeek = week - 1; s.flags.lastBigParty = week; };
   const SETUP: Record<string, (s: GameState) => void> = {
-    transit: (s) => { s.flags.noVan = 1; },
+    transit: (s) => { s.wheels = 'bus'; s.flags.noVan = 1; },
+    wheels_upgrade: (s) => { s.fans = 1000; s.money = 10000; },
     guru: (s) => later(s, 153),
     makeover: (s) => later(s, 153),
     benefit: (s) => later(s, 153),
@@ -839,6 +840,37 @@ describe('touring', () => {
     return s;
   };
 
+  it('better wheels and better beds keep the band fresher, and cost more', () => {
+    const run = (wheels: GameState['wheels'], lodging: 'floors' | 'bnb' | 'hotels' | 'suites') => {
+      let s = { ...ready(300), wheels };
+      s.members.forEach((m) => { m.energy = 80; m.hidden.stamina = 50; });
+      s = settle(act(s, A('tour', 'clubs', { weeks: 3, policy: 'steady', lodging })));
+      return { energy: s.members.reduce((a, m) => a + m.energy, 0) / s.members.length, money: s.money, lodging: s.tour!.lodging };
+    };
+    const rough = run('bus', 'floors');
+    const plain = run('van', 'bnb');
+    const posh = run('coach', 'suites');
+    expect(rough.lodging).toBe('floors');
+    expect(plain.energy).toBeGreaterThan(rough.energy);
+    expect(posh.energy).toBeGreaterThan(plain.energy);
+    expect(posh.money).toBeLessThan(plain.money);
+    expect(plain.money).toBeLessThan(rough.money + 1);
+  });
+
+  it('arena tours come with a hired bus, and the van only dies now and then', async () => {
+    const { tourWheels, nextWheels } = await import('../src/game/wheels');
+    const s = newGame(input);
+    expect(tourWheels({ ...s, wheels: 'van' }, 'arenas')).toEqual({ wheels: 'coach', hired: true });
+    expect(tourWheels({ ...s, wheels: 'jet' }, 'arenas')).toEqual({ wheels: 'jet', hired: false });
+    expect(nextWheels({ ...s, wheels: 'bus' })).toBeNull();
+    expect(nextWheels({ ...s, wheels: 'van' })).toBe('splitter');
+    expect(nextWheels({ ...s, wheels: 'jet' })).toBeNull();
+    const coach = { ...s, wheels: 'coach' as const, lastGigWeek: 1 };
+    expect(() => forceEvent(coach, 'van')).toThrow();
+    const van = { ...s, wheels: 'van' as const, lastGigWeek: 1, flags: { ...s.flags, vanDied: s.week - 10 } };
+    expect(() => forceEvent(van, 'van')).toThrow();
+  });
+
   it('a brand new band cannot tour yet, a pub band can', () => {
     expect(actionOptions(newGame(input), 'tour').every((o) => o.locked)).toBe(true);
     const pubs = actionOptions({ ...newGame(input), fans: 50 }, 'tour');
@@ -1069,7 +1101,7 @@ describe('economy', () => {
     for (let i = 0; i < 15; i++) { s = { ...s, pending: null }; s = act(s, { type: 'rest', option: 'sleep' }); }
     expect(s.over).toBeNull();
     expect(s.log.some((l) => /final warning/.test(l.text))).toBe(true);
-    s = act({ ...s, pending: null }, { type: 'rest', option: 'sleep' });
+    for (let i = 0; i < 5 && s.pending?.def !== 'last_chance'; i++) s = act({ ...s, pending: null }, { type: 'rest', option: 'sleep' });
     expect(s.over).toBeNull();
     expect(s.pending?.def).toBe('last_chance');
     // Already used the last chance: next time the locks change.

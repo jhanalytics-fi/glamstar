@@ -66,6 +66,7 @@ export function newGame(input: NewGameInput): GameState {
     flags: {},
     releases: [],
     ledger: {},
+    wheels: 'van',
     pending: null,
     scene: null,
     tour: null,
@@ -113,6 +114,8 @@ export function upgradeSave(s: GameState): GameState {
   s.releases ??= [];
   s.pending ??= null;
   s.ledger ??= {};
+  s.wheels ??= s.flags.noVan ? 'bus' : 'van';
+  if (s.tour) s.tour.lodging ??= 'bnb';
   s.world.charts.us ??= [];
   for (const [i, star] of s.world.stars.entries()) star.label ??= labelFor(new Rng(i + 7), star.origin);
   s.scene ??= null;

@@ -12,6 +12,7 @@ import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost } from './managers';
 import { takeProducer } from './moneyEvents';
+import { WHEELS, wheelsOf } from './wheels';
 import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
 import type { Action, ActionType, GameState, Genre, IncomeKind, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
@@ -324,7 +325,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
         s.tour!.policy = (a.option.split(':')[1] as TourPolicy | undefined) ?? s.tour!.policy;
         return playTourWeek(s, rng);
       }
-      return startTour(s, rng, a.option, a.weeks ?? tierById(a.option)!.minWeeks, a.policy ?? 'steady');
+      return startTour(s, rng, a.option, a.weeks ?? tierById(a.option)!.minWeeks, a.policy ?? 'steady', a.lodging);
   }
 }
 
@@ -390,7 +391,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     }
   }
 
-  const energyMult = g.energyMult * (s.flags.roadie ? 0.8 : 1) * (s.flags.noVan ? 1.3 : 1);
+  const energyMult = g.energyMult * (s.flags.roadie ? 0.8 : 1) * WHEELS[wheelsOf(s)].gig;
   for (const m of available(s)) {
     adjust(m, 'energy', wobble(rng, -22 * (1.4 - m.hidden.stamina / 100) * energyMult));
     adjust(m, 'mood', wobble(rng, perf >= 50 ? 5 : perf < 40 ? -6 : 0));

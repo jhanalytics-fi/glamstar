@@ -14,6 +14,7 @@ import { CALAMITY_EVENTS } from './calamityEvents';
 import { STARDOM_EVENTS } from './stardomEvents';
 import { CATALOGUE_EVENTS } from './catalogueEvents';
 import { RUIN_EVENTS } from './ruinEvents';
+import { WHEELS, nextWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
 
@@ -66,6 +67,41 @@ const since = (s: GameState, flag: string, weeks: number) => s.flags[flag] === u
 const bestUnreleased = (s: GameState) => [...s.songs].filter((x) => !x.released).sort((a, b) => b.quality - a.quality)[0];
 const song = (s: GameState, title: string | number) => s.songs.find((x) => x.title === title);
 const loudest = (s: GameState) => [...mates(s)].sort((a, b) => b.hidden.ego - a.hidden.ego)[0];
+
+/** Bigger wheels for a bigger band: offered when the money and the fan base say so. */
+const WHEELS_EVENT: EventDef = {
+  id: 'wheels_upgrade',
+  weight: 3,
+  where: 'home',
+  when: (s) => {
+    const w = nextWheels(s);
+    return w && s.fans >= WHEELS[w].fans && s.money >= WHEELS[w].price * 1.3 && since(s, 'wheelsOffer', 20) ? { w } : null;
+  },
+  title: (_s, p) => (p.w === 'jet' ? 'A jet, going cheap' : p.w === 'coach' ? 'A tour bus with your name on it' : 'A splitter van, one careful owner'),
+  text: (s, p) => {
+    const spec = WHEELS[p.w as keyof typeof WHEELS];
+    return `${p.w === 'jet' ? 'A broker with a tan has a second-hand executive jet, ex-oil company, "barely used".' : p.w === 'coach' ? 'A coach firm in Luton is selling a proper tour bus: bunks, a lounge, a driver who comes with it.' : 'A band that split last month is selling their splitter van: bunks in the back, a fridge, a stereo.'} ${spec.word} £${spec.price.toLocaleString('en-GB')}, and ${spec.weekly ? `about £${spec.weekly.toLocaleString('en-GB')} a week to run on tour` : 'cheap to run'}. Right now ${s.bandName} travels in ${WHEELS[wheelsOf(s)].name.toLowerCase()}.`;
+  },
+  options: (_s, p) => {
+    const w = p.w as 'splitter' | 'coach' | 'jet';
+    return [
+      {
+        label: `Buy it: £${WHEELS[w].price.toLocaleString('en-GB')}`,
+        hint: w === 'jet' ? 'Nobody arrives tired again. Nobody arrives rich either.' : w === 'coach' ? 'Sleep on the move, arrive human. The running costs are real.' : 'Bunks and a fridge. The band arrives with its spine intact.',
+        cost: WHEELS[w].price,
+        resolve: (st) => {
+          st.flags.wheelsOffer = st.week;
+          setWheels(st, w);
+          for (const m of st.members) { adjust(m, 'mood', 8); adjust(m, 'image', w === 'jet' ? 3 : 1); }
+          addBuzz(st, w === 'jet' ? 12 : w === 'coach' ? 5 : 2);
+          milestone(st, 'career', `Bought ${WHEELS[w].name.toLowerCase()}.`);
+          log(st, w === 'jet' ? `${st.bandName} now owns a jet. ${PRESS} ran a photo of the band on the steps, waving, like a government. The fuel bill arrived the same afternoon.` : w === 'coach' ? 'The tour bus arrived outside the rehearsal room and blocked the street. The driver is called Trevor. Trevor has rules.' : 'The splitter van has a name painted on the side that is not yours. Nobody has the heart to change it.', 'good');
+        },
+      },
+      { label: 'Not yet', hint: 'The money stays in the bank.', resolve: (st) => { st.flags.wheelsOffer = st.week; log(st, 'You let it go. The band carries on as it is, and complains about it.', 'neutral'); } },
+    ];
+  },
+};
 
 const BASE_EVENTS: EventDef[] = [
   {
@@ -420,20 +456,21 @@ const BASE_EVENTS: EventDef[] = [
   },
   {
     id: 'van',
-    weight: 2,
-    when: (s) => (!s.flags.noVan && s.lastGigWeek !== null ? {} : null),
+    weight: 1,
+    when: (s) => (wheelsOf(s) === 'van' && s.lastGigWeek !== null && since(s, 'vanDied', 45) ? {} : null),
     title: () => 'The van died on the A406',
     text: () => 'Steam, a bang, and a smell of burning clutch. A garage will fix it. Or you could not.',
     options: (s) => {
       const fixer = [...mates(s)].sort((a, b) => b.hidden.reliability - a.hidden.reliability)[0];
       const opts: EventOption[] = [
-        { label: 'Take it to a garage', hint: 'Done properly.', cost: 90, resolve: (st) => log(st, 'The van is fixed. The mechanic found a shoe in the engine.', 'neutral') },
+        { label: 'Take it to a garage', hint: 'Done properly.', cost: 90, resolve: (st) => { st.flags.vanDied = st.week; log(st, 'The van is fixed. The mechanic found a shoe in the engine.', 'neutral'); } },
       ];
       if (fixer) {
         opts.push({
           label: `Let ${first(fixer)} have a go`,
           hint: 'A spanner and some optimism.',
           resolve: (st, rng) => {
+            st.flags.vanDied = st.week;
             if (rng.chance(0.55)) log(st, `${first(fixer)} fixed it with a coat hanger. Legend.`, 'good');
             else { st.money -= 40; for (const m of st.members) adjust(m, 'mood', -4); log(st, `${first(fixer)} made it worse. The garage charged £40 anyway.`, 'bad'); }
           },
@@ -442,7 +479,7 @@ const BASE_EVENTS: EventDef[] = [
       opts.push({
         label: 'Sell it for scrap',
         hint: 'Get £150 now. Gigs on the night bus wear everyone out.',
-        resolve: (st) => { st.money += 150; st.flags.noVan = 1; log(st, 'The van went for £150. The band now travels by night bus with a bass amp.', 'neutral'); },
+        resolve: (st) => { st.flags.vanDied = st.week; st.money += 150; setWheels(st, 'bus'); log(st, 'The van went for £150. The band now travels by night bus with a bass amp.', 'neutral'); },
       });
       return opts;
     },
@@ -450,11 +487,11 @@ const BASE_EVENTS: EventDef[] = [
   {
     id: 'transit',
     weight: 3,
-    when: (s) => (s.flags.noVan ? {} : null),
+    when: (s) => (wheelsOf(s) === 'bus' ? {} : null),
     title: () => 'An old van for sale',
     text: () => 'A mate of a mate is selling a van. Rust holds it together. £120.',
     options: () => [
-      { label: 'Buy it', hint: 'Wheels again.', cost: 120, resolve: (st) => { st.flags.noVan = 0; log(st, 'The band has a van again. It smells of sheep.', 'good'); } },
+      { label: 'Buy it', hint: 'Wheels again.', cost: 120, resolve: (st) => { setWheels(st, 'van'); log(st, 'The band has a van again. It smells of sheep.', 'good'); } },
       { label: 'Keep taking the bus', hint: 'Save the money.', resolve: (st) => log(st, 'Another winter of night buses.', 'neutral') },
     ],
   },
@@ -2426,6 +2463,7 @@ const EVENTS: EventDef[] = [
   ...STARDOM_EVENTS,
   ...CATALOGUE_EVENTS,
   ...RUIN_EVENTS,
+  WHEELS_EVENT,
   ...TOUR_EVENTS,
 ];
 
@@ -2483,7 +2521,7 @@ function news(s: GameState, rng: Rng): void {
       return true;
     },
     () => {
-      if (s.flags.noVan) return false;
+      if (wheelsOf(s) !== 'van') return false;
       s.money -= 15;
       log(s, 'The van got a parking ticket outside the rehearsal room. The warden was humming your chorus. £15.', 'bad');
       return true;
@@ -2622,7 +2660,7 @@ function news(s: GameState, rng: Rng): void {
       return true;
     },
     () => {
-      if (s.flags.noVan) return false;
+      if (wheelsOf(s) !== 'van') return false;
       for (const m of s.members) adjust(m, 'energy', -5);
       log(s, 'A cold snap froze the van solid. Everyone pushed it down the hill. It started at the bottom, next to the pub.', 'neutral');
       return true;

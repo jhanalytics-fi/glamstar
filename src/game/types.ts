@@ -240,6 +240,8 @@ export interface GameState {
   gear: number;
   /** Misc. persistent state: roadie, noVan, lastBigParty week, rentUp, tvBan... */
   flags: Record<string, number>;
+  /** The band's transport. Mirrored in flags.noVan for older code. */
+  wheels: Wheels;
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
@@ -293,9 +295,15 @@ export interface Action {
   weeks?: number;
   /** For tours: how the band behaves on the road. */
   policy?: TourPolicy;
+  /** For starting a tour: where the band sleeps. */
+  lodging?: Lodging;
 }
 
 export type TourPolicy = 'wild' | 'steady' | 'clean';
+/** How the band gets about. */
+export type Wheels = 'bus' | 'van' | 'splitter' | 'coach' | 'jet';
+/** Where the band sleeps on tour. */
+export type Lodging = 'floors' | 'bnb' | 'hotels' | 'suites';
 
 export interface TourStop {
   city: string;
@@ -311,6 +319,7 @@ export interface Tour {
   /** Weeks already played. */
   week: number;
   policy: TourPolicy;
+  lodging: Lodging;
   route: TourStop[];
   gigsPerWeek: number;
   gigsPlayed: number;

@@ -7,7 +7,8 @@ import { commission } from './managers';
 import { available, missingForGig, performance } from './chemistry';
 import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, revealLog, setVibe, verdict } from './helpers';
 import { trend } from './world';
-import type { GameState, Musician, TourPolicy, TourStop } from './types';
+import type { GameState, Lodging, Musician, TourPolicy, TourStop } from './types';
+import { LODGING, WHEELS, defaultLodging, lodgingCost, tourWheels } from './wheels';
 
 type Region = 'southeast' | 'uk' | 'europe' | 'ukeurope' | 'northamerica' | 'world';
 type VenueType = 'pub' | 'club' | 'theatre' | 'euroclub' | 'arena' | 'usvenue' | 'stadium';
@@ -188,7 +189,7 @@ export const POLICY_HINT: Record<TourPolicy, string> = {
 
 // ---------------------------------------------------------------- starting, playing, ending
 
-export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number, policy: TourPolicy): void {
+export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number, policy: TourPolicy, lodging?: Lodging): void {
   const t = tierById(tierId)!;
   const w = clamp(Math.round(weeks), t.minWeeks, t.maxWeeks);
   const pool = rng.shuffle(citiesFor(t.region));
@@ -199,8 +200,10 @@ export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number,
     const cap = rng.int(t.capacity[0], t.capacity[1]);
     route.push({ city, country, venue: venueName(rng, t.venue, city, country), capacity: Math.round(cap / 10) * 10 });
   }
-  s.tour = { tier: t.id, name: t.name, weeks: w, week: 0, policy, route, gigsPerWeek: t.gigsPerWeek, gigsPlayed: 0, people: 0, fansGained: 0, startMoney: s.money };
-  log(s, `${s.bandName} set off on the ${t.name}: ${w} week${w === 1 ? '' : 's'}, ${n} dates. ${POLICY_LABEL[policy]}.`, 'neutral');
+  const lodge = lodging ?? defaultLodging(t.id);
+  const ride = tourWheels(s, t.id);
+  s.tour = { tier: t.id, name: t.name, weeks: w, week: 0, policy, lodging: lodge, route, gigsPerWeek: t.gigsPerWeek, gigsPlayed: 0, people: 0, fansGained: 0, startMoney: s.money };
+  log(s, `${s.bandName} set off on the ${t.name}: ${w} week${w === 1 ? '' : 's'}, ${n} dates. ${POLICY_LABEL[policy]}. ${ride.hired ? 'A hired tour bus' : WHEELS[ride.wheels].name}, ${LODGING[lodge].name.toLowerCase()}.`, 'neutral');
   playTourWeek(s, rng);
 }
 
@@ -224,6 +227,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   const cancelledRecently = s.flags.cancelledTour !== undefined && s.week - s.flags.cancelledTour < 26;
   const policyHabit = { wild: 1.8, steady: 1, clean: 0.2 }[tour.policy];
   const policyEnergy = { wild: 1.25, steady: 1, clean: 0.85 }[tour.policy];
+  const ride = tourWheels(s, t.id);
+  const lodge = LODGING[tour.lodging ?? 'bnb'];
   let weekPeople = 0;
   let weekFans = 0;
   let weekMoney = 0;
@@ -290,8 +295,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     else beat(s, day, `${stop.venue}. ${crowd.toLocaleString('en-GB')} people.${full} ${fate?.kind === 'legend' ? 'Legendary.' : verdict}${drunkText}`, fate?.kind === 'legend' || perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
     if (fate?.kind === 'legend') applyLegend(s, rng, `${stop.venue}, ${stop.city}`, crowd);
     for (const m of available(s)) {
-      adjust(m, 'energy', -9 * (1.4 - m.hidden.stamina / 100) * policyEnergy * (s.flags.roadie ? 0.85 : 1));
-      adjust(m, 'habit', (m.hidden.vice / 100) * rng.int(0, 3) * policyHabit);
+      adjust(m, 'energy', -9 * (1.4 - m.hidden.stamina / 100) * policyEnergy * (s.flags.roadie ? 0.85 : 1) * WHEELS[ride.wheels].tour);
+      adjust(m, 'habit', (m.hidden.vice / 100) * rng.int(0, 3) * policyHabit * lodge.habit);
       if (perf >= 55) adjust(m, 'mood', 1);
       grow(m, 'stage', 1, rng, 0.08);
       grow(m, 'skill', 1, rng, 0.05);
@@ -299,6 +304,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     for (const m of drunk) revealLog(s, m, m.habit >= 40 ? 'vice' : 'reliability', 1);
   });
 
+  // Where you sleep decides what is left of you by Friday.
+  for (const m of available(s)) { adjust(m, 'energy', lodge.energy); adjust(m, 'mood', lodge.mood); }
   // The road wears everyone down; homesickness sets in after three weeks.
   for (const m of available(s)) {
     if (tour.week >= 3) adjust(m, 'mood', -3);
@@ -310,7 +317,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     }
   }
 
-  const cost = t.weeklyCost;
+  const cost = t.weeklyCost + (ride.hired ? 0 : WHEELS[ride.wheels].weekly) + lodgingCost(s.members.length, t.weeklyCost, tour.lodging ?? 'bnb');
   s.money += weekMoney - cost;
   earn(s, 'tours', weekGate);
   earn(s, 'merch', weekMerch);

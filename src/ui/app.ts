@@ -9,7 +9,8 @@ import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerWord } from '../game/managers';
 import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
-import type { TourPolicy } from '../game/types';
+import type { Lodging, TourPolicy } from '../game/types';
+import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
@@ -51,6 +52,7 @@ let armedAbandon = false;
 let tourTier: string | null = null;
 let tourWeeks = 1;
 let tourPolicy: TourPolicy = 'steady';
+let tourLodging: Lodging | null = null;
 /** Development aid: shows true values and hidden changes. */
 const PACE_KEY = 'glamstar.pace';
 type Pace = 'relaxed' | 'brisk';
@@ -140,12 +142,14 @@ function onClick(e: Event, root: HTMLElement): void {
         tourTier = arg!;
         const t = tierById(arg!)!;
         tourWeeks = t.minWeeks;
+        tourLodging = null;
         break;
       }
       case 'tourWeeks': tourWeeks = Number(arg); break;
       case 'tourPolicy': tourPolicy = arg as TourPolicy; break;
+      case 'tourLodging': tourLodging = arg as Lodging; break;
       case 'startTour':
-        state = act(state!, { type: 'tour', option: tourTier!, weeks: tourWeeks, policy: tourPolicy });
+        state = act(state!, { type: 'tour', option: tourTier!, weeks: tourWeeks, policy: tourPolicy, lodging: tourLodging ?? defaultLodging(tourTier!) });
         openAction = null;
         tourTier = null;
         break;
@@ -548,6 +552,7 @@ function moneyBlock(s: GameState): string {
     <article class="deal-card">
       <dl class="deal">
         ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
+        <div title="${esc(WHEELS[wheelsOf(s)].word)}"><dt>Wheels</dt><dd>${esc(WHEELS[wheelsOf(s)].name)}</dd></div>
         ${s.flags.shark ? `<div title="Half of everything above £50 goes to Tony's collector every week, and the rest grows 3% a week. His lads call round after twelve weeks."><dt>Owed to Big Tony</dt><dd class="neg">${money(s.flags.shark)}</dd></div>` : ''}
         ${s.flags.patron !== undefined ? `<div title="An envelope every Friday, for as long as you are interesting."><dt>The admirer's allowance</dt><dd>${money(Math.round(60 + s.fans * 0.02))} / week</dd></div>` : ''}
         <div><dt>Every week, all in</dt><dd class="${total > 500 ? 'neg' : ''}">${money(total)}</dd></div>
@@ -795,7 +800,7 @@ function tourSub(s: GameState): string {
 }
 
 /** Pick a tour: tier, then length and how wild, then go. */
-function tourSetup(_s: GameState, opts: ReturnType<typeof actionOptions>): string {
+function tourSetup(s: GameState, opts: ReturnType<typeof actionOptions>): string {
   const tiers = opts.map((o) => {
     const sel = tourTier === o.id;
     return `<button class="choice ${sel ? 'selected' : ''}" data-do="tourTier" data-arg="${o.id}" ${o.locked ? 'disabled' : ''} aria-pressed="${sel}">
@@ -807,13 +812,18 @@ function tourSetup(_s: GameState, opts: ReturnType<typeof actionOptions>): strin
   const t = tourTier ? tierById(tourTier) : null;
   if (t) {
     const weeks = Array.from({ length: t.maxWeeks - t.minWeeks + 1 }, (_, i) => t.minWeeks + i);
+    const lodge = tourLodging ?? defaultLodging(t.id);
+    const ride = tourWheels(s, t.id);
+    const weekly = t.weeklyCost + (ride.hired ? 0 : WHEELS[ride.wheels].weekly) + lodgingCost(s.members.length, t.weeklyCost, lodge);
     detail = `
       <div class="tour-setup">
         <span class="label">How long?</span>
         <div class="chips">${weeks.map((w) => `<button class="chip" data-do="tourWeeks" data-arg="${w}" aria-pressed="${tourWeeks === w}">${w} wk, ${w * t.gigsPerWeek} gigs</button>`).join('')}</div>
         <span class="label">On the road</span>
         <div class="chips">${(['wild', 'steady', 'clean'] as TourPolicy[]).map((p) => `<button class="chip" data-do="tourPolicy" data-arg="${p}" aria-pressed="${tourPolicy === p}" title="${esc(POLICY_HINT[p])}">${POLICY_LABEL[p]}</button>`).join('')}</div>
-        <p class="hint">${esc(POLICY_HINT[tourPolicy])} Road costs about £${(t.weeklyCost * tourWeeks).toLocaleString('en-GB')} in total. Nothing else happens until you come home or give up.</p>
+        <span class="label">Where you sleep</span>
+        <div class="chips">${LODGING_ORDER.map((l) => `<button class="chip" data-do="tourLodging" data-arg="${l}" aria-pressed="${lodge === l}" title="${esc(LODGING[l].word)}">${LODGING[l].name}${LODGING[l].nightly ? ` £${lodgingCost(s.members.length, t.weeklyCost, l).toLocaleString('en-GB')}/wk` : ''}</button>`).join('')}</div>
+        <p class="hint">${esc(POLICY_HINT[tourPolicy])} ${esc(LODGING[lodge].word)} ${ride.hired ? 'The promoter supplies a tour bus.' : `Travelling in ${esc(WHEELS[ride.wheels].name.toLowerCase())}${WHEELS[ride.wheels].weekly ? ` (£${WHEELS[ride.wheels].weekly.toLocaleString('en-GB')}/wk to run)` : ''}.`} Road costs about £${(weekly * tourWeeks).toLocaleString('en-GB')} in total. Nothing else happens until you come home or give up.</p>
         <button class="btn big" data-do="startTour">Hit the road</button>
       </div>`;
   }
@@ -833,7 +843,7 @@ function tourPanel(s: GameState): string {
       <h3 class="what-now">${esc(t.name)}</h3>
       <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="${tour.weeks}" aria-valuenow="${tour.week}"><i style="width:${pct}%"></i></div>
       <p class="tour-stats">Week ${tour.week} of ${tour.weeks} done. ${tour.gigsPlayed} gigs, ${tour.people.toLocaleString('en-GB')} people, fans ${tour.fansGained >= 0 ? '+' : ''}${tour.fansGained}, money ${net >= 0 ? '+' : '-'}£${Math.abs(net).toLocaleString('en-GB')}.</p>
-      <p class="hint">Next: ${next.map((x) => `${esc(x.city)}${x.country !== 'England' ? ` (${esc(x.country)})` : ''}`).join(' -> ')}</p>
+      <p class="hint">Next: ${next.map((x) => `${esc(x.city)}${x.country !== 'England' ? ` (${esc(x.country)})` : ''}`).join(' -> ')}. ${esc(tourWheels(s, tour.tier).hired ? 'A hired tour bus' : WHEELS[tourWheels(s, tour.tier).wheels].name)}, ${esc(LODGING[tour.lodging ?? 'bnb'].name.toLowerCase())}.</p>
       ${hurting.length ? `<p class="hint warn">Struggling: ${hurting.map((m) => `${esc(m.isPlayer ? 'you' : first(m))} (${m.energy < 25 ? 'exhausted' : m.habit >= 60 ? 'using heavily' : 'miserable'})`).join(', ')}.</p>` : ''}
       <div class="choices">
         ${(['wild', 'steady', 'clean'] as TourPolicy[]).map((p) => `<button class="choice ${tour.policy === p ? 'selected' : ''}" data-do="tourNext" data-arg="${p}">

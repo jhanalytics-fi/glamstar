@@ -5,6 +5,7 @@ import { available, addAffinity } from './chemistry';
 import { addBuzz, adjust, earn, first, log, milestone, player } from './helpers';
 import { LABELS, makeTerms } from './labels';
 import { PRESS } from './names';
+import { WHEELS, setWheels, wheelsOf } from './wheels';
 import type { EventDef } from './events';
 import type { GameState } from './types';
 
@@ -30,7 +31,7 @@ export const RUIN_EVENTS: EventDef[] = [
       const sellable = s.gear > 0 || !s.flags.noVan;
       const shark = LABELS.filter((l) => l.tier === 'shark').find((l) => s.flags[`passed_${l.id}`] === undefined || s.week - s.flags[`passed_${l.id}`] >= 26);
       const canSign = !s.contract && !!shark;
-      const sellValue = Math.max(350 + s.gear * 250 + (s.flags.noVan ? 0 : 250), -s.money + 200);
+      const sellValue = Math.max(350 + s.gear * 250 + Math.round(WHEELS[wheelsOf(s)].price * 0.4), -s.money + 200);
       return [
         {
           label: `Borrow £${loan.toLocaleString('en-GB')} from Big Tony`,
@@ -71,7 +72,7 @@ export const RUIN_EVENTS: EventDef[] = [
             st.flags.lastChanceOpen = 0;
             st.money += sellValue;
             earn(st, 'other', sellValue);
-            st.gear = 0; st.flags.noVan = 1;
+            st.gear = 0; setWheels(st, 'bus');
             st.tightness = clamp(st.tightness - 5, 0, 100);
             for (const m of available(st)) adjust(m, 'mood', -6);
             log(st, `A man in Walthamstow gave you £${sellValue.toLocaleString('en-GB')} for the lot and did not look at any of it. The drummer kept his sticks. Everything else goes on the night bus now.`, 'bad');
@@ -143,8 +144,8 @@ export const RUIN_EVENTS: EventDef[] = [
           locked: s.gear > 0 || !s.flags.noVan ? undefined : 'Nothing left to hand over.',
           resolve: (st) => {
             st.flags.heaviesOpen = 0;
-            const worth = 400 + st.gear * 300 + (st.flags.noVan ? 0 : 300);
-            st.gear = 0; st.flags.noVan = 1;
+            const worth = 400 + st.gear * 300 + Math.round(WHEELS[wheelsOf(st)].price * 0.5);
+            st.gear = 0; setWheels(st, 'bus');
             st.flags.shark = Math.max(0, (st.flags.shark ?? 0) - worth);
             st.flags.sharkSince = st.week;
             st.tightness = clamp(st.tightness - 5, 0, 100);

@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.21)
+## Prototype status (v0.22)
 
 Playable in the browser. Implemented:
 
@@ -386,3 +386,11 @@ Going broke no longer ends the game on the spot. The first time the overdraft is
 - **Six nights a week for a month:** cash in hand (4 x (£90 + fans x 0.12), at most £2,500, at least enough to clear the red), energy -40, mood -10, habits up, tightness +5, a few fans.
 
 The Business tab shows what is owed to Tony and the admirer's allowance.
+
+## Wheels and beds (v0.22)
+
+`src/game/wheels.ts`. How the band travels is part of its station, and it decides how much is left of everyone on tour.
+
+- **Wheels** (`s.wheels`, replacing the `noVan` flag, which is kept in step for old code): the night bus (gig energy x1.3, tour x1.3), a rusty Transit (x1), a splitter van with bunks (£3,500, 800+ fans, x0.9 / x0.88, £120 a week on tour), a tour bus with a lounge and Trevor (£30,000, 8,000+ fans, x0.85 / x0.72, £2,500 a week) and a private jet (£900,000, 60,000+ fans, x0.8 / x0.6, £45,000 a week). Each is offered as a choice event once the money and the fans are there (money at 1.3x the price, 20 weeks between offers); buying lifts mood, image and buzz. Arena, American and stadium tours come with a hired bus if you own less. The Business tab shows what you travel in.
+- **The van dies less:** only a Transit breaks down, at most once in 45 weeks, weight 1 (was 2 and every week). Parking tickets and frozen engines are Transit-only too. Selling it, or losing it to Tony, puts the band back on the night bus.
+- **Lodging** (per tour, chosen at setup): floors and the van (free, energy -6 and mood -3 a week, habits x1.15), bed and breakfasts (3% of the road cost + £6 a head a night), proper hotels (12% + £25 a night, energy +5, mood +1) and suites with room service (35% + £120 a night, energy +10, mood +3, minibar habits x1.2). Defaults: floors for pubs and clubs, B&Bs for theatres and Europe, hotels above. A club band in proper hotels loses money, as it should.
