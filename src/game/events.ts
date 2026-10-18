@@ -14,6 +14,7 @@ import { CALAMITY_EVENTS } from './calamityEvents';
 import { STARDOM_EVENTS } from './stardomEvents';
 import { CATALOGUE_EVENTS } from './catalogueEvents';
 import { RUIN_EVENTS } from './ruinEvents';
+import { FANCLUB_EVENTS } from './fanclubEvents';
 import { WHEELS, nextWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
@@ -2463,6 +2464,7 @@ const EVENTS: EventDef[] = [
   ...STARDOM_EVENTS,
   ...CATALOGUE_EVENTS,
   ...RUIN_EVENTS,
+  ...FANCLUB_EVENTS,
   WHEELS_EVENT,
   ...TOUR_EVENTS,
 ];

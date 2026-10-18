@@ -336,6 +336,24 @@ describe('records', () => {
     expect(won).toBeGreaterThan(0);
   });
 
+  it('records get certified as they sell, and a fan club pays weekly', async () => {
+    const { certFor } = await import('../src/game/certs');
+    const s = withSongs(2);
+    const r = { id: 'x', kind: 'single' as const, title: 'X', quality: 60, appeal: 1, week: 0, sold: 260000, lastWeek: 0 };
+    expect(certFor(r)).toBe('silver');
+    expect(certFor({ ...r, sold: 1200000 })).toBe('platinum');
+    expect(certFor({ ...r, kind: 'album', sold: 120000 })).toBe('gold');
+    s.releases = [r];
+    const after = act(s, A('rest', 'sleep'));
+    expect(after.releases[0].cert).toBe('silver');
+    expect(after.log.some((l) => /certified Silver/.test(l.text))).toBe(true);
+    let c = { ...newGame(input), fans: 10000, money: 1000 };
+    c.flags = { ...c.flags, fanClub: 0 };
+    const paid = act(c, A('rest', 'sleep'));
+    expect(paid.ledger['1982'].fanclub).toBeGreaterThan(50);
+    expect(paid.ledger['1982'].fanclub).toBeLessThan(200);
+  });
+
   it('a demo tape sells at gigs', () => {
     let s = settle(act(withSongs(3), A('release', 'demo')));
     s = act({ ...s, fans: 200 }, A('gig', 'venue1'));
@@ -411,6 +429,8 @@ describe('choice events', () => {
     label_compilation: (s) => { s.fans = 4000; s.songs.forEach((x) => { x.released = true; }); s.releases.push({ id: 'alb', kind: 'album', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 5000, lastWeek: 0, label: 'imperial', royalty: 0.3 }); s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     bootleg_lp: (s) => { s.fans = 6000; s.lastGigWeek = s.week - 1; s.songs[0].released = true; },
     last_chance: (s) => { s.flags.lastChanceOpen = 1; s.money = -300; },
+    fan_club_start: (s) => { s.fans = 1500; },
+    fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },
   };
 

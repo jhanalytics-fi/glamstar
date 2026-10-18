@@ -4,6 +4,8 @@ import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName, isBlockedPerson } from './names';
 import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor, type ChartId } from './world';
 import { awardsNight } from './awards';
+import { fanClubWeek } from './fanclub';
+import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
@@ -333,7 +335,8 @@ export const FAN_FADE_AFTER = 6;
 function fadeFans(s: GameState): void {
   // People grow up, move on, get mortgages: half a per cent of casual fans drift off every week regardless.
   const casualNow = s.fans - (s.flags.coreFans ?? 0);
-  if (casualNow > 200) s.fans -= Math.round(casualNow * 0.005);
+  // A fan club keeps a few more of them writing in.
+  if (casualNow > 200) s.fans -= Math.round(casualNow * (s.flags.fanClub !== undefined ? 0.004 : 0.005));
   if (s.tour) return;
   const lastRelease = s.releases.reduce((a, r) => Math.max(a, r.week), -99);
   const lastSeen = Math.max(s.lastGigWeek ?? -99, lastRelease, s.flags.lastTourWeek ?? -99, 0);
@@ -364,6 +367,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   if (s.flags.homeHeat) s.flags.homeHeat = Math.round(s.flags.homeHeat * 0.85 * 100) / 100;
   labelWeek(s, rng);
   catalogueWeek(s, rng);
+  fanClubWeek(s);
   const ruin = ruinWeek(s, rng);
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
@@ -419,6 +423,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   }
 
   const records = sellRecords(s, rng, heatCurve);
+  certify(s);
   const sold = records.reduce((a, r) => a + r.units, 0);
   if (sold > 0) log(s, `Record sales this week: ${sold} copies.`, 'good');
 

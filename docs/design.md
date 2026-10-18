@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.23)
+## Prototype status (v0.24)
 
 Playable in the browser. Implemented:
 
@@ -407,3 +407,8 @@ The Business tab shows what is owed to Tony and the admirer's allowance.
 - **Tours** (History): every finished or abandoned tour (`s.tours`): start, weeks, gigs, people, fans won, net money, legendary nights.
 - **Awards** (`src/game/awards.ts`): in week 50 of every year the Noise Weekly Readers' Poll and the Phonographic Trade Awards hand out gongs. Contenders depend on the year: Best New Band (first year with records, 1,500+ fans), Single and Album of the Year (a top-10 peak, better odds for a number one), Best Live Act (a legendary night or a 50,000-person tour this year), Best or Worst Dressed (5,000+ fans and an image average over 70 or under 40), Export Achievement (100,000 copies of a record), Scandal of the Year (the polaroids or a hotel raid). Odds 25-70% each. A win: buzz +4 per award, mood +6, image +1, a milestone; a nominated loss costs mood 3. Awards are listed in History.
 - **Japan tour:** a new tier between the arenas and America: 15,000 fans, buzz 50, a UK chart record; 2-4 weeks, 4 shows a week in 2,500-12,000 halls (Kōkaidō, Sun Plaza Hall, Festival Hall), £8,000 a show, £21,000 a week, hired tour bus if you have none. Japan buys merch at 1.8x, converts well, and counts 0.15 towards world reach. A one-off tour event: the hotel lobby full of fans with gifts.
+
+## Discs on the wall and the Army (v0.24)
+
+- **Certifications** (`src/game/certs.ts`): singles go Silver at 250,000, Gold at 500,000, Platinum at 1,000,000 and Multi-platinum at 2,000,000 copies; albums at 60,000 / 100,000 / 300,000 / 900,000. Checked every week after sales. Each new disc: buzz +4 to +10, mood +3 to +6, a milestone, a badge in the discography. Demos and bootlegs do not count.
+- **Fan club** (`src/game/fanclub.ts`): offered as a choice event from 1,200 fans (£150 for a PO box). Members = 8% of fans (10% in-house), £0.15 per member per week in subscriptions and mail-order shirts, 30% of it to whoever runs it from their spare room until you bring it in-house. A club slows the weekly fan drift from 0.5% to 0.4%. After 40 weeks, **Where does the money go?**: an office and a bookkeeper (wages £80 + fans x 0.01 a week on the weekly bill, every penny yours, more members), a quiet word, or lawyers (money back, the sister sacked, her brother in the band stops talking to you). The Business tab shows members and the weekly take; the ledger has a Fan club column.

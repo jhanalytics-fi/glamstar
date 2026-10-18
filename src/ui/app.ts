@@ -11,6 +11,8 @@ import { sackCost, sackManager, managerWord } from '../game/managers';
 import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
 import type { Lodging, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
+import { clubIncome, clubMembers } from '../game/fanclub';
+import { CERT_LABEL } from '../game/certs';
 import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
@@ -569,6 +571,7 @@ function moneyBlock(s: GameState): string {
       <dl class="deal">
         ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
         <div title="${esc(WHEELS[wheelsOf(s)].word)}"><dt>Wheels</dt><dd>${esc(WHEELS[wheelsOf(s)].name)}</dd></div>
+        ${s.flags.fanClub !== undefined ? `<div title="${s.flags.fanClubInHouse ? 'Run from your own office: every penny is yours.' : 'Run from a spare room for a 30% cut.'}"><dt>Fan club</dt><dd>${clubMembers(s).toLocaleString('en-GB')} members, ${money(Math.round(clubIncome(s) * (s.flags.fanClubInHouse ? 1 : 0.7)))} / week</dd></div>` : ''}
         ${s.flags.shark ? `<div title="Half of everything above £50 goes to Tony's collector every week, and the rest grows 3% a week. His lads call round after twelve weeks."><dt>Owed to Big Tony</dt><dd class="neg">${money(s.flags.shark)}</dd></div>` : ''}
         ${s.flags.patron !== undefined ? `<div title="An envelope every Friday, for as long as you are interesting."><dt>The admirer's allowance</dt><dd>${money(Math.round(60 + s.fans * 0.02))} / week</dd></div>` : ''}
         <div><dt>Every week, all in</dt><dd class="${total > 500 ? 'neg' : ''}">${money(total)}</dd></div>
@@ -589,7 +592,7 @@ function labelSection(s: GameState): string {
 function incomeBlock(s: GameState): string {
   const years = Object.keys(s.ledger ?? {}).sort();
   if (!years.length) return '';
-  const cols: [IncomeKind, string][] = [['gigs', 'Gigs'], ['tours', 'Tours'], ['merch', 'Merch'], ['singles', 'Singles'], ['eps', 'EPs'], ['albums', 'Albums'], ['royalties', 'Royalties'], ['advances', 'Advances'], ['other', 'Other']];
+  const cols: [IncomeKind, string][] = [['gigs', 'Gigs'], ['tours', 'Tours'], ['merch', 'Merch'], ['fanclub', 'Fan club'], ['singles', 'Singles'], ['eps', 'EPs'], ['albums', 'Albums'], ['royalties', 'Royalties'], ['advances', 'Advances'], ['other', 'Other']];
   const used = cols.filter(([k]) => years.some((y) => (s.ledger[y][k] ?? 0) > 0));
   const sum = (y: string) => used.reduce((a, [k]) => a + (s.ledger[y][k] ?? 0), 0);
   const tot = (k: IncomeKind) => years.reduce((a, y) => a + (s.ledger[y][k] ?? 0), 0);
@@ -982,7 +985,7 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   const peak = (r: (typeof s.releases)[number], c: string) => (r.peaks?.[c] ? `#${r.peaks[c]}` : '');
   const rows = [...s.releases].reverse().map((r) => `<tr>
-      <td><strong>"${esc(r.title)}"</strong>${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
+      <td><strong>"${esc(r.title)}"</strong>${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
       <td>${r.comp === 'hits' ? 'Compilation' : r.comp === 'live' ? 'Live' : r.comp === 'bootleg' ? 'Bootleg' : kind[r.kind]}</td>
       <td>${dateLabel(r.week)}</td>
       <td class="lbl">${esc(r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : r.kind === 'demo' ? 'Merch table' : 'Kebab Shop Records')}</td>

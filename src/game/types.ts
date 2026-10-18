@@ -66,7 +66,7 @@ export interface Song {
 export type ReleaseKind = 'demo' | 'single' | 'ep' | 'album';
 
 /** Where the money comes from. The `u_` kinds count copies, not pounds. */
-export type IncomeKind = 'gigs' | 'tours' | 'merch' | 'singles' | 'eps' | 'albums' | 'royalties' | 'advances' | 'other' | 'u_single' | 'u_ep' | 'u_album';
+export type IncomeKind = 'gigs' | 'tours' | 'merch' | 'fanclub' | 'singles' | 'eps' | 'albums' | 'royalties' | 'advances' | 'other' | 'u_single' | 'u_ep' | 'u_album';
 
 export interface Release {
   id: string;
@@ -87,7 +87,11 @@ export interface Release {
   outside?: boolean;
   /** Best chart positions reached, by chart. */
   peaks?: Partial<Record<string, number>>;
+  /** Sales certification, as the trade body counts it. */
+  cert?: Cert;
 }
+
+export type Cert = 'silver' | 'gold' | 'platinum' | 'multiplatinum';
 
 /** A tour, once it is over. */
 export interface TourRecord {
