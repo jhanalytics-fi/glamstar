@@ -590,7 +590,6 @@ function write(s: GameState, rng: Rng, option: string): void {
   }
   if (option === 'hired') {
     const fee = hiredFee(s);
-    s.money -= fee;
     const pro = 70 + Math.min(18, Math.log10(Math.max(1, fee / 300)) * 9);
     const song = newSong(s, rng, pro * 0.65 + base * 0.35 + rng.int(-6, 10), best, 'hired', me.style);
     song.outside = true;
@@ -600,7 +599,6 @@ function write(s: GameState, rng: Rng, option: string): void {
     return;
   }
   if (option === 'retreat') {
-    s.money -= retreatCost(s);
     for (const m of here) { adjust(m, 'energy', wobble(rng, 12)); adjust(m, 'mood', wobble(rng, 8)); }
     forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, 3));
     const n = rng.chance(0.5) ? 3 : 2;

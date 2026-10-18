@@ -183,6 +183,11 @@ describe('action choices', () => {
     expect(h.songs[0].kind).toBe('hired');
     expect(h.songs[0].quality).toBeGreaterThan(55);
     expect(h.money).toBeLessThanOrEqual(50000 - hiredFee);
+    expect(h.money).toBeGreaterThan(50000 - hiredFee - 1500);
+    const retreatCost = actionOptions(rich, 'write').find((o) => o.id === 'retreat')!.cost;
+    const rr = act(rich, A('write', 'retreat'));
+    expect(rr.money).toBeGreaterThan(50000 - retreatCost - 1500);
+    expect(rr.money).toBeLessThanOrEqual(50000 - retreatCost);
     let wrote = 0;
     for (let seed = 1; seed <= 6; seed++) wrote += act({ ...newGame({ ...input, seed }), money: 50000, fans: 5000 }, A('write', 'retreat')).songs.length;
     expect(wrote).toBeGreaterThanOrEqual(12);
