@@ -361,6 +361,8 @@ describe('choice events', () => {
     stage_dive: (s) => { s.fans = 2000; s.lastGigWeek = s.week; },
     label_compilation: (s) => { s.fans = 4000; s.songs.forEach((x) => { x.released = true; }); s.releases.push({ id: 'alb', kind: 'album', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 5000, lastWeek: 0, label: 'imperial', royalty: 0.3 }); s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     bootleg_lp: (s) => { s.fans = 6000; s.lastGigWeek = s.week - 1; s.songs[0].released = true; },
+    last_chance: (s) => { s.flags.lastChanceOpen = 1; s.money = -300; },
+    shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },
   };
 
   it('every event can fire and every response resolves cleanly', () => {
@@ -1068,7 +1070,68 @@ describe('economy', () => {
     expect(s.over).toBeNull();
     expect(s.log.some((l) => /final warning/.test(l.text))).toBe(true);
     s = act({ ...s, pending: null }, { type: 'rest', option: 'sleep' });
+    expect(s.over).toBeNull();
+    expect(s.pending?.def).toBe('last_chance');
+    // Already used the last chance: next time the locks change.
+    s = { ...s, flags: { ...s.flags, lastChanceOpen: 0 } };
+    for (let i = 0; i < 4 && !s.over; i++) s = act({ ...s, pending: null, money: -5000 }, { type: 'rest', option: 'sleep' });
     expect(s.over?.won).toBe(false);
+  });
+
+  it('the last chance: every way out clears the overdraft, and each has a price', () => {
+    const broke = () => {
+      const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
+      s.gear = 2;
+      return act({ ...s, money: -700, fans: 1000 }, { type: 'rest', option: 'sleep' });
+    };
+    const s = broke();
+    expect(s.over).toBeNull();
+    expect(s.pending?.def).toBe('last_chance');
+    const view = viewPending(s)!;
+    expect(view.options.length).toBe(5);
+    const labels = view.options.map((o) => o.label);
+    view.options.forEach((o, i) => {
+      if (o.locked) return;
+      const after = resolvePending(s, i);
+      expect(after.money, labels[i]).toBeGreaterThan(-350);
+      const next = act(after, { type: 'rest', option: 'sleep' });
+      expect(next.over, labels[i]).toBeNull();
+    });
+    const loan = resolvePending(s, 0);
+    expect(loan.flags.shark).toBeGreaterThan(loan.money);
+    const kept = resolvePending(s, 1);
+    expect(kept.flags.patron).toBeDefined();
+    const sold = resolvePending(s, 2);
+    expect(sold.gear).toBe(0);
+    expect(sold.flags.noVan).toBe(1);
+    const signed = resolvePending(s, 3);
+    expect(signed.contract?.terms.smallPrint.ownsName).toBe(true);
+    const grind = resolvePending(s, 4);
+    expect(grind.members.every((m) => m.energy < 75)).toBe(true);
+  });
+
+  it('Big Tony collects half of everything, then sends the lads, then a lorry', () => {
+    let s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 8 });
+    s = act({ ...s, money: -700, fans: 1000, gear: 2 }, { type: 'rest', option: 'sleep' });
+    s = resolvePending(s, 0);
+    const debt0 = s.flags.shark;
+    s = act({ ...s, money: 2000 }, { type: 'rest', option: 'sleep' });
+    expect(s.money).toBeLessThan(1100);
+    expect(s.flags.shark).toBeLessThan(debt0);
+    expect(s.log.some((l) => /collector took/.test(l.text))).toBe(true);
+    // Nothing coming in: after twelve weeks the lads call round.
+    for (let i = 0; i < 13 && s.pending?.def !== 'shark_heavies'; i++) s = act({ ...s, pending: null, money: 120 }, { type: 'rest', option: 'sleep' });
+    expect(s.pending?.def).toBe('shark_heavies');
+    const v = viewPending(s)!;
+    expect(v.options[0].locked).toBeTruthy();
+    const beaten = resolvePending(s, 2);
+    expect(beaten.members[0].outWeeks).toBe(2);
+    let t = beaten;
+    for (let i = 0; i < 13 && t.pending?.def !== 'shark_heavies'; i++) t = act({ ...t, pending: null, money: 120 }, { type: 'rest', option: 'sleep' });
+    expect(t.pending?.def).toBe('shark_heavies');
+    t = resolvePending(t, 2);
+    for (let i = 0; i < 14 && !t.over; i++) t = act({ ...t, pending: null, money: 120 }, { type: 'rest', option: 'sleep' });
+    expect(t.over?.reason).toMatch(/lorry/);
   });
 });
 

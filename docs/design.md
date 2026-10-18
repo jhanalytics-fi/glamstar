@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.20)
+## Prototype status (v0.21)
 
 Playable in the browser. Implemented:
 
@@ -374,3 +374,15 @@ An **outside song** leading a record costs a slice of every copy: own-label marg
 - **US Singles Hot 40:** a sixth chart. American acts weigh 1, British 0.6, European 0.2, and the market is 2.4x the UK. Your reach into it comes from a major label (0.4), North American tours (0.4), the world tour (0.1) and big videos (up to 0.3). Charts are named by format now: UK Singles Top 40, UK Albums Top 40, US Singles Hot 40, Euro Singles Top 40, World Singles Top 40.
 - **Labels on the charts:** every star has a fictional label (UK, US and European pools; the UK pool is the game's own labels), the London listing says "Unsigned" or your label, and your records carry the label that put them out ("Kebab Shop Records", or "Bootleg"). Saves are migrated.
 - EPs chart with singles, as they did: no EP chart.
+
+## Rock bottom (v0.21)
+
+Going broke no longer ends the game on the spot. The first time the overdraft is breached (or sixteen skint weeks are up), and once every two years after that, **The end of the road?** fires instead (`src/game/ruinEvents.ts`). Every way out clears the overdraft; every one costs something else:
+
+- **Borrow from Big Tony:** enough to clear the red plus £400. Owed x1.5, growing 3% a week, and his collector takes half of everything above £50 each week. After twelve weeks with money still owed, **Big Tony's lads** call: pay in full, hand over the gear and the van, take a beating (two weeks out, image +3, a front page, the band rallies), or do a job for Tony (55%: half the slate wiped; else a member is arrested at Dover). The lads come twice. The third time it is a lorry, and the game is over.
+- **Move in with the admirer:** someone rich and grown-up with a house in Belgravia. Rent gone, £300 now, £60 + fans x 0.02 every Friday for up to twenty weeks (from week eight, 8% a week they find a poet). Image +3, mood -4 and -1 a week, habit +4, the band likes you 8 less and calls you Lady Chatterley.
+- **Sell the van and the gear:** £350 + gear x £250 + the van £250 (at least enough to clear the red). Gear 0, no van, tightness -5, mood -6.
+- **Sign with the sharks tonight, unread:** an instant shark deal: 8%, six albums, 45% deductions, they own the name, tour recoupment and promo recoupment. The advance clears everything. Locked if already signed.
+- **Six nights a week for a month:** cash in hand (4 x (£90 + fans x 0.12), at most £2,500, at least enough to clear the red), energy -40, mood -10, habits up, tightness +5, a few fans.
+
+The Business tab shows what is owed to Tony and the admirer's allowance.

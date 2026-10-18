@@ -13,6 +13,7 @@ import { MONEY_EVENTS } from './moneyEvents';
 import { CALAMITY_EVENTS } from './calamityEvents';
 import { STARDOM_EVENTS } from './stardomEvents';
 import { CATALOGUE_EVENTS } from './catalogueEvents';
+import { RUIN_EVENTS } from './ruinEvents';
 
 type Params = Record<string, string | number>;
 
@@ -2424,6 +2425,7 @@ const EVENTS: EventDef[] = [
   ...CALAMITY_EVENTS,
   ...STARDOM_EVENTS,
   ...CATALOGUE_EVENTS,
+  ...RUIN_EVENTS,
   ...TOUR_EVENTS,
 ];
 

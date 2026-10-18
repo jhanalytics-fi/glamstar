@@ -10,6 +10,7 @@ import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, rem
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
 import { catalogueWeek } from './catalogue';
+import { ruinWeek } from './ruinEvents';
 import type { Action, GameState, LogEntry, Musician, NewGameInput, TourPolicy } from './types';
 
 export { first } from './helpers';
@@ -337,6 +338,8 @@ function endOfWeek(s: GameState, rng: Rng): void {
   if (s.flags.homeHeat) s.flags.homeHeat = Math.round(s.flags.homeHeat * 0.85 * 100) / 100;
   labelWeek(s, rng);
   catalogueWeek(s, rng);
+  const ruin = ruinWeek(s, rng);
+  if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
   if (s.money < SKINT) {
     // Skint: everyone picks up shifts somewhere.
@@ -433,8 +436,19 @@ function checkOver(s: GameState): void {
     milestone(s, 'career', 'First record in the National Top 40.');
     log(s, `Milestone: a record in the National Top 40 with no label behind it. Every A&R man in London wants to buy you lunch.`, 'good');
   }
-  if ((s.money < overdraft(s) || (s.flags.skintWeeks ?? 0) >= SKINT_WEEKS) && !s.tour) {
-    s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
+  if (s.flags.ruined) {
+    s.over = { won: false, reason: s.flags.ruinReason === 1 ? 'Big Tony stopped sending lads and sent a lorry. Everything went, including the name. The band is over.' : 'The landlord changed the locks and the van got repossessed. The band is over.' };
+  } else if ((s.money < overdraft(s) || (s.flags.skintWeeks ?? 0) >= SKINT_WEEKS) && !s.tour) {
+    // One last bad idea before the locks change, once every couple of years.
+    if (!s.pending && (s.flags.lastChance === undefined || s.week - s.flags.lastChance >= 104)) {
+      s.flags.lastChance = s.week;
+      s.flags.lastChanceOpen = 1;
+      s.flags.skintWeeks = 0;
+      s.pending = { def: 'last_chance', params: {}, week: s.week };
+      log(s, 'The landlord is on the stairs. One more bad idea, or it is over.', 'bad');
+    } else if (!s.pending) {
+      s.over = { won: false, reason: 'The landlord changed the locks and the van got repossessed. The band is over.' };
+    }
   } else if (s.members.filter((m) => !m.isPlayer).length === 0 && s.candidates.length === 0 && s.flags.aloneSince !== undefined && s.week - s.flags.aloneSince > 12) {
     s.over = { won: false, reason: 'Three months with no band. You sell your stage clothes at Camden market. It is over.' };
   } else if (s.week >= DEADLINE_WEEK) {

@@ -548,6 +548,8 @@ function moneyBlock(s: GameState): string {
     <article class="deal-card">
       <dl class="deal">
         ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
+        ${s.flags.shark ? `<div title="Half of everything above £50 goes to Tony's collector every week, and the rest grows 3% a week. His lads call round after twelve weeks."><dt>Owed to Big Tony</dt><dd class="neg">${money(s.flags.shark)}</dd></div>` : ''}
+        ${s.flags.patron !== undefined ? `<div title="An envelope every Friday, for as long as you are interesting."><dt>The admirer's allowance</dt><dd>${money(Math.round(60 + s.fans * 0.02))} / week</dd></div>` : ''}
         <div><dt>Every week, all in</dt><dd class="${total > 500 ? 'neg' : ''}">${money(total)}</dd></div>
         ${s.manager ? `<div><dt>Manager's cut</dt><dd>${Math.round(s.manager.cut * 100)}% of all income</dd></div>` : ''}
         ${debt ? `<div><dt>Owed to the label</dt><dd class="neg">${money(debt)}</dd></div>` : ''}
