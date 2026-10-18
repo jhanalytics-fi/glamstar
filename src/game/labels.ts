@@ -155,7 +155,7 @@ function statement(s: GameState, c: Contract, l: Label): void {
   if (reported === 0 && before === 0) return;
   log(
     s,
-    `Royalty statement from ${l.name}: £${reported.toLocaleString('en-GB')} earned${cleared ? `, £${cleared.toLocaleString('en-GB')} set against the advance` : ''}. ${paid ? `Cheque enclosed: £${paid.toLocaleString('en-GB')}.` : `Cheque enclosed: £0. You still owe them £${c.unrecouped.toLocaleString('en-GB')}.`}`,
+    `Royalty statement from ${l.name}: £${reported.toLocaleString('en-GB')} earned${cleared ? `, £${cleared.toLocaleString('en-GB')} set against the advance` : ''}. ${paid ? `Cheque enclosed: £${paid.toLocaleString('en-GB')}.` : `Cheque enclosed: £0. Still £${c.unrecouped.toLocaleString('en-GB')} unrecouped on the tab.`}`,
     paid ? 'good' : 'neutral',
   );
   if (before > 0 && c.unrecouped === 0) milestone(s, 'career', `Recouped with ${l.name}. Every penny of the advance earned back.`);

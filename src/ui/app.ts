@@ -577,11 +577,11 @@ function labelDeals(s: GameState): string {
         ${termsList(c.terms, true)}
         <dl class="deal">
           <div><dt>Albums delivered</dt><dd>${c.albumsDelivered} of ${c.terms.albums}</dd></div>
-          <div><dt>You still owe them</dt><dd class="${c.unrecouped > 0 ? 'neg' : ''}">${money(c.unrecouped)}</dd></div>
+          <div title="Advance, recording budgets, videos and promo on the label's tab. Paid back only out of royalties, never out of your bank."><dt>Unrecouped on the tab</dt><dd class="${c.unrecouped > 0 ? 'neg' : ''}">${money(c.unrecouped)}</dd></div>
           <div><dt>Next royalty statement</dt><dd>${nextStatement} week${nextStatement === 1 ? '' : 's'}</dd></div>
           <div><dt>The label's mood</dt><dd class="${c.goodwill < 30 ? 'neg' : ''}">${MOOD_WORD(c.goodwill)}</dd></div>
         </dl>
-        <p class="hint">Royalties pay off the advance and every recording bill first. Only after that do you see a cheque.</p>
+        <p class="hint">Royalties pay off the advance and every recording bill first. Only after that do you see a cheque. The tab is not a debt you can be chased for: it only decides whether the cheque is £0. Tour and gig money is yours, unless the small print says otherwise.</p>
         <div class="card-foot">
           <button class="btn ghost" data-do="buyOut" ${s.money < cost ? 'disabled' : ''}>${armedBuyout ? `Really pay ${money(cost)} to leave?` : `Buy yourself out: ${money(cost)}`}</button>
           ${c.statements ? `<button class="btn ghost" data-do="audit" ${s.money < AUDIT_FEE ? 'disabled' : ''} title="Accountants go through the label's books. Crooks pay up. Every label hates it.">Audit the label: ${money(AUDIT_FEE)}</button>` : ''}
