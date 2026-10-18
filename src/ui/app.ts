@@ -903,8 +903,8 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   return `
     <section class="records">
-      ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${kind[r.kind]}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
-      <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
+      ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${r.comp === 'hits' ? 'compilation' : r.comp === 'live' ? 'live album' : r.comp === 'bootleg' ? 'bootleg' : kind[r.kind]}${r.outside ? ' (outside song)' : ''}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
+      <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : x.kind === 'cover' ? ' (cover)' : x.kind === 'hired' ? ' (outside writer)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
     </section>`;
 }
 

@@ -44,7 +44,7 @@ export interface Musician {
   fog: number;
 }
 
-export type SongKind = 'standard' | 'ballad' | 'trend' | 'solo';
+export type SongKind = 'standard' | 'ballad' | 'trend' | 'solo' | 'cover' | 'hired';
 
 export interface Song {
   title: string;
@@ -57,6 +57,8 @@ export interface Song {
   album?: string;
   /** Already lifted from the album as a single. */
   lifted?: boolean;
+  /** Written (or owned) by someone outside the band: the publishing goes elsewhere. */
+  outside?: boolean;
 }
 
 export type ReleaseKind = 'demo' | 'single' | 'ep' | 'album';
@@ -74,6 +76,10 @@ export interface Release {
   /** Label release: who put it out, and the band's royalty per copy after deductions. */
   label?: string;
   royalty?: number;
+  /** Put together from the back catalogue by the label, or by a bootlegger, rather than recorded by the band. */
+  comp?: 'hits' | 'live' | 'bootleg';
+  /** Lead song owned outside the band: a slice of every copy goes to its publisher. */
+  outside?: boolean;
 }
 
 /** The nasty bits of a record deal. Hidden until a lawyer reads the contract. */

@@ -1127,6 +1127,54 @@ const WRITE: Record<string, { mon: Line<MateCtx>[]; mid: Line<MateCtx>[] }> = {
       'You copy the haircut before you copy the sound. Priorities.',
     ],
   },
+  cover: {
+    mon: [
+      'A crate of old singles on the floor and an argument about which one is "ironic enough".',
+      'Somebody\'s dad\'s record collection, a record player with one working speed, and a plan.',
+      'You pick an old hit everyone secretly loves and nobody will admit to.',
+    ],
+    mid: [
+      'The original was in a key nobody can sing. You move it. Now it is in a key nobody can play.',
+      ({ mate }) => `${mate} wants it twice as fast. It is now a different song, which may be the point.`,
+      'The middle eight is replaced with a guitar solo, as is traditional.',
+    ],
+  },
+  publisher: {
+    mon: [
+      'A jiffy bag of cassettes from the publishers, each one with a handwritten note saying "HIT".',
+      'The A&R man drops off a box of demo tapes and says "trust me" twice.',
+      'Twelve cassettes by people called things like Tony and Gaz, all of whom have a house in Surrey.',
+    ],
+    mid: [
+      'Tape seven has a chorus. A real one. The room goes quiet in the way rooms do when money enters them.',
+      ({ mate }) => `${mate} listens to a tape with arms folded, then slightly less folded.`,
+      'One tape is clearly a hit. Nobody wants to be the one who says so.',
+    ],
+  },
+  hired: {
+    mon: [
+      'The songwriter arrives in a car worth more than the band, with a briefcase and no instrument.',
+      'A man with four number ones and a tan sits down at the piano and asks what the band is "about".',
+      'The hit writer walks in, listens to one song, and says "lovely, lovely, now let\'s write a hit".',
+    ],
+    mid: [
+      'By Wednesday there is a chorus you can hear from the street. The street is humming it.',
+      ({ mate }) => `${mate} suggests a chord. The songwriter smiles kindly and does not use it.`,
+      'The bridge is written in eleven minutes. The band has spent years on bridges.',
+    ],
+  },
+  retreat: {
+    mon: [
+      'A house in the country with a mobile studio in the yard, a cook, and no telephone.',
+      'Four bedrooms, a drawing room full of amps and a lawn the drummer has already driven across.',
+      'The van unloads into a manor house. The cows watch. The cows have seen bands before.',
+    ],
+    mid: [
+      'Songs at breakfast, songs at midnight, a bonfire in between.',
+      ({ mate }) => `${mate} is found at dawn in the kitchen with a guitar and a chorus, having not gone to bed.`,
+      'The farmer comes round about the noise, stays for a drink, and ends up on the backing vocals.',
+    ],
+  },
   ballad: {
     mon: [
       'The lights go down. Someone produces a lighter, for inspiration.',

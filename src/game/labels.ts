@@ -120,7 +120,7 @@ export function labelWeek(s: GameState, rng: Rng): void {
   poach(s, rng, l);
   if ((s.week - c.signed) % STATEMENT_WEEKS === 0 && s.week > c.signed) statement(s, c, l);
   if (c.reviewWeek !== null && s.week >= c.reviewWeek) review(s, c, l);
-  const lastAlbum = Math.max(c.signed, ...s.releases.filter((r) => r.label === c.label && r.kind === 'album').map((r) => r.week));
+  const lastAlbum = Math.max(c.signed, ...s.releases.filter((r) => r.label === c.label && r.kind === 'album' && !r.comp).map((r) => r.week));
   if (s.week - lastAlbum === 52) {
     for (const m of s.members) adjust(m, 'mood', -4);
     log(s, `${l.name} rang. And rang again. Where is the album? The word "breach" was used.`, 'bad');
@@ -163,7 +163,7 @@ function statement(s: GameState, c: Contract, l: Label): void {
 
 function review(s: GameState, c: Contract, l: Label): void {
   c.reviewWeek = null;
-  const album = [...s.releases].reverse().find((r) => r.label === c.label && r.kind === 'album');
+  const album = [...s.releases].reverse().find((r) => r.label === c.label && r.kind === 'album' && !r.comp);
   const sold = album?.sold ?? 0;
   const flop = sold < EXPECTS[l.tier];
   if (flop) {

@@ -9,6 +9,7 @@ import { tierById } from './tour';
 import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
+import { catalogueWeek } from './catalogue';
 import type { Action, GameState, LogEntry, Musician, NewGameInput, TourPolicy } from './types';
 
 export { first } from './helpers';
@@ -330,6 +331,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   fadeFans(s);
   if (s.flags.homeHeat) s.flags.homeHeat = Math.round(s.flags.homeHeat * 0.85 * 100) / 100;
   labelWeek(s, rng);
+  catalogueWeek(s, rng);
   managerWeek(s, rng);
   if (s.money < SKINT) {
     // Skint: everyone picks up shifts somewhere.

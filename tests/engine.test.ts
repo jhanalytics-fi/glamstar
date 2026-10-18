@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { act, canAct, dismissCandidates, fire, first, hire, newGame } from '../src/game/engine';
-import { actionOptions } from '../src/game/actions';
+import { actionOptions, sellRecords } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
 import { Rng } from '../src/game/rng';
 import { nextGoal } from '../src/game/goals';
 import { startTour } from '../src/game/tour';
+import { catalogueWeek, pressRecord } from '../src/game/catalogue';
 import { TOUR_EVENT_IDS } from '../src/game/tourEvents';
 import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, reveal, rollPotential, seenRange, traitDisplay } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
@@ -165,6 +166,34 @@ describe('action choices', () => {
     }
   });
 
+  it('covers, hired writers, publishers and the country house all produce songs, owned elsewhere where it matters', () => {
+    const base = newGame(input);
+    expect(actionOptions(base, 'write').map((o) => o.id)).toEqual(expect.arrayContaining(['cover']));
+    expect(actionOptions(base, 'write').some((o) => o.id === 'hired' || o.id === 'retreat' || o.id === 'publisher')).toBe(false);
+    const rich = { ...base, money: 50000, fans: 5000 };
+    const ids = actionOptions(rich, 'write').map((o) => o.id);
+    expect(ids).toEqual(expect.arrayContaining(['hired', 'retreat']));
+    const hiredFee = actionOptions(rich, 'write').find((o) => o.id === 'hired')!.cost;
+    expect(hiredFee).toBeGreaterThan(300);
+    const c = act(base, A('write', 'cover'));
+    expect(c.songs).toHaveLength(1);
+    expect(c.songs[0].kind).toBe('cover');
+    expect(c.songs[0].outside).toBe(true);
+    const h = act(rich, A('write', 'hired'));
+    expect(h.songs[0].kind).toBe('hired');
+    expect(h.songs[0].quality).toBeGreaterThan(55);
+    expect(h.money).toBeLessThanOrEqual(50000 - hiredFee);
+    let wrote = 0;
+    for (let seed = 1; seed <= 6; seed++) wrote += act({ ...newGame({ ...input, seed }), money: 50000, fans: 5000 }, A('write', 'retreat')).songs.length;
+    expect(wrote).toBeGreaterThanOrEqual(12);
+    const signed = { ...base };
+    signed.contract = { label: 'imperial', signed: 10, terms: { advance: 3000, rate: 0.1, albums: 3, budget: 8000, smallPrint: { deductions: 0.2, tourRecoup: false, ownsName: false, promoRecoup: true } }, unrecouped: 3000, albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0, goodwill: 60, shaved: 0, statements: 0 };
+    expect(actionOptions(signed, 'write').some((o) => o.id === 'publisher')).toBe(true);
+    let got = 0;
+    for (let seed = 1; seed <= 8; seed++) got += act({ ...signed, seed } as GameState, A('write', 'publisher')).songs.length;
+    expect(got).toBeGreaterThanOrEqual(4);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -213,6 +242,38 @@ describe('records', () => {
     const s = act(withSongs(3), A('release', 'single'));
     expect(s.releases).toHaveLength(1);
     expect(s.songs.filter((x) => x.released)).toHaveLength(2);
+  });
+
+  it('a single led by an outside song pays the band less per copy', () => {
+    const own = withSongs(2, 60);
+    const theirs = withSongs(2, 60);
+    theirs.songs[0].outside = true;
+    const a = settle({ ...act(own, A('release', 'single')), fans: 2000 });
+    const b = settle({ ...act(theirs, A('release', 'single')), fans: 2000 });
+    expect(b.releases[0].outside).toBe(true);
+    expect(a.releases[0].outside).toBeUndefined();
+    const ma = a.money; const mb = b.money;
+    sellRecords(a, new Rng(1), () => 1); sellRecords(b, new Rng(1), () => 1);
+    expect(a.money - ma).toBeGreaterThan(b.money - mb);
+    expect(b.money - mb).toBeGreaterThan(0);
+  });
+
+  it('a label can lift a single without asking, and compilations do not count as delivering an album', () => {
+    let lifted = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = withSongs(8, 60);
+      s.contract = { label: 'goldtooth', signed: 10, terms: { advance: 3000, rate: 0.1, albums: 3, budget: 8000, smallPrint: { deductions: 0.2, tourRecoup: false, ownsName: false, promoRecoup: true } }, unrecouped: 3000, albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0, goodwill: 30, shaved: 0, statements: 0 };
+      const a = act(s, A('release', 'album'));
+      a.week += 10;
+      catalogueWeek(a, new Rng(seed));
+      if (a.releases.some((r) => r.kind === 'single')) { lifted++; expect(a.releases.find((r) => r.kind === 'single')!.label).toBe('goldtooth'); expect(a.songs.filter((x) => x.lifted)).toHaveLength(1); }
+    }
+    expect(lifted).toBeGreaterThan(0);
+    expect(lifted).toBeLessThan(60);
+    const s = withSongs(2);
+    const rec = pressRecord(s, 'album', 'Hits', 60, 0.8, { comp: 'hits', label: 'imperial' });
+    expect(rec.comp).toBe('hits');
+    expect(s.releases).toContain(rec);
   });
 
   it('a demo tape sells at gigs', () => {
@@ -286,6 +347,8 @@ describe('choice events', () => {
     the_muse: (s) => { s.fans = 3000; },
     credit_fight: (s) => { s.releases.push({ id: 'hit', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: s.week - 1, sold: 30000, lastWeek: 0 }); },
     stage_dive: (s) => { s.fans = 2000; s.lastGigWeek = s.week; },
+    label_compilation: (s) => { s.fans = 4000; s.songs.forEach((x) => { x.released = true; }); s.releases.push({ id: 'alb', kind: 'album', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 5000, lastWeek: 0, label: 'imperial', royalty: 0.3 }); s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
+    bootleg_lp: (s) => { s.fans = 6000; s.lastGigWeek = s.week - 1; s.songs[0].released = true; },
   };
 
   it('every event can fire and every response resolves cleanly', () => {

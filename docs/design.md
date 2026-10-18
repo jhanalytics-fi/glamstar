@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.18)
+## Prototype status (v0.19)
 
 Playable in the browser. Implemented:
 
@@ -349,3 +349,20 @@ Applicant quality was capped at the "good" tier (mean 62) from 1,000 fans on. No
 - **In love** (a writer at 40+): let it burn (writing +4 steps, tightness -8), band first (mood -12, tightness +4), or put the muse on the guest list (writing +2, 30% they fall out with the rest).
 - **Who wrote it** (a hit at 20,000+ sold in the last ten weeks): band credit (affinity +6 all round, the writer sulks), the writer keeps it (affinity -15 between the two, loyalty -5), or a quarter for the riff.
 - **The edge of the stage** (gig this week, 1,500+ fans, stage under 85): jump (75%: stage +3 steps, mood +10, buzz +5; else a week on crutches), or finish the song.
+
+## Other people's songs, and records you did not make (v0.19)
+
+**Write** grows with the band's means:
+
+- **Cover an old hit** (always): a sure thing, quality around 48 + skill and tightness, kind `cover`, `song.outside = true`: the publishing belongs to whoever wrote it. Proud writers in the band grumble. No writing growth, no masterpiece odds.
+- **The publishers' tapes** (signed): a song from the label's publishing arm, free. Quality floor by label tier (major 68, indie 52, shark 58) plus up to 20; 25% of the time the tapes are all duds. Goodwill +4; writers with egos lose mood and like you less. Outside song.
+- **Bring in a hit songwriter** (2,000+ fans, or twice the fee in the bank): fee = £300 + fans x 0.12 (max £25,000). The song blends the pro (70 to 88, rising with the fee) with the band (65/35). The band's best writer grows 2 steps; proud writers sulk ("I could have written that"). Outside song.
+- **Rent a house in the country** (cash for it): £1,500 + fans x 0.25 (max £40,000). Two or three songs at base +6, energy +12, mood +8, affinity +3 all round, tightness +2.
+
+An **outside song** leading a record costs a slice of every copy: own-label margin and label royalty both x0.65 (`OUTSIDE_CUT`). Records and Songs show it ("outside song", "cover", "outside writer").
+
+**The catalogue has a life of its own** (`src/game/catalogue.ts`, `src/game/catalogueEvents.ts`):
+
+- **Label lifts a single without asking:** once an album is six weeks old and a track is liftable, each week the label may put one out itself (shark 12%, goodwill under 45 6%, otherwise 3%; at least 12 weeks apart). Normal royalty, buzz +4, the band's mood -3, and a sleeve from "two haircuts ago".
+- **Compilation** (3,000+ fans, a year since the last real album, any label that ever put out an album by you): the current label or an old one presses "The Best of", "The Singles 1982-86" or "Hits, Misses and B-sides". Let them (royalties if it is your label, nothing if it is an ex-label; buzz +6), give them a new song (it sells properly, appeal 1.1, buzz +10; an ex-label pays a token royalty), or lawyers (£1,000 scaled; 50% stops your label's one, 30% an ex-label's; goodwill -15). Compilations do not count as delivering an album and do not reset the "where is the album" clock.
+- **Bootleg LP** (5,000+ fans, a gig in the last eight weeks): "Live at the Astoria" is on every market stall. Let it go (a record that sells and pays nothing, buzz +6, image +1), lawyers (£500; 60% the press calls you out), or beat them to it with the official live album (on the label with a £3,000 tab, or £2,000 of your own; buzz +9, mood +5).

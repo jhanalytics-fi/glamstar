@@ -229,6 +229,10 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'solo', label: 'Write it yourself', cost: 0, hint: 'Your song, your way. The others may sulk.' },
         { id: 'trend', label: `Chase the trend: ${GENRE_LABEL[hot].toLowerCase()}`, cost: 0, hint: 'Sells better right now. Purists in the band will hate it.' },
         { id: 'ballad', label: 'Write a power ballad', cost: 0, hint: 'Hit or embarrassment. Lighters up, credibility down.' },
+        { id: 'cover', label: 'Work up a cover of an old hit', cost: 0, hint: 'A sure thing, if a borrowed one. The publishing goes to whoever wrote it.' },
+        ...(s.contract ? [{ id: 'publisher', label: `Listen to the tapes ${labelById(s.contract.label).name}'s publishers keep sending`, cost: 0, hint: 'A song by a proper songwriter, free, and not yours. The label is thrilled; your writers are not.' }] : []),
+        ...(s.fans >= 2000 || s.money >= hiredFee(s) * 2 ? [{ id: 'hired', label: 'Bring in a hit songwriter', cost: hiredFee(s), hint: `A week with someone who has written for everybody. Big song, big ego bruise, publishing split.` }] : []),
+        ...(s.money >= retreatCost(s) ? [{ id: 'retreat', label: 'Rent a house in the country', cost: retreatCost(s), hint: 'Two or three songs, a rested band, and a farmer who wants a word about the noise.' }] : []),
       ];
     }
     case 'release': {
@@ -505,15 +509,25 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
 }
 
 function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind: SongKind, genre: Genre): Song {
-  grow(writer, 'writing', 1, rng, 0.5);
+  if (kind !== 'cover' && kind !== 'hired') grow(writer, 'writing', 1, rng, 0.5);
   const song: Song = { title: songTitle(rng), quality: clamp(Math.round(quality), 1, 99), writer: writer.id, kind, genre, released: false };
   s.songs.push(song);
-  if (rng.chance(masterpieceOdds(s, writer))) strikeMasterpiece(s, rng, song, writer);
-  const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : 'song';
-  log(s, `New ${kindText}: "${song.title}" (${song.quality}), mostly ${writer.isPlayer ? 'yours' : `${first(writer)}'s`}.`, song.quality >= 55 ? 'good' : 'neutral');
+  if (kind !== 'cover' && kind !== 'hired' && rng.chance(masterpieceOdds(s, writer))) strikeMasterpiece(s, rng, song, writer);
+  const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : kind === 'cover' ? 'cover' : kind === 'hired' ? 'song' : 'song';
+  const whose = kind === 'cover' ? 'somebody else\'s, once' : kind === 'hired' ? 'not yours, on paper' : `mostly ${writer.isPlayer ? 'yours' : `${first(writer)}'s`}`;
+  log(s, `New ${kindText}: "${song.title}" (${song.quality}), ${whose}.`, song.quality >= 55 ? 'good' : 'neutral');
   headline(s, 'New song', `${song.quality}`);
   setVerdict(s, song.quality >= 92 ? 'The one' : song.quality >= 65 ? 'A belter' : song.quality >= 50 ? 'Keeper' : 'Filler', song.quality >= 50 ? 'good' : 'neutral');
   return song;
+}
+
+/** A songwriter for hire costs what the band can be seen to pay. */
+export function hiredFee(s: GameState): number {
+  return Math.round(clamp(300 + s.fans * 0.12, 300, 25000) / 10) * 10;
+}
+/** A residential studio, a month in the country. */
+export function retreatCost(s: GameState): number {
+  return Math.round(clamp(1500 + s.fans * 0.25, 1500, 40000) / 50) * 50;
 }
 
 function write(s: GameState, rng: Rng, option: string): void {
@@ -543,6 +557,51 @@ function write(s: GameState, rng: Rng, option: string): void {
         revealLog(s, m, 'ego', 1);
       }
     }
+    return;
+  }
+
+  if (option === 'cover') {
+    const old = rng.pick(s.world.stars.filter((x) => x.age > 100).concat(s.world.stars.slice(0, 3)));
+    const song = newSong(s, rng, 48 + best.skill * 0.15 + s.tightness * 0.1 + rng.int(-6, 16), best, 'cover', me.style);
+    song.outside = true;
+    log(s, `"${song.title}" was a hit for ${old.name} before any of you could drive. Your version is louder. ${old.name}'s publisher gets a slice of every copy.`, 'neutral');
+    for (const m of here) if (!m.isPlayer && m.writing >= 45 && m.hidden.ego >= 60) { adjust(m, 'mood', wobble(rng, -5)); log(s, `${first(m)} wanted to know why the band is playing other people's songs.`, 'bad'); }
+    return;
+  }
+  if (option === 'publisher') {
+    const l = labelById(s.contract!.label);
+    const floor = l.tier === 'major' ? 68 : l.tier === 'indie' ? 52 : 58;
+    if (rng.chance(0.25)) {
+      log(s, `Six tapes from ${l.name}'s publishers. Five about a girl called Candy, one about a car. None of them any good.`, 'bad');
+      return;
+    }
+    const song = newSong(s, rng, floor + rng.int(0, 20), best, 'hired', rng.chance(0.5) ? me.style : hotGenres(s.week)[0]);
+    song.outside = true;
+    s.contract!.goodwill = clamp(s.contract!.goodwill + 4, 0, 100);
+    log(s, `A song from a writer with three number ones and a house in Surrey. ${l.name} are delighted. The publishing is not yours and never will be.`, 'good');
+    for (const m of here) if (m.writing >= 45 && m.hidden.ego >= 55) { adjust(m, 'mood', wobble(rng, -6)); if (!m.isPlayer) addAffinity(s, m.id, me.id, -3); }
+    if (best.hidden.ego >= 60) revealLog(s, best, 'ego', 1);
+    return;
+  }
+  if (option === 'hired') {
+    const fee = hiredFee(s);
+    s.money -= fee;
+    const pro = 70 + Math.min(18, Math.log10(Math.max(1, fee / 300)) * 9);
+    const song = newSong(s, rng, pro * 0.65 + base * 0.35 + rng.int(-6, 10), best, 'hired', me.style);
+    song.outside = true;
+    grow(best, 'writing', 2, rng);
+    log(s, `A week with a songwriter who has written for everybody and is not shy about saying so. £${fee.toLocaleString('en-GB')}, half the publishing, and "${song.title}". ${first(best)} ${best.isPlayer ? 'learned' : 'learned'} more than ${best.isPlayer ? 'you' : 'they'} will admit.`, 'good');
+    for (const m of here) if (!m.isPlayer && m.writing >= 45 && m.hidden.ego >= 60) { adjust(m, 'mood', wobble(rng, -8)); addAffinity(s, m.id, me.id, -4); log(s, `${first(m)} sat in the corner saying "I could have written that". ${first(m)} could not have.`, 'bad'); revealLog(s, m, 'ego', 1); }
+    return;
+  }
+  if (option === 'retreat') {
+    s.money -= retreatCost(s);
+    for (const m of here) { adjust(m, 'energy', wobble(rng, 12)); adjust(m, 'mood', wobble(rng, 8)); }
+    forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, 3));
+    const n = rng.chance(0.5) ? 3 : 2;
+    for (let i = 0; i < n; i++) newSong(s, rng, base + 6 + rng.int(-8, 14), i % 2 === 0 ? best : second, 'standard', me.style);
+    s.tightness = clamp(s.tightness + 2, 0, 100);
+    log(s, rng.pick(['A farmhouse in Wales, a mobile studio in the yard and no pub for nine miles. The songs came. So did the farmer, twice.', 'A month in a manor house with a ghost, a snooker table and a sixteen-track. Half the songs are about the ghost.', 'A cottage by the sea, rain every day, and the best fortnight of writing the band has had.']), 'good');
     return;
   }
 
@@ -613,6 +672,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
   const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 };
   if (kind === 'album') for (const x of songs) x.album = rec.id;
   tagRelease(s, rec);
+  if (songs[0].outside) { rec.outside = true; if (rec.royalty) rec.royalty *= OUTSIDE_CUT; }
   s.releases.push(rec);
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
   milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ` on ${labelName}`}.`);
@@ -811,6 +871,8 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
 // ---------------------------------------------------------------- weekly record sales
 
 const MARGIN: Record<ReleaseKind, number> = { demo: 0, single: 0.35, ep: 0.9, album: 1.8 };
+/** What is left of a copy's margin after an outside publisher takes theirs. */
+export const OUTSIDE_CUT = 0.65;
 const KIND_DEMAND: Record<ReleaseKind, number> = { demo: 0, single: 1, ep: 0.7, album: 0.6 };
 
 /** Records in shops sell for a while after release. Returns this week's units for the charts. */
@@ -824,11 +886,11 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind];
     const raw = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
     // Label records sell harder, but the money goes to the label's ledger first.
-    const { units, cash } = labelSales(s, r, raw);
+    const { units, cash } = r.comp === 'bootleg' ? { units: raw, cash: 0 } : labelSales(s, r, raw);
     r.lastWeek = units;
     r.sold += units;
     if (units > 0) {
-      if (cash < 0) s.money += Math.round(units * MARGIN[r.kind]);
+      if (cash < 0) s.money += Math.round(units * MARGIN[r.kind] * (r.outside ? OUTSIDE_CUT : 1));
       // Records win new listeners, but each extra fan is harder to find than the last.
       s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
       out.push({ id: r.id, title: r.title, units, kind: r.kind });
