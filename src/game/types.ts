@@ -63,6 +63,9 @@ export interface Song {
 
 export type ReleaseKind = 'demo' | 'single' | 'ep' | 'album';
 
+/** Where the money comes from. The `u_` kinds count copies, not pounds. */
+export type IncomeKind = 'gigs' | 'tours' | 'merch' | 'singles' | 'eps' | 'albums' | 'royalties' | 'advances' | 'other' | 'u_single' | 'u_ep' | 'u_album';
+
 export interface Release {
   id: string;
   kind: ReleaseKind;
@@ -238,6 +241,8 @@ export interface GameState {
   /** Misc. persistent state: roadie, noVan, lastBigParty week, rentUp, tvBan... */
   flags: Record<string, number>;
   releases: Release[];
+  /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
+  ledger: Record<string, Partial<Record<IncomeKind, number>>>;
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;
   /** The latest week or situation, for the action zone. */

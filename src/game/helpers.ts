@@ -2,7 +2,7 @@
 import { Rng, clamp } from './rng';
 import { reveal } from './characters';
 import { addAffinity, getAffinity } from './chemistry';
-import type { Beat, EffectChip, GameState, HiddenTrait, LogEntry, MilestoneKind, Musician, Scene, Vibe } from './types';
+import type { IncomeKind, Beat, EffectChip, GameState, HiddenTrait, LogEntry, MilestoneKind, Musician, Scene, Vibe } from './types';
 
 export type Snapshot = ReturnType<typeof snapshot>;
 
@@ -52,6 +52,21 @@ export function adjust(m: Musician, k: 'energy' | 'mood' | 'habit' | 'skill' | '
 export function wobble(rng: Rng, d: number): number {
   if (Math.abs(d) < 2) return d;
   return Math.round(d * (0.65 + rng.next() * 0.7)) || Math.sign(d);
+}
+
+/** Book income to the ledger (the bank is adjusted by the caller). */
+export function earn(s: GameState, kind: IncomeKind, amount: number): void {
+  if (amount <= 0) return;
+  const y = String(1982 + Math.floor(s.week / 52));
+  const row = (s.ledger ??= {})[y] ??= {};
+  row[kind] = (row[kind] ?? 0) + Math.round(amount);
+}
+
+/** Merch money per head: badges and shirts, more when the band looks the part. */
+export function merchTake(s: GameState, crowd: number): number {
+  const look = s.members.reduce((a, m) => a + m.image, 0) / Math.max(1, s.members.length);
+  const line = s.fans >= 500 ? 1 : 0.45;
+  return Math.round(crowd * (0.25 + (look / 100) * 1.1) * line);
 }
 
 export function addBuzz(s: GameState, d: number): void {

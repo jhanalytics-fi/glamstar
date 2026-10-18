@@ -5,7 +5,7 @@ import type { Genre } from './types';
 
 export type StarGenre = Genre | 'pop';
 export type Origin = 'UK' | 'US' | 'SWE' | 'GER' | 'ITA' | 'NED' | 'FIN' | 'FRA';
-export type ChartId = 'london' | 'uk' | 'albums' | 'europe' | 'world';
+export type ChartId = 'london' | 'uk' | 'albums' | 'us' | 'europe' | 'world';
 
 /** A band on the London circuit, competing with you for the same crowds. */
 export interface Rival {
@@ -31,6 +31,8 @@ export interface Star {
   album: string;
   /** Weeks since the current album came out. */
   albumAge: number;
+  /** Who puts their records out. */
+  label?: string;
 }
 
 export interface ChartEntry {
@@ -44,6 +46,8 @@ export interface ChartEntry {
   isPlayer: boolean;
   /** Internal chart score, so the UI can say what it takes to get in. */
   score?: number;
+  /** The record label, as the trade papers print it. */
+  label?: string;
 }
 
 export interface World {
@@ -57,11 +61,22 @@ export interface World {
 
 export const CHART_NAME: Record<ChartId, string> = {
   london: 'London Underground 40',
-  uk: 'National Top 40',
-  albums: 'National Album Chart',
-  europe: 'Euro Top 40',
-  world: 'World Top 40',
+  uk: 'UK Singles Top 40',
+  albums: 'UK Albums Top 40',
+  us: 'US Singles Hot 40',
+  europe: 'Euro Singles Top 40',
+  world: 'World Singles Top 40',
 };
+
+/** Fictional labels the rest of the world records for. */
+export const WORLD_LABELS: Record<'UK' | 'US' | 'EU', string[]> = {
+  UK: ['Imperial Gramophone', 'Colossus Phonographic', 'Polyvox International', 'Bad Penny Records', 'Wax Lyrical', 'Gutterpress Recordings', 'Goldtooth Music', 'Starlight Entertainment Group', 'Harbourline', 'Cathedral Records', 'Ripcord', 'Tungsten Discs', 'Bluebird & Sons', 'Vinyl Addicts'],
+  US: ['Atlas-Vox', 'Meridian Records', 'Big Chief Records', 'Zenith International', 'Sunburst Records', 'Monolith', 'Transatlantic Wax', 'Goldfinch Records', 'Redwood Sound', 'Capitol Hill Phonograph', 'Neon Prairie', 'Skyline Entertainment'],
+  EU: ['Polar Star Records', 'Phonodisque', 'Nordvox', 'Eurobeat Schallplatten', 'Dischi Lampo', 'Tulip Records', 'Polyvox International', 'Colossus Phonographic'],
+};
+export function labelFor(rng: Rng, origin: Origin): string {
+  return rng.pick(WORLD_LABELS[origin === 'UK' ? 'UK' : origin === 'US' ? 'US' : 'EU']);
+}
 
 export const CHART_SIZE = 40;
 const RIVAL_COUNT = 70;
@@ -97,12 +112,13 @@ export function trend(genre: StarGenre, week: number): number {
 
 const ORIGIN_WEIGHT: Record<Exclude<ChartId, 'london' | 'albums'>, (o: Origin) => number> = {
   uk: (o) => (o === 'UK' ? 1 : o === 'US' ? 0.75 : 0.4),
+  us: (o) => (o === 'US' ? 1 : o === 'UK' ? 0.6 : 0.2),
   europe: (o) => (o === 'UK' || o === 'US' ? 0.8 : 1),
   world: (o) => (o === 'US' ? 1 : o === 'UK' ? 0.7 : 0.3),
 };
 
 /** The bigger the market, the more records a hit has to sell. */
-const MARKET = { uk: 1, europe: 1.6, world: 3 } as const;
+const MARKET = { uk: 1, us: 2.4, europe: 1.6, world: 3 } as const;
 
 const PLAYABLE: Genre[] = ['metal', 'hardrock', 'glam', 'punk', 'newwave'];
 const STAR_GENRES: StarGenre[] = ['pop', 'pop', 'pop', 'newwave', 'newwave', 'hardrock', 'metal', 'glam', 'punk'];
@@ -146,7 +162,7 @@ function newStar(rng: Rng, id: string, taken: Set<string>, origin: Origin, fame:
   for (let i = 0; i < 60 && clashes(n, taken); i++) n = rng.chance(0.3) ? stageName(rng) : bandName(rng);
   claim(n, taken);
   const age = rng.int(0, 14);
-  return { id, name: n, genre: genre ?? rng.pick(STAR_GENRES), origin, fame, single: songTitle(rng), age, heat: heatCurve(age), album: albumTitle(rng), albumAge: rng.int(0, 60) };
+  return { id, name: n, genre: genre ?? rng.pick(STAR_GENRES), origin, fame, single: songTitle(rng), age, heat: heatCurve(age), album: albumTitle(rng), albumAge: rng.int(0, 60), label: labelFor(rng, origin) };
 }
 
 export function createWorld(rng: Rng, playerBand: string): World {
@@ -159,7 +175,7 @@ export function createWorld(rng: Rng, playerBand: string): World {
   for (let i = 0; i < 34; i++) stars.push(newStar(rng, id('s'), taken, 'UK', rng.int(25, 95)));
   for (let i = 0; i < 34; i++) stars.push(newStar(rng, id('s'), taken, 'US', rng.int(30, 98)));
   for (let i = 0; i < 26; i++) stars.push(newStar(rng, id('s'), taken, rng.pick(EURO), rng.int(20, 85)));
-  const w: World = { rivals, stars, charts: { london: [], uk: [], albums: [], europe: [], world: [] }, peaks: {}, nextId };
+  const w: World = { rivals, stars, charts: { london: [], uk: [], albums: [], us: [], europe: [], world: [] }, peaks: {}, nextId };
   return w;
 }
 
@@ -168,9 +184,11 @@ export interface PlayerChartInput {
   fans: number;
   buzz: number;
   /** Your records in the shops and this week's sales. */
-  records?: { id: string; title: string; units: number; kind?: string }[];
+  records?: { id: string; title: string; units: number; kind?: string; label?: string }[];
   /** How far your records travel beyond the UK (0-1): label distribution and touring abroad. */
-  reach?: { europe: number; world: number };
+  reach?: { us: number; europe: number; world: number };
+  /** Who the band records for right now, for the London listing. */
+  label?: string;
 }
 
 export interface ChartNews {
@@ -201,7 +219,7 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
   const signed = w.rivals.filter((r) => r.fans >= 1500 && rng.chance(0.08));
   for (const r of signed) {
     const single = songTitle(rng);
-    w.stars.push({ id: r.id, name: r.name, genre: r.genre, origin: 'UK', fame: rng.int(25, 38), single, age: 0, heat: heatCurve(0), album: albumTitle(rng), albumAge: 200 });
+    w.stars.push({ id: r.id, name: r.name, genre: r.genre, origin: 'UK', fame: rng.int(25, 38), single, age: 0, heat: heatCurve(0), album: albumTitle(rng), albumAge: 200, label: labelFor(rng, 'UK') });
     news.push({ text: `${r.name} got signed. Their first single, "${single}", is out now.`, tone: 'neutral' });
   }
   const split = w.rivals.filter((r) => r.fans < 15 || rng.chance(0.004));
@@ -237,21 +255,21 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
 
   // Charts
   const playerScore = player.fans * (1 + player.buzz / 100);
-  const london = w.rivals.map((r) => ({ id: r.id, artist: r.name, title: null, origin: null, score: r.fans * (1 + r.buzz / 100) * (0.9 + rng.next() * 0.2), isPlayer: false }));
-  london.push({ id: 'player', artist: player.bandName, title: null, origin: null, score: playerScore, isPlayer: true });
+  const london = w.rivals.map((r) => ({ id: r.id, artist: r.name, title: null, origin: null, score: r.fans * (1 + r.buzz / 100) * (0.9 + rng.next() * 0.2), isPlayer: false, label: 'Unsigned' }));
+  london.push({ id: 'player', artist: player.bandName, title: null, origin: null, score: playerScore, isPlayer: true, label: player.label ?? 'Unsigned' });
   setChart(w, 'london', london);
 
   // Albums sell slower and longer than singles.
   const albumRows = w.stars
     .map((s) => ({ s, h: albumHeat(s.albumAge) }))
     .filter((x) => x.h > 0.04)
-    .map(({ s, h }) => ({ id: `${s.id}-lp`, artist: s.name, title: s.album, origin: s.origin, score: s.fame * h * trend(s.genre, week) * ORIGIN_WEIGHT.uk(s.origin) * (0.94 + rng.next() * 0.12), isPlayer: false }));
+    .map(({ s, h }) => ({ id: `${s.id}-lp`, artist: s.name, title: s.album, origin: s.origin, score: s.fame * h * trend(s.genre, week) * ORIGIN_WEIGHT.uk(s.origin) * (0.94 + rng.next() * 0.12), isPlayer: false, label: s.label }));
   for (const r of (player.records ?? []).filter((x) => x.kind === 'album')) {
-    albumRows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK' as Origin, score: (r.units / 450) * (0.92 + rng.next() * 0.16), isPlayer: true });
+    albumRows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK' as Origin, score: (r.units / 450) * (0.92 + rng.next() * 0.16), isPlayer: true, label: r.label });
   }
   setChart(w, 'albums', albumRows);
 
-  for (const c of ['uk', 'europe', 'world'] as const) {
+  for (const c of ['uk', 'us', 'europe', 'world'] as const) {
     const rows = w.stars
       .filter((s) => s.heat > 0.05)
       .map((s) => ({
@@ -261,11 +279,12 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
         origin: s.origin,
         score: s.fame * s.heat * trend(s.genre, week) * ORIGIN_WEIGHT[c](s.origin) * MARKET[c] * (0.92 + rng.next() * 0.16),
         isPlayer: false,
+        label: s.label,
       }));
     for (const r of (player.records ?? []).filter((x) => x.kind !== 'album')) {
       // UK sales count in full at home; abroad only as far as your label and your touring carry them.
       const reach = c === 'uk' ? 1 : (player.reach?.[c] ?? 0.1);
-      rows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK', score: (r.units / 650) * ORIGIN_WEIGHT[c]('UK') * reach * (0.92 + rng.next() * 0.16), isPlayer: true });
+      rows.push({ id: `player-${r.id}`, artist: player.bandName, title: r.title, origin: 'UK', score: (r.units / 650) * ORIGIN_WEIGHT[c]('UK') * reach * (0.92 + rng.next() * 0.16), isPlayer: true, label: r.label });
     }
     setChart(w, c, rows);
   }
@@ -280,7 +299,7 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
     }
     w.peaks.london = Math.min(prevPeak ?? Infinity, me.pos);
   }
-  for (const c of ['uk', 'albums', 'europe', 'world'] as const) {
+  for (const c of ['uk', 'albums', 'us', 'europe', 'world'] as const) {
     const mine = w.charts[c].filter((e) => e.isPlayer).sort((a, b) => a.pos - b.pos)[0];
     if (!mine) continue;
     const prevPeak = w.peaks[c];
@@ -291,7 +310,7 @@ export function advanceWorld(w: World, rng: Rng, week: number, player: PlayerCha
   return news;
 }
 
-function setChart(w: World, id: ChartId, rows: { id: string; artist: string; title: string | null; origin: Origin | null; score: number; isPlayer: boolean }[]): void {
+function setChart(w: World, id: ChartId, rows: { id: string; artist: string; title: string | null; origin: Origin | null; score: number; isPlayer: boolean; label?: string }[]): void {
   const prev = new Map(w.charts[id].map((e) => [e.id + (e.title ?? ''), e]));
   w.charts[id] = rows
     .sort((a, b) => b.score - a.score)
@@ -299,7 +318,7 @@ function setChart(w: World, id: ChartId, rows: { id: string; artist: string; tit
     .filter((r) => r.score > 0)
     .map((r, i) => {
       const before = prev.get(r.id + (r.title ?? ''));
-      return { id: r.id, artist: r.artist, title: r.title, origin: r.origin, pos: i + 1, last: before?.pos ?? null, weeks: (before?.weeks ?? 0) + 1, isPlayer: r.isPlayer, score: r.score };
+      return { id: r.id, artist: r.artist, title: r.title, origin: r.origin, pos: i + 1, last: before?.pos ?? null, weeks: (before?.weeks ?? 0) + 1, isPlayer: r.isPlayer, score: r.score, label: r.label };
     });
 }
 

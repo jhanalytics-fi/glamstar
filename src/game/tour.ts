@@ -5,7 +5,7 @@ import { applyLegend, gigFate, tourHiccup } from './fate';
 import { seizeTourProfit, tourSupport } from './labels';
 import { commission } from './managers';
 import { available, missingForGig, performance } from './chemistry';
-import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, revealLog, setVibe, verdict } from './helpers';
+import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, revealLog, setVibe, verdict } from './helpers';
 import { trend } from './world';
 import type { GameState, Musician, TourPolicy, TourStop } from './types';
 
@@ -227,6 +227,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   let weekPeople = 0;
   let weekFans = 0;
   let weekMoney = 0;
+  let weekGate = 0;
+  let weekMerch = 0;
   // The show must go on: a missing player is covered by a session musician flown in for the week.
   const gaps = missingForGig(s);
   if (gaps.length) {
@@ -274,6 +276,10 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     weekPeople += crowd;
     weekFans += fanDelta;
     weekMoney += pay;
+    weekGate += pay;
+    const merch = merchTake(s, crowd) * (t.id === 'stadiums' ? 0.7 : 1);
+    weekMoney += merch;
+    weekMerch += merch;
     perfSum += perf;
     played++;
     const verdict = perf >= 75 ? 'Storming.' : perf >= 55 ? 'Solid.' : perf >= 40 ? 'Ropey.' : 'A shambles.';
@@ -306,6 +312,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
 
   const cost = t.weeklyCost;
   s.money += weekMoney - cost;
+  earn(s, 'tours', weekGate);
+  earn(s, 'merch', weekMerch);
   commission(s, weekMoney - cost);
   const support = tourSupport(s, weekMoney - cost);
   if (support) log(s, `Tour support from the label: £${support.toLocaleString('en-GB')} towards this week's losses. On your tab, naturally.`, 'neutral');

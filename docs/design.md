@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.19)
+## Prototype status (v0.20)
 
 Playable in the browser. Implemented:
 
@@ -366,3 +366,11 @@ An **outside song** leading a record costs a slice of every copy: own-label marg
 - **Label lifts a single without asking:** once an album is six weeks old and a track is liftable, each week the label may put one out itself (shark 12%, goodwill under 45 6%, otherwise 3%; at least 12 weeks apart). Normal royalty, buzz +4, the band's mood -3, and a sleeve from "two haircuts ago".
 - **Compilation** (3,000+ fans, a year since the last real album, any label that ever put out an album by you): the current label or an old one presses "The Best of", "The Singles 1982-86" or "Hits, Misses and B-sides". Let them (royalties if it is your label, nothing if it is an ex-label; buzz +6), give them a new song (it sells properly, appeal 1.1, buzz +10; an ex-label pays a token royalty), or lawyers (£1,000 scaled; 50% stops your label's one, 30% an ex-label's; goodwill -15). Compilations do not count as delivering an album and do not reset the "where is the album" clock.
 - **Bootleg LP** (5,000+ fans, a gig in the last eight weeks): "Live at the Astoria" is on every market stall. Let it go (a record that sells and pays nothing, buzz +6, image +1), lawyers (£500; 60% the press calls you out), or beat them to it with the official live album (on the label with a £3,000 tab, or £2,000 of your own; buzz +9, mood +5).
+
+## Follow the money, and America (v0.20)
+
+- **Ledger** (`s.ledger`, `earn()` in helpers): every pound in is booked by year and stream: gigs, tours (gate), merch, singles, EPs, albums (own-label margin), royalties (statements and audits), advances, other (tour support, Mum's). Copies sold per year per format are counted too, label copies included. The Business tab shows both tables with an "All" row. Gross: the manager's cut and the label's tab are not netted off.
+- **Merch:** every gig and tour date now sells badges and shirts: crowd x (£0.25 + image/100 x £1.10) per head, halved under 500 fans (a box of badges), x0.7 in stadiums. Logged on the gig line.
+- **US Singles Hot 40:** a sixth chart. American acts weigh 1, British 0.6, European 0.2, and the market is 2.4x the UK. Your reach into it comes from a major label (0.4), North American tours (0.4), the world tour (0.1) and big videos (up to 0.3). Charts are named by format now: UK Singles Top 40, UK Albums Top 40, US Singles Hot 40, Euro Singles Top 40, World Singles Top 40.
+- **Labels on the charts:** every star has a fictional label (UK, US and European pools; the UK pool is the game's own labels), the London listing says "Unsigned" or your label, and your records carry the label that put them out ("Kebab Shop Records", or "Bootleg"). Saves are migrated.
+- EPs chart with singles, as they did: no EP chart.

@@ -1,7 +1,7 @@
 // Record labels, deals and contracts. Advances are loans, royalties are small, the small print is
 // where the bodies are buried. Some labels are decent. Some are sharks in nice suits.
 import { Rng, clamp } from './rng';
-import { addBuzz, adjust, log, milestone, mutate } from './helpers';
+import { addBuzz, adjust, earn, log, milestone, mutate } from './helpers';
 import { commission, managerHaggle, managerHeat } from './managers';
 import type { Contract, DealTerms, GameState, Offer, Release, ReleaseKind, SmallPrint } from './types';
 
@@ -151,6 +151,7 @@ function statement(s: GameState, c: Contract, l: Label): void {
   c.unrecouped = before - cleared;
   const paid = reported - cleared;
   s.money += paid;
+  earn(s, 'royalties', paid);
   commission(s, paid);
   if (reported === 0 && before === 0) return;
   log(
@@ -234,6 +235,7 @@ export function tourSupport(s: GameState, loss: number): number {
   const pay = Math.round(-loss * (l.tier === 'major' ? 0.5 : 0.3));
   c.unrecouped += pay;
   s.money += pay;
+  earn(s, 'other', pay);
   return pay;
 }
 
@@ -310,6 +312,7 @@ export function signOffer(state: GameState, id: string): GameState {
     }
     s.contract = { label: l.id, signed: s.week, terms: o.terms, unrecouped: o.terms.advance + (o.buyout ?? 0), albumsDelivered: 0, owed: 0, reviewWeek: null, flops: 0, goodwill: 60, shaved: 0, statements: 0 };
     s.money += o.terms.advance;
+    earn(s, 'advances', o.terms.advance);
     commission(s, o.terms.advance);
     s.offers = [];
     addBuzz(s, l.tier === 'major' ? 12 : 6);
@@ -360,6 +363,7 @@ export function audit(state: GameState): GameState {
     const cleared = Math.min(c.unrecouped, found);
     c.unrecouped -= cleared;
     s.money += found - cleared;
+    earn(s, 'royalties', found - cleared);
     commission(s, found - cleared);
     milestone(s, 'career', `Audit caught ${l.name} short: £${found.toLocaleString('en-GB')} in missing royalties.`);
     log(s, `The audit found £${found.toLocaleString('en-GB')} of royalties that ${l.name} "mislaid". ${cleared ? `£${cleared.toLocaleString('en-GB')} came off your debt` : ''}${cleared && found - cleared ? ', and ' : ''}${found - cleared ? `£${(found - cleared).toLocaleString('en-GB')} came to you` : ''}. Relations are now frosty.`, 'good');

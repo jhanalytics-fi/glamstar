@@ -2,7 +2,7 @@
 // Each is a trade: money against credibility, fans against livers. They change every week.
 import { Rng, clamp } from './rng';
 import { available } from './chemistry';
-import { addBuzz, adjust, first, log } from './helpers';
+import { addBuzz, adjust, earn, first, log } from './helpers';
 import type { GameState } from './types';
 
 export interface Offer {
@@ -85,6 +85,7 @@ export const OFFERS: Offer[] = [
       const demo = s.releases.find((r) => r.kind === 'demo');
       if (demo) demo.sold += tapes;
       s.money += Math.round(tapes * 1.5);
+      earn(s, 'merch', tapes * 1.5);
       log(s, `Sold ${tapes} tapes off the counter. The shop owner wants a signed one for the wall.`, 'good');
     },
   },

@@ -2,7 +2,7 @@ import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName } from './names';
-import { advanceWorld, ageCharts, createWorld, heatCurve } from './world';
+import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor } from './world';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
@@ -64,6 +64,7 @@ export function newGame(input: NewGameInput): GameState {
     gear: 0,
     flags: {},
     releases: [],
+    ledger: {},
     pending: null,
     scene: null,
     tour: null,
@@ -110,6 +111,9 @@ export function upgradeSave(s: GameState): GameState {
   s.flags ??= {};
   s.releases ??= [];
   s.pending ??= null;
+  s.ledger ??= {};
+  s.world.charts.us ??= [];
+  for (const [i, star] of s.world.stars.entries()) star.label ??= labelFor(new Rng(i + 7), star.origin);
   s.scene ??= null;
   s.tour ??= null;
   s.milestones ??= [];
@@ -251,11 +255,12 @@ export function fire(state: GameState, memberId: string): GameState {
  * How far the band's records travel. A major's international arm carries them; an indie barely gets past
  * Dover; touring a region builds an audience that buys there.
  */
-export function reach(s: GameState): { europe: number; world: number } {
+export function reach(s: GameState): { us: number; europe: number; world: number } {
   const tier = s.contract ? labelById(s.contract.label).tier : null;
   const dist = tier === 'major' ? 1 : tier === 'indie' ? 0.35 : tier === 'shark' ? 0.25 : 0.1;
   const toured = (r: string) => Math.min(1, (s.flags[`toured_${r}`] ?? 0) / 2);
   return {
+    us: Math.min(1, dist * 0.4 + toured('northamerica') * 0.4 + toured('world') * 0.1 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
     europe: Math.min(1, dist * 0.6 + toured('europe') * 0.25 + toured('ukeurope') * 0.25),
     world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
   };
@@ -390,7 +395,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
 
   rollEvents(s, rng);
 
-  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records, reach: reach(s) })) {
+  for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records, reach: reach(s), label: s.contract ? labelById(s.contract.label).name : 'Unsigned' })) {
     log(s, n.text, n.tone);
     if (n.milestone) milestone(s, 'chart', n.text);
   }

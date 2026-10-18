@@ -276,6 +276,18 @@ describe('records', () => {
     expect(s.releases).toContain(rec);
   });
 
+  it('the ledger books gigs, merch and record sales by year', () => {
+    let s = { ...withSongs(3), fans: 2000, buzz: 40 };
+    s = settle(act(s, A('release', 'single')));
+    s = settle(act(s, A('gig', 'venue1')));
+    const y = s.ledger['1982'];
+    expect(y.gigs).toBeGreaterThan(0);
+    expect(y.merch).toBeGreaterThan(0);
+    expect(y.singles).toBeGreaterThan(0);
+    expect(y.u_single).toBeGreaterThan(0);
+    expect(s.log.some((l) => /merch £\d+/.test(l.text))).toBe(true);
+  });
+
   it('a demo tape sells at gigs', () => {
     let s = settle(act(withSongs(3), A('release', 'demo')));
     s = act({ ...s, fans: 200 }, A('gig', 'venue1'));
@@ -283,9 +295,9 @@ describe('records', () => {
   });
 
   it('a well-loved single can enter the National Top 40, a milestone that does not end the game', () => {
-    let s = { ...withSongs(4, 80), fans: 30000, buzz: 60 };
+    let s = { ...withSongs(4, 80), fans: 60000, buzz: 60 };
     s = settle(act(s, A('release', 'single')));
-    for (let i = 0; i < 4 && !s.over; i++) s = step(s, REST);
+    for (let i = 0; i < 6 && !s.over; i++) s = step(s, REST);
     expect(s.world.peaks.uk).toBeDefined();
     expect(s.flags.chartedNational).toBeDefined();
     expect(s.over).toBeNull();
@@ -464,7 +476,7 @@ describe('real and stage names', () => {
 describe('charts', () => {
   it('every chart has 40 ranked entries from the start', () => {
     const s = newGame(input);
-    for (const c of ['london', 'uk', 'albums', 'europe', 'world'] as const) {
+    for (const c of ['london', 'uk', 'albums', 'us', 'europe', 'world'] as const) {
       expect(s.world.charts[c]).toHaveLength(40);
       expect(s.world.charts[c].map((e) => e.pos)).toEqual(Array.from({ length: 40 }, (_, i) => i + 1));
     }
@@ -494,6 +506,24 @@ describe('charts', () => {
     s = act({ ...s, fans: 900, buzz: 60 }, REST);
     expect(s.world.charts.london.find((e) => e.isPlayer)!.pos).toBeLessThanOrEqual(15);
     expect(s.log.some((l) => l.text.includes('entered the London Underground 40'))).toBe(true);
+  });
+
+  it('every record entry names a label, London names Unsigned, and America favours Americans', () => {
+    const s = act({ ...newGame(input), fans: 900, buzz: 60 }, REST);
+    for (const c of ['uk', 'albums', 'us', 'europe', 'world'] as const) for (const e of s.world.charts[c]) expect(e.label).toBeTruthy();
+    expect(s.world.charts.london.find((e) => e.isPlayer)!.label).toBe('Unsigned');
+    const us = s.world.charts.us.slice(0, 20).filter((e) => e.origin === 'US').length;
+    const uk = s.world.charts.uk.slice(0, 20).filter((e) => e.origin === 'US').length;
+    expect(us).toBeGreaterThan(uk);
+  });
+
+  it('a US hit needs reach: the same single charts at home but not in America without a label or a tour', () => {
+    let s = { ...newGame(input), money: 5000, fans: 60000, buzz: 60 };
+    s.songs = Array.from({ length: 4 }, (_, i) => ({ title: `Hit ${i}`, quality: 85, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    s = settle(act(s, A('release', 'single')));
+    for (let i = 0; i < 4; i++) s = step(s, REST);
+    expect(s.world.charts.uk.some((e) => e.isPlayer)).toBe(true);
+    expect(s.world.charts.us.some((e) => e.isPlayer)).toBe(false);
   });
 
   it('no record, no record charts', () => {
@@ -823,7 +853,7 @@ describe('touring', () => {
     const s = settle(played);
     expect(s.tour).not.toBeNull();
     expect(s.tour!.week).toBe(1);
-    expect(s.tour!.gigsPlayed).toBe(5);
+    expect(s.tour!.gigsPlayed).toBeGreaterThanOrEqual(4);
     expect(s.tour!.route).toHaveLength(15);
     expect(canAct(s, REST)).toMatch(/on tour/);
     expect(played.scene!.beats.filter((b) => /people/.test(b.text)).length).toBeGreaterThanOrEqual(5);

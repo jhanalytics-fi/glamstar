@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
-import { addBuzz, adjust, beat, first, grow, headline, log, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
+import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
 import { hotGenres, trend } from './world';
 import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
@@ -13,7 +13,7 @@ import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost } from './managers';
 import { takeProducer } from './moneyEvents';
 import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
-import type { Action, ActionType, GameState, Genre, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
+import type { Action, ActionType, GameState, Genre, IncomeKind, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
 export interface ActionOption {
   id: string;
@@ -362,7 +362,10 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   const raw = ((crowd * (perf - 42)) / 90) * g.fanMult * (perf > 42 ? novelty : 1);
   const fanDelta = Math.max(Math.round(raw > 0 ? raw * fashion : raw), -Math.round(crowd * 0.1));
   s.money += pay;
+  earn(s, 'gigs', pay);
   commission(s, pay);
+  const merch = g.fee > 0 || crowd >= 40 ? merchTake(s, crowd) : 0;
+  if (merch > 0) { s.money += merch; earn(s, 'merch', merch); }
   s.fans = Math.max(0, s.fans + fanDelta);
   addBuzz(s, Math.max(0, (perf - 45) / 5) + crowd / 60 + g.buzzBonus);
   if (s.lastGigWeek === null) milestone(s, 'career', `First gig: ${g.venue}, ${crowd} people.`);
@@ -372,7 +375,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   setVerdict(s, legend ? 'Legendary' : fate?.kind === 'disaster' ? 'Disaster' : perf >= 75 ? 'Storming' : perf >= 55 ? 'Solid' : perf >= 40 ? 'Ropey' : 'Shambles', legend || perf >= 55 ? 'good' : perf >= 40 ? 'neutral' : 'bad');
   if (legend) applyLegend(s, rng, g.venue, crowd);
   headline(s, 'Crowd', `${crowd} / ${g.capacity}`);
-  log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
+  log(s, `Gig: ${g.venue}. ${crowd} people${pay ? `, £${pay}` : ''}${merch ? `, merch £${merch}` : ''}. ${verdict} Fans ${signed(fanDelta)}.`, perf >= 55 ? 'good' : 'bad');
 
   g.after?.(s, rng, perf, crowd);
 
@@ -382,6 +385,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     if (tapes > 0) {
       demo.sold += tapes;
       s.money += Math.round(tapes * 1.5);
+      earn(s, 'merch', tapes * 1.5);
       log(s, `Sold ${tapes} demo tapes at the merch table.`, 'good');
     }
   }
@@ -801,6 +805,7 @@ function rest(s: GameState, rng: Rng, option: string): void {
   }
   if (option === 'mum') {
     s.money += 5 * s.members.length;
+    earn(s, 'other', 5 * s.members.length);
     addBuzz(s, -4);
   }
   const text: Record<string, string> = {
@@ -874,10 +879,12 @@ const MARGIN: Record<ReleaseKind, number> = { demo: 0, single: 0.35, ep: 0.9, al
 /** What is left of a copy's margin after an outside publisher takes theirs. */
 export const OUTSIDE_CUT = 0.65;
 const KIND_DEMAND: Record<ReleaseKind, number> = { demo: 0, single: 1, ep: 0.7, album: 0.6 };
+const STREAM: Record<ReleaseKind, IncomeKind> = { demo: 'merch', single: 'singles', ep: 'eps', album: 'albums' };
+const UNITS: Record<ReleaseKind, IncomeKind> = { demo: 'other', single: 'u_single', ep: 'u_ep', album: 'u_album' };
 
 /** Records in shops sell for a while after release. Returns this week's units for the charts. */
 export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => number): { id: string; title: string; units: number; kind: string }[] {
-  const out: { id: string; title: string; units: number; kind: string }[] = [];
+  const out: { id: string; title: string; units: number; kind: string; label?: string }[] = [];
   for (const r of s.releases) {
     if (r.kind === 'demo') continue;
     const age = s.week - r.week;
@@ -890,10 +897,11 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     r.lastWeek = units;
     r.sold += units;
     if (units > 0) {
-      if (cash < 0) s.money += Math.round(units * MARGIN[r.kind] * (r.outside ? OUTSIDE_CUT : 1));
+      if (cash < 0) { const take = Math.round(units * MARGIN[r.kind] * (r.outside ? OUTSIDE_CUT : 1)); s.money += take; earn(s, STREAM[r.kind], take); }
+      earn(s, UNITS[r.kind], units);
       // Records win new listeners, but each extra fan is harder to find than the last.
       s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
-      out.push({ id: r.id, title: r.title, units, kind: r.kind });
+      out.push({ id: r.id, title: r.title, units, kind: r.kind, label: r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : 'Kebab Shop Records' });
     }
   }
   return out;

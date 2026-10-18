@@ -10,7 +10,7 @@ import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerWord } from '../game/managers';
 import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
 import type { TourPolicy } from '../game/types';
-import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
 import { nextGoal } from '../game/goals';
@@ -559,7 +559,42 @@ function moneyBlock(s: GameState): string {
 }
 
 function labelSection(s: GameState): string {
-  return labelDeals(s) + managerBlock(s) + moneyBlock(s);
+  return labelDeals(s) + managerBlock(s) + moneyBlock(s) + incomeBlock(s);
+}
+
+/** Where the money came from, year by year. */
+function incomeBlock(s: GameState): string {
+  const years = Object.keys(s.ledger ?? {}).sort();
+  if (!years.length) return '';
+  const cols: [IncomeKind, string][] = [['gigs', 'Gigs'], ['tours', 'Tours'], ['merch', 'Merch'], ['singles', 'Singles'], ['eps', 'EPs'], ['albums', 'Albums'], ['royalties', 'Royalties'], ['advances', 'Advances'], ['other', 'Other']];
+  const used = cols.filter(([k]) => years.some((y) => (s.ledger[y][k] ?? 0) > 0));
+  const sum = (y: string) => used.reduce((a, [k]) => a + (s.ledger[y][k] ?? 0), 0);
+  const tot = (k: IncomeKind) => years.reduce((a, y) => a + (s.ledger[y][k] ?? 0), 0);
+  const k = (n: number) => (n >= 1000000 ? `£${(n / 1000000).toFixed(1)}m` : n >= 10000 ? `£${Math.round(n / 1000)}k` : n > 0 ? `£${n.toLocaleString('en-GB')}` : '');
+  const units: [IncomeKind, string][] = [['u_single', 'Singles'], ['u_ep', 'EPs'], ['u_album', 'Albums']];
+  const anyUnits = units.some(([u]) => tot(u) > 0);
+  const n = (v: number) => (v > 0 ? v.toLocaleString('en-GB') : '');
+  return `<h3 class="sub">Where the money came from</h3>
+    <div class="chart-wrap">
+      <table class="chart ledger">
+        <thead><tr><th>Year</th>${used.map(([, l]) => `<th>${l}</th>`).join('')}<th>Total</th></tr></thead>
+        <tbody>
+          ${years.map((y) => `<tr><td>${y}</td>${used.map(([c]) => `<td>${k(s.ledger[y][c] ?? 0)}</td>`).join('')}<td><strong>${k(sum(y))}</strong></td></tr>`).join('')}
+          ${years.length > 1 ? `<tr class="me"><td>All</td>${used.map(([c]) => `<td>${k(tot(c))}</td>`).join('')}<td><strong>${k(years.reduce((a, y) => a + sum(y), 0))}</strong></td></tr>` : ''}
+        </tbody>
+      </table>
+    </div>
+    ${anyUnits ? `<h3 class="sub">Copies sold</h3>
+    <div class="chart-wrap">
+      <table class="chart ledger">
+        <thead><tr><th>Year</th>${units.map(([, l]) => `<th>${l}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${years.map((y) => `<tr><td>${y}</td>${units.map(([u]) => `<td>${n(s.ledger[y][u] ?? 0)}</td>`).join('')}</tr>`).join('')}
+          ${years.length > 1 ? `<tr class="me"><td>All</td>${units.map(([u]) => `<td>${n(tot(u))}</td>`).join('')}</tr>` : ''}
+        </tbody>
+      </table>
+    </div>` : ''}
+    <p class="hint">Gross, before the manager's cut and the label's tab. Label records count the copies the label shifted; the money from those arrives as royalties, if it ever does.</p>`;
 }
 
 function labelDeals(s: GameState): string {
@@ -837,18 +872,18 @@ function reducedMotion(): boolean {
 function chartNeed(s: GameState): string {
   const album = chartTab === 'albums';
   const r = reach(s);
-  const need = entryUnits(s.world, chartTab, chartTab === 'europe' ? r.europe : chartTab === 'world' ? r.world : 1);
+  const need = entryUnits(s.world, chartTab, chartTab === 'europe' ? r.europe : chartTab === 'world' ? r.world : chartTab === 'us' ? r.us : 1);
   const latest = [...s.releases].reverse().find((x) => (album ? x.kind === 'album' : x.kind === 'single' || x.kind === 'ep'));
   const kind = album ? 'an album' : 'a single';
   if (!latest) return `Only records chart here. Release ${kind} that sells${need ? `: the bottom of the chart is selling about ${need.toLocaleString('en-GB')} copies a week` : ''}.`;
   const age = s.week - latest.week;
-  const abroad = chartTab === 'europe' || chartTab === 'world';
-  return `"${esc(latest.title)}" sold ${latest.lastWeek.toLocaleString('en-GB')} copies last week${age > 12 ? ' and is fading: records sell for a few months, then it takes a new one' : ''}. ${need ? `The bottom of this chart is selling about ${need.toLocaleString('en-GB')}.` : ''}${abroad ? ' Abroad, only a label with distribution, touring the region and big videos carry your records.' : ' A label with promotion multiplies sales.'}`;
+  const abroad = chartTab === 'europe' || chartTab === 'world' || chartTab === 'us';
+  return `"${esc(latest.title)}" sold ${latest.lastWeek.toLocaleString('en-GB')} copies last week${age > 12 ? ' and is fading: records sell for a few months, then it takes a new one' : ''}. ${need ? `The bottom of this chart is selling about ${need.toLocaleString('en-GB')}.` : ''}${chartTab === 'us' ? ' America only hears you through a major label, a North American tour and big videos.' : abroad ? ' Abroad, only a label with distribution, touring the region and big videos carry your records.' : ' A label with promotion multiplies sales.'}`;
 }
 
 function chartsSection(s: GameState): string {
   const tabs = (Object.keys(CHART_NAME) as ChartId[])
-    .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'National' : id === 'albums' ? 'Albums' : id === 'europe' ? 'Europe' : 'World'}</button>`)
+    .map((id) => `<button class="chip" data-do="chart" data-arg="${id}" aria-pressed="${id === chartTab}">${id === 'london' ? 'London' : id === 'uk' ? 'UK singles' : id === 'albums' ? 'UK albums' : id === 'us' ? 'US singles' : id === 'europe' ? 'Euro singles' : 'World singles'}</button>`)
     .join('');
   const rows = s.world.charts[chartTab];
   const mine = rows.find((r) => r.isPlayer);
@@ -866,10 +901,10 @@ function chartsSection(s: GameState): string {
       <p class="hint">${CHART_NAME[chartTab]}, ${dateLabel(s.week)}. ${note} Selling right now: ${hot}.</p>
       <div class="chart-wrap">
         <table class="chart">
-          <thead><tr><th>#</th><th>Move</th><th>Artist</th>${chartTab === 'london' ? '' : `<th>${chartTab === 'albums' ? 'Album' : 'Single'}</th><th>From</th>`}<th>Wks</th></tr></thead>
+          <thead><tr><th>#</th><th>Move</th><th>Artist</th>${chartTab === 'london' ? '' : `<th>${chartTab === 'albums' ? 'Album' : 'Single'}</th><th>From</th>`}<th>Label</th><th>Wks</th></tr></thead>
           <tbody>${shown
             .map(
-              (r) => `<tr class="${r.isPlayer ? 'me' : ''}"><td class="pos">${r.pos}</td><td>${move(r)}</td><td>${esc(r.artist)}</td>${chartTab === 'london' ? '' : `<td>${esc(r.title ?? '')}</td><td>${r.origin ?? ''}</td>`}<td>${r.weeks}</td></tr>`,
+              (r) => `<tr class="${r.isPlayer ? 'me' : ''}"><td class="pos">${r.pos}</td><td>${move(r)}</td><td>${esc(r.artist)}</td>${chartTab === 'london' ? '' : `<td>${esc(r.title ?? '')}</td><td>${r.origin ?? ''}</td>`}<td class="lbl">${esc(r.label ?? '')}</td><td>${r.weeks}</td></tr>`,
             )
             .join('')}</tbody>
         </table>
