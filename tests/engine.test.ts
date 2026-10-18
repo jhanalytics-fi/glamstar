@@ -277,6 +277,15 @@ describe('choice events', () => {
     double_booked: (s) => { s.flags.fling = s.week - 2; },
     kiss_and_tell: (s) => { s.flags.fling = s.week - 2; },
     road_fling: (s) => { s.flags.lastBigParty = s.week; },
+    hotel_floor: (s) => { s.fans = 4000; },
+    rock_doctor: (s) => { s.fans = 6000; },
+    guitar_hero_jam: (s) => { s.fans = 9000; },
+    intervention: (s) => { s.members[1].habit = 80; },
+    hotel_raid: (s) => { s.fans = 4000; },
+    polaroids: (s) => { s.fans = 12000; s.flags.fling = s.week - 2; },
+    the_muse: (s) => { s.fans = 3000; },
+    credit_fight: (s) => { s.releases.push({ id: 'hit', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: s.week - 1, sold: 30000, lastWeek: 0 }); },
+    stage_dive: (s) => { s.fans = 2000; s.lastGigWeek = s.week; },
   };
 
   it('every event can fire and every response resolves cleanly', () => {
@@ -285,7 +294,7 @@ describe('choice events', () => {
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
         SETUP[id]?.(s);
-        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad'].includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
+        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad', 'hotel_floor', 'hotel_raid'].includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;

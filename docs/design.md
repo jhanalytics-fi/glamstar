@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.17)
+## Prototype status (v0.18)
 
 Playable in the browser. Implemented:
 
@@ -335,3 +335,17 @@ Applicant quality was capped at the "good" tier (mean 62) from 1,000 fans on. No
 
 - When a tour is played through in one go, only **big** situations (`big: true`: the bus crash, a riot, an arrest abroad, customs, the police, a crooked promoter, homesickness) can interrupt, and the weekly odds drop from 55% to 12%. Week by week, nothing changes.
 - Event option prices scale with means: cost x sqrt(money / 2,000), between x1 and x25, rounded. At £20,000 a £150 lawyer costs about £470; at £1,000,000 about £3,400. Hints and locks show the scaled price. Action costs (studio, parties, ads) are not scaled: they are real prices, and fame has its own luxury tier.
+
+## Life at the top (v0.18)
+
+`src/game/stardomEvents.ts`. Choice events for a band with fans whose options trade stats, not money: skill, stage, writing, mood, energy, habit, image, affinity, loyalty, tightness, buzz. Sex, drugs and rock'n'roll with the door shut: everything is implied and everyone is an adult.
+
+- **The seventh floor** (tour, 3,000+ fans): open every door (mood +14, energy -18, habit +6, buzz +8, `fling` flag), lock your door and write (writing grows, band mood +8 and habit +5), or clear the floor (band mood -8 and affinity -3, energy +8, tightness +3).
+- **Dr Feelgood** (5,000+ fans, someone under 40 energy): vitamins all round (everyone to 100 energy, habit +14, hidden stamina -3), one person only (habit +18), or throw him off the bus (vice-heavy members sulk).
+- **A star wants to jam** (8,000+ fans, a guitarist, keys or drummer): let them go (out a week, skill +4 steps, ego +10, buzz), refuse (mood -18, affinity -15, loyalty -8), or demand the whole band (40%: everyone skill +2 and tightness +5, else a grudge).
+- **Intervention** (a member at habit 70+): the talk (60%: habit -35, loyalty +10, band affinity +4; else mood -25 and affinity -20), a clinic (out three weeks, habit to 5, loyalty +12, 40% the press finds out), or cover for them (habit +8, tightness -6).
+- **Police at the door** (tour, someone at habit 40+): flush everything (habit -12 all round), take the rap yourself (image +4, buzz +10, a week out, band affinity +10, a milestone), or let the worst offender explain (they lose a week and most of their trust in you).
+- **The polaroids** (10,000+ fans, within 20 weeks of a fling): let them print (buzz +14, image +3, a few fans), send the manager (vanishes, buzz -2), or buy and burn them in front of the band (£800 scaled, affinity +6).
+- **In love** (a writer at 40+): let it burn (writing +4 steps, tightness -8), band first (mood -12, tightness +4), or put the muse on the guest list (writing +2, 30% they fall out with the rest).
+- **Who wrote it** (a hit at 20,000+ sold in the last ten weeks): band credit (affinity +6 all round, the writer sulks), the writer keeps it (affinity -15 between the two, loyalty -5), or a quarter for the riff.
+- **The edge of the stage** (gig this week, 1,500+ fans, stage under 85): jump (75%: stage +3 steps, mood +10, buzz +5; else a week on crutches), or finish the song.
