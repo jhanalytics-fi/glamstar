@@ -561,6 +561,10 @@ section + section { margin-top: 32px; }
 
 /* ---------------------------------------------------------------- goal and milestones */
 
+.offer-banner { margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--nicotine); background: rgba(232, 178, 58, 0.1); display: grid; gap: 6px; }
+.offer-banner .goal-step { color: var(--nicotine); }
+.offer-banner p { margin: 0; }
+.offer-banner .btn { justify-self: start; }
 .goal-line { margin: 16px 0 0; display: grid; gap: 2px; padding: 10px 12px; border-left: 3px solid var(--lipstick); background: rgba(255, 61, 139, 0.06); border-radius: 0 8px 8px 0; }
 .goal-step { font-family: var(--cond); font-weight: 600; color: var(--muted); font-size: 0.9rem; }
 .goal-line strong { font-weight: 600; }

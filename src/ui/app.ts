@@ -233,6 +233,7 @@ function onClick(e: Event, root: HTMLElement): void {
   if (what === 'start' || what === 'newGame') window.scrollTo(0, 0);
   if (what === 'open' || what === 'tourTier') bringIntoView(root.querySelector('.next .choices, .tour-setup'));
   if (what === 'fold') bringIntoView(root.querySelector('#zone'));
+  if (what === 'tab' && el.closest('.offer-banner')) bringIntoView(root.querySelector('.panel'));
   // Keep the eyes on the action zone after a decision.
   if (what === 'choose' || what === 'respond' || what === 'hire' || what === 'dismiss' || what === 'startTour' || what === 'tourNext' || what === 'tourFinish' || (what === 'abandon' && !armedAbandon)) {
     const z = document.getElementById('zone');
@@ -792,6 +793,7 @@ function nextBlock(s: GameState): string {
       ? `<div class="role-pick"><span>Looking for</span><div class="chips">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<button class="chip ${gaps.includes(r) ? 'gap' : ''}" data-do="adRole" data-arg="${r}" aria-pressed="${r === adRole}">${ROLE_LABEL[r]}${gaps.includes(r) ? ' (missing)' : ''}</button>`).join('')}</div></div>`
       : '';
   return `
+    ${offersBanner(s)}
     ${hopefuls(s)}
     <h3 class="what-now">${s.candidates.length ? 'Or get on with the week' : 'What now?'}</h3>
     ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
@@ -800,6 +802,21 @@ function nextBlock(s: GameState): string {
     </div>
     ${open === 'tour' ? tourSetup(s, opts) : open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
     ${goalLine(s)}`;
+}
+
+/** A record deal on the table is the biggest thing that can happen to a small band: say so, loudly. */
+function offersBanner(s: GameState): string {
+  if (!s.offers.length || s.over) return '';
+  const lines = s.offers.map((o) => {
+    const l = labelById(o.label);
+    const left = o.expires - s.week;
+    return `<strong>${esc(l.name)}</strong> want to sign ${esc(s.bandName)}: £${o.terms.advance.toLocaleString('en-GB')} advance${o.buyout ? ', buyout included' : ''}. ${left <= 1 ? 'Last week to answer.' : `${left} weeks to answer.`}`;
+  });
+  return `<aside class="offer-banner" role="status">
+    <span class="goal-step">Record deal on the table</span>
+    ${lines.map((x) => `<p>${x}</p>`).join('')}
+    <button class="btn" data-do="tab" data-arg="label">Read the offer${s.offers.length > 1 ? 's' : ''}</button>
+  </aside>`;
 }
 
 /** The next rung on the road to rock immortality. */
