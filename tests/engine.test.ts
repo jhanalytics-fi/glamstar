@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, canAct, dismissCandidates, fire, first, hire, newGame } from '../src/game/engine';
+import { act, canAct, dismissCandidates, fire, first, hire, newGame, rename } from '../src/game/engine';
 import { actionOptions, sellRecords } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
@@ -192,6 +192,22 @@ describe('action choices', () => {
     let got = 0;
     for (let seed = 1; seed <= 8; seed++) got += act({ ...signed, seed } as GameState, A('write', 'publisher')).songs.length;
     expect(got).toBeGreaterThanOrEqual(4);
+  });
+
+  it('a member can be renamed, and no two members share a nickname', () => {
+    const s = newGame(input);
+    const r = rename(s, s.members[1].id, 'Dave "Hammer" Price');
+    expect(r.members[1].name).toBe('Dave "Hammer" Price');
+    expect(first(r.members[1])).toBe('Hammer');
+    expect(r.log.at(-1)!.text).toMatch(/now known as Dave "Hammer" Price/);
+    expect(() => rename(s, s.members[1].id, '   ')).toThrow();
+    let dup = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const g = newGame({ ...input, seed });
+      const nicks = g.members.map((m) => m.name.match(/"([^"]+)"/)?.[1]).filter(Boolean);
+      if (new Set(nicks).size !== nicks.length) dup++;
+    }
+    expect(dup).toBe(0);
   });
 
   it('the newsagent card brings two candidates, a poach brings one', () => {

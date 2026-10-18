@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -44,6 +44,7 @@ let playedScene: number | null = null;
 /** Scene folded down to one line so the choices sit near the top. */
 let collapsedScene: number | null = null;
 let armedFire: string | null = null;
+let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
 /** The outcome of the last thing done in the Label tab. */
@@ -88,6 +89,12 @@ function save(): void {
 
 export function mount(root: HTMLElement): void {
   root.addEventListener('click', (e) => onClick(e, root));
+  root.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (!form.classList.contains('rename')) return;
+    e.preventDefault();
+    form.querySelector<HTMLButtonElement>('button[type=submit]')?.click();
+  });
   root.addEventListener('input', (e) => {
     const t = e.target as HTMLInputElement;
     if (t.name === 'firstName') draft.firstName = t.value;
@@ -165,6 +172,14 @@ function onClick(e: Event, root: HTMLElement): void {
         break;
       case 'respond': state = resolvePending(state!, Number(arg)); break;
       case 'hire': state = hire(state!, arg!, arg2 || undefined); break;
+      case 'renameOpen': renaming = arg!; break;
+      case 'renameCancel': renaming = null; break;
+      case 'renameSave': {
+        const input = root.querySelector<HTMLInputElement>(`#rename-${arg}`);
+        state = rename(state!, arg!, input?.value ?? '');
+        renaming = null;
+        break;
+      }
       case 'dismiss': state = dismissCandidates(state!); break;
       case 'offerSign': state = signOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerHaggle': state = haggle(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
@@ -1003,8 +1018,11 @@ function card(s: GameState, m: Musician, candidate = false): string {
     const btns = same.map((x) => `<button class="btn" data-do="hire" data-arg="${m.id}" data-arg2="${x.id}">Replace ${esc(first(x))}</button>`);
     if (s.members.length < MAX_MEMBERS) btns.push(`<button class="btn ${same.length ? 'ghost' : ''}" data-do="hire" data-arg="${m.id}">Add to band</button>`);
     foot = btns.join('');
-  } else if (!m.isPlayer && !s.over) {
-    foot = `<button class="btn ghost" data-do="fire" data-arg="${m.id}">${armedFire === m.id ? `Really fire ${esc(first(m))}?` : 'Fire'}</button>`;
+  } else if (!s.over) {
+    const nameBtn = renaming === m.id
+      ? `<form class="rename"><input id="rename-${m.id}" type="text" maxlength="40" value="${esc(m.name)}" aria-label="Known as" autocomplete="off"><button class="btn" type="submit" data-do="renameSave" data-arg="${m.id}">Save</button><button class="btn ghost" type="button" data-do="renameCancel">Cancel</button></form>`
+      : `<button class="btn ghost" data-do="renameOpen" data-arg="${m.id}">Rename</button>`;
+    foot = `${nameBtn}${m.isPlayer ? '' : `<button class="btn ghost" data-do="fire" data-arg="${m.id}">${armedFire === m.id ? `Really fire ${esc(first(m))}?` : 'Fire'}</button>`}`;
   }
 
   return `

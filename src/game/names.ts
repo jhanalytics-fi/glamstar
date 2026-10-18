@@ -819,7 +819,11 @@ export function knownAs(rng: Rng, real: string, taken: string[] = []): string {
   }
   if (r < 0.7) {
     const [f, ...rest] = real.split(' ');
-    return `${f} "${rng.pick(NICK)}" ${rest.join(' ')}`;
+    // One Tinker per band is plenty.
+    const usedNick = new Set(taken.map((n) => n.match(/"([^"]+)"/)?.[1]).filter(Boolean));
+    let nick = rng.pick(NICK);
+    for (let i = 0; i < 20 && usedNick.has(nick); i++) nick = rng.pick(NICK);
+    return `${f} "${nick}" ${rest.join(' ')}`;
   }
   return real;
 }

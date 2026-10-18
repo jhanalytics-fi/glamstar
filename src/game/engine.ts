@@ -1,7 +1,7 @@
 import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
-import { bandName as genBandName } from './names';
+import { bandName as genBandName, isBlockedPerson } from './names';
 import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor } from './world';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
@@ -245,6 +245,20 @@ export function dismissCandidates(state: GameState): GameState {
     s.candidates = [];
     s.candidateRole = null;
     log(s, n === 1 ? 'You thanked the last hopeful and sent them home.' : `You sent the other ${n} hopefuls home.`, 'neutral');
+  });
+}
+
+/** Give a band member a new known-as name: a nickname in quotes, a stage name, or just their real name. */
+export function rename(state: GameState, memberId: string, name: string): GameState {
+  const clean = name.replace(/\s+/g, ' ').trim().slice(0, 40);
+  if (!clean) throw new Error('A name needs letters in it.');
+  if (isBlockedPerson(clean)) throw new Error('That one is taken, by someone real.');
+  return mutate(state, (s) => {
+    const m = s.members.find((x) => x.id === memberId);
+    if (!m) throw new Error('No such member.');
+    const was = m.name;
+    m.name = clean;
+    log(s, `${was} is now known as ${clean}.${clean.includes('"') ? '' : ' The old nickname is retired.'}`, 'neutral');
   });
 }
 

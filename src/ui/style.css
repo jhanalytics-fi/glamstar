@@ -687,3 +687,6 @@ section + section { margin-top: 32px; }
 .deal-card .card-foot { display: flex; flex-wrap: wrap; gap: 8px; }
 .label-note { padding: 10px 12px; border-left: 3px solid var(--lipstick); background: rgba(255,61,139,0.08); border-radius: 6px; }
 .pitch { font-family: var(--cond); font-weight: 700; font-size: 1.15rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--chrome); margin: 4px 0 10px; }
+
+.rename { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.rename input { flex: 1 1 160px; min-width: 0; background: var(--velvet); color: inherit; border: 1px solid var(--smoke); border-radius: 8px; padding: 8px 10px; font: inherit; }
