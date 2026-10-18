@@ -199,6 +199,14 @@ describe('action choices', () => {
     expect(got).toBeGreaterThanOrEqual(4);
   });
 
+  it('former members are remembered', () => {
+    const s = newGame(input);
+    const gone = s.members[1];
+    const r = fire(s, gone.id);
+    expect(r.alumni).toHaveLength(1);
+    expect(r.alumni[0]).toMatchObject({ name: gone.name, role: gone.role, how: 'fired', joined: 0 });
+  });
+
   it('a member can be renamed, and no two members share a nickname', () => {
     const s = newGame(input);
     const r = rename(s, s.members[1].id, 'Dave "Hammer" Price');
@@ -309,6 +317,25 @@ describe('records', () => {
     expect(s.log.some((l) => /merch £\d+/.test(l.text))).toBe(true);
   });
 
+  it('records remember their chart peaks, and the awards come round in December', async () => {
+    const { contenders } = await import('../src/game/awards');
+    let s = { ...withSongs(4, 85), fans: 60000, buzz: 60 };
+    s = settle(act(s, A('release', 'single')));
+    for (let i = 0; i < 3; i++) s = step(s, REST);
+    expect(s.releases[0].peaks?.uk).toBeLessThanOrEqual(40);
+    s.week = 49; s.releases[0].peaks = { uk: 1 }; s.flags.lastBigParty = 49; s.lastGigWeek = 48;
+    const c = contenders(s);
+    expect(c.some((x) => x.title.startsWith('Single of the Year'))).toBe(true);
+    expect(c.some((x) => x.title === 'Best New Band')).toBe(true);
+    let won = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const r = step({ ...s, world: structuredClone(s.world), rng: seed }, REST);
+      expect(r.log.some((l) => /Awards night/.test(l.text))).toBe(true);
+      if (r.awards.length) won++;
+    }
+    expect(won).toBeGreaterThan(0);
+  });
+
   it('a demo tape sells at gigs', () => {
     let s = settle(act(withSongs(3), A('release', 'demo')));
     s = act({ ...s, fans: 200 }, A('gig', 'venue1'));
@@ -393,7 +420,7 @@ describe('choice events', () => {
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
         SETUP[id]?.(s);
-        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad', 'hotel_floor', 'hotel_raid'].includes(id)) { startTour(s, new Rng(seed), 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
+        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad', 'hotel_floor', 'hotel_raid'].includes(id)) { startTour(s, new Rng(seed), id === 'tour_japan_gifts' ? 'japan' : 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;
@@ -890,6 +917,22 @@ describe('touring', () => {
     expect(() => forceEvent(coach, 'van')).toThrow();
     const van = { ...s, wheels: 'van' as const, lastGigWeek: 1, flags: { ...s.flags, vanDied: s.week - 10 } };
     expect(() => forceEvent(van, 'van')).toThrow();
+  });
+
+  it('a finished tour goes in the tour history, and Japan buys merch', () => {
+    let s = ready(300);
+    s = settle(act(s, A('tour', 'clubs', { weeks: 2, policy: 'steady' })));
+    for (let i = 0; i < 3 && s.tour; i++) s = settle(act(s, A('tour', 'continue:steady')));
+    expect(s.tour).toBeNull();
+    expect(s.tours).toHaveLength(1);
+    expect(s.tours[0]).toMatchObject({ tier: 'clubs', weeks: 2, abandoned: false });
+    expect(s.tours[0].gigs).toBeGreaterThan(5);
+    let j: GameState = { ...ready(20000, 100000), buzz: 60, wheels: 'coach' };
+    j.world.peaks.uk = 5;
+    expect(actionOptions(j, 'tour').find((o) => o.id === 'japan')!.locked).toBeUndefined();
+    j = settle(act(j, A('tour', 'japan', { weeks: 2, policy: 'steady' })));
+    expect(j.tour!.route.every((x) => x.country === 'Japan')).toBe(true);
+    expect(j.ledger['1982'].merch).toBeGreaterThan(2000);
   });
 
   it('a brand new band cannot tour yet, a pub band can', () => {

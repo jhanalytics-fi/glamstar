@@ -316,6 +316,11 @@ section + section { margin-top: 32px; }
 .chart td.lbl { color: var(--muted); font-size: 0.85em; }
 .ledger td, .ledger th { text-align: right; }
 .ledger td:first-child, .ledger th:first-child { text-align: left; }
+.disco td, .lineup td { white-space: normal; }
+.chart tr.out td { color: var(--muted); }
+.awards { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 6px; }
+.awards li { padding: 8px 12px; border-left: 3px solid var(--nicotine); background: rgba(232, 178, 58, 0.08); border-radius: 0 8px 8px 0; }
+.lbl { color: var(--muted); }
 .chart tr.me td { background: rgba(255, 61, 139, 0.16); font-weight: 600; }
 .chart tr.me td.pos { color: var(--lipstick); }
 .mv { font-family: var(--cond); font-weight: 600; color: var(--muted); }

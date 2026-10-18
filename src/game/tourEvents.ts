@@ -12,12 +12,42 @@ const mates = (s: GameState) => s.members.filter((m) => !m.isPlayer && m.outWeek
 const tier = (s: GameState) => tierById(s.tour!.tier)!;
 const nextStop = (s: GameState) => s.tour!.route[Math.min(s.tour!.route.length - 1, s.tour!.week * s.tour!.gigsPerWeek)];
 const flying = (s: GameState) => ['america', 'stadiums'].includes(s.tour!.tier);
-const abroad = (s: GameState) => ['europe', 'arenas', 'america', 'stadiums'].includes(s.tour!.tier);
+const abroad = (s: GameState) => ['europe', 'arenas', 'japan', 'america', 'stadiums'].includes(s.tour!.tier);
 /** Scales money in tour events with the size of the tour. */
 const scale = (s: GameState) => Math.max(1, Math.round(tier(s).weeklyCost / 400));
 const who = (m: Musician) => (m.isPlayer ? 'You' : first(m));
 
 export const TOUR_EVENTS: EventDef[] = [
+  {
+    id: 'tour_japan_gifts',
+    weight: 4,
+    where: 'tour',
+    when: (s) => (s.tour?.tier === 'japan' && s.flags.japanGifts === undefined ? {} : null),
+    title: () => 'The hotel lobby is full of presents',
+    text: () => 'Two hundred fans have been waiting in the hotel lobby since six in the morning, in silence, in a queue, with gifts: hand-knitted scarves, drawings of the band, a cake shaped like the drummer, and a box of Polaroids that the promoter takes away very quickly.',
+    options: () => [
+      {
+        label: 'Sign everything, meet everyone',
+        hint: 'Three hours. Fans for life.',
+        resolve: (st) => {
+          st.flags.japanGifts = st.week;
+          for (const m of available(st)) { adjust(m, 'energy', -8); adjust(m, 'mood', 10); }
+          addBuzz(st, 8); st.fans += Math.round(300 + st.fans * 0.02);
+          log(st, 'Three hours of bowing, signing and photographs. Every fan said thank you twice. The promoter said the band would be welcome back any time, and meant it.', 'good');
+        },
+      },
+      {
+        label: 'Wave from the mezzanine and go to bed',
+        hint: 'Rest, and a reputation for being cool. Or rude.',
+        resolve: (st, rng) => {
+          st.flags.japanGifts = st.week;
+          for (const m of available(st)) adjust(m, 'energy', 4);
+          if (rng.chance(0.5)) { addBuzz(st, 2); log(st, 'A wave, a bow, and bed. The fans decided it was mysterious. The gifts were sent up anyway.', 'neutral'); }
+          else { addBuzz(st, -3); log(st, 'A wave and bed. A fan magazine ran "COLD" over a photo of the empty mezzanine. The promoter smiled a little less.', 'bad'); }
+        },
+      },
+    ],
+  },
   {
     id: 'tour_breakdown',
     weight: 3,

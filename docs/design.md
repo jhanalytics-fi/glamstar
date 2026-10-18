@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.22)
+## Prototype status (v0.23)
 
 Playable in the browser. Implemented:
 
@@ -399,3 +399,11 @@ The Business tab shows what is owed to Tony and the admirer's allowance.
 
 - **Rename:** every band member card, the player's included, has a Rename button: an inline field for the known-as name. A nickname in quotes (`Dave "Hammer" Price`) becomes what the log calls them; a plain name retires the nickname. Real people's names are refused. `rename()` in engine.
 - Generated nicknames are unique within the band and the audition pile: two Tinkers in one van was possible, and odd.
+
+## The record (v0.23)
+
+- **Discography** (Songs & records): one table, newest first: title, format (single, EP, album, compilation, live, bootleg), release date, label, rating, copies sold (and last week's), and peak positions on the UK chart (singles chart for singles and EPs, albums chart for albums), US, Euro and World. Peaks are stored on the release (`Release.peaks`) as the charts move.
+- **Line-up** (History): current members with the week they joined, then every former member with when and how they went (`s.alumni`, written by `removeMember`).
+- **Tours** (History): every finished or abandoned tour (`s.tours`): start, weeks, gigs, people, fans won, net money, legendary nights.
+- **Awards** (`src/game/awards.ts`): in week 50 of every year the Noise Weekly Readers' Poll and the Phonographic Trade Awards hand out gongs. Contenders depend on the year: Best New Band (first year with records, 1,500+ fans), Single and Album of the Year (a top-10 peak, better odds for a number one), Best Live Act (a legendary night or a 50,000-person tour this year), Best or Worst Dressed (5,000+ fans and an image average over 70 or under 40), Export Achievement (100,000 copies of a record), Scandal of the Year (the polaroids or a hotel raid). Odds 25-70% each. A win: buzz +4 per award, mood +6, image +1, a milestone; a nominated loss costs mood 3. Awards are listed in History.
+- **Japan tour:** a new tier between the arenas and America: 15,000 fans, buzz 50, a UK chart record; 2-4 weeks, 4 shows a week in 2,500-12,000 halls (Kōkaidō, Sun Plaza Hall, Festival Hall), £8,000 a show, £21,000 a week, hired tour bus if you have none. Japan buys merch at 1.8x, converts well, and counts 0.15 towards world reach. A one-off tour event: the hotel lobby full of fans with gifts.

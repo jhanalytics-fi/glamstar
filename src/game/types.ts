@@ -37,6 +37,8 @@ export interface Musician {
   /** Weeks this member is unavailable (hospital, the clinic, vanished). */
   outWeeks: number;
   weeksInBand: number;
+  /** The week they joined, for the line-up history. */
+  joined?: number;
   blurb: string;
   /** How well you know their visible stats, 0-100. Low = wide, misleading ranges. */
   seen: number;
@@ -83,6 +85,38 @@ export interface Release {
   comp?: 'hits' | 'live' | 'bootleg';
   /** Lead song owned outside the band: a slice of every copy goes to its publisher. */
   outside?: boolean;
+  /** Best chart positions reached, by chart. */
+  peaks?: Partial<Record<string, number>>;
+}
+
+/** A tour, once it is over. */
+export interface TourRecord {
+  name: string;
+  tier: string;
+  start: number;
+  weeks: number;
+  gigs: number;
+  people: number;
+  fans: number;
+  net: number;
+  abandoned: boolean;
+  legends: number;
+}
+
+/** Someone who used to be in the band. */
+export interface Alumnus {
+  name: string;
+  realName: string;
+  role: Role;
+  joined: number;
+  left: number;
+  how: 'fired' | 'quit' | 'poached';
+}
+
+export interface Award {
+  year: number;
+  title: string;
+  from: string;
 }
 
 /** The nasty bits of a record deal. Hidden until a lawyer reads the contract. */
@@ -245,6 +279,9 @@ export interface GameState {
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
+  tours: TourRecord[];
+  alumni: Alumnus[];
+  awards: Award[];
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;
   /** The latest week or situation, for the action zone. */
@@ -326,4 +363,5 @@ export interface Tour {
   people: number;
   fansGained: number;
   startMoney: number;
+  legendsAtStart?: number;
 }

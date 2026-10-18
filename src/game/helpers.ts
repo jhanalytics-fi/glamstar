@@ -89,6 +89,7 @@ export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | '
     }
   }
   for (const k of Object.keys(s.affinity)) if (k.split('|').includes(id)) delete s.affinity[k];
+  (s.alumni ??= []).push({ name: m.name, realName: m.realName, role: m.role, joined: m.joined ?? Math.max(0, s.week - m.weeksInBand), left: s.week, how });
   milestone(s, 'lineup', how === 'fired' ? `${m.name} was fired.` : how === 'quit' ? `${m.name} quit the band.` : `${m.name} left for another band.`);
   if (how === 'fired') log(s, `You fired ${m.name}. ${m.hidden.ego >= 70 ? 'Took the good amp on the way out.' : 'Took it better than expected.'}`, 'bad');
 }

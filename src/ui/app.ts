@@ -465,7 +465,7 @@ function panelBody(s: GameState): string {
       return recordsSection(s) || '<p class="hint">No songs yet. Write some.</p>';
     case 'history': {
       const views = `<div class="chips">${(['milestones', 'all'] as const).map((v) => `<button class="chip" data-do="historyView" data-arg="${v}" aria-pressed="${historyView === v}">${v === 'milestones' ? 'Milestones' : 'Everything'}</button>`).join('')}</div>`;
-      return views + (historyView === 'milestones' ? milestoneList(s) : logList(s, () => true));
+      return views + (historyView === 'milestones' ? lineupBlock(s) + toursBlock(s) + awardsBlock(s) + milestoneList(s) : logList(s, () => true));
     }
   }
 }
@@ -978,13 +978,48 @@ function eventCard(s: GameState): string {
 
 function recordsSection(s: GameState): string {
   if (!s.releases.length && !s.songs.length) return '';
-  const kind = { demo: 'Demo tape', single: '7" single', ep: '12" EP', album: 'Album' } as const;
+  const kind = { demo: 'Demo', single: 'Single', ep: 'EP', album: 'Album' } as const;
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
+  const peak = (r: (typeof s.releases)[number], c: string) => (r.peaks?.[c] ? `#${r.peaks[c]}` : '');
+  const rows = [...s.releases].reverse().map((r) => `<tr>
+      <td><strong>"${esc(r.title)}"</strong>${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
+      <td>${r.comp === 'hits' ? 'Compilation' : r.comp === 'live' ? 'Live' : r.comp === 'bootleg' ? 'Bootleg' : kind[r.kind]}</td>
+      <td>${dateLabel(r.week)}</td>
+      <td class="lbl">${esc(r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : r.kind === 'demo' ? 'Merch table' : 'Kebab Shop Records')}</td>
+      <td>${r.quality}</td>
+      <td>${r.sold.toLocaleString('en-GB')}${r.lastWeek ? `<br><small class="lbl">+${r.lastWeek.toLocaleString('en-GB')}/wk</small>` : ''}</td>
+      <td>${r.kind === 'album' ? peak(r, 'albums') : peak(r, 'uk')}</td><td>${peak(r, 'us')}</td><td>${peak(r, 'europe')}</td><td>${peak(r, 'world')}</td>
+    </tr>`);
   return `
     <section class="records">
-      ${s.releases.length ? `<ul class="rel-list">${s.releases.map((r) => `<li><strong>"${esc(r.title)}"</strong> ${r.comp === 'hits' ? 'compilation' : r.comp === 'live' ? 'live album' : r.comp === 'bootleg' ? 'bootleg' : kind[r.kind]}${r.outside ? ' (outside song)' : ''}, ${dateLabel(r.week)}. ${r.sold} sold${r.lastWeek ? `, ${r.lastWeek} last week` : ''}.</li>`).join('')}</ul>` : ''}
+      ${s.releases.length ? `<h3 class="sub">Discography</h3>
+      <div class="chart-wrap"><table class="chart ledger disco">
+        <thead><tr><th>Title</th><th>Format</th><th>Released</th><th>Label</th><th>Rating</th><th>Sold</th><th>UK</th><th>US</th><th>Euro</th><th>World</th></tr></thead>
+        <tbody>${rows.join('')}</tbody>
+      </table></div>
+      <p class="hint">UK peak is the singles chart for singles and EPs, the albums chart for albums.</p>` : ''}
       <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : x.kind === 'cover' ? ' (cover)' : x.kind === 'hired' ? ' (outside writer)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
     </section>`;
+}
+
+function lineupBlock(s: GameState): string {
+  const cur = s.members.map((m) => `<tr><td><strong>${esc(m.name)}</strong>${m.name !== m.realName ? `<br><small class="lbl">${esc(m.realName)}</small>` : ''}</td><td>${ROLE_LABEL[m.role]}</td><td>${dateLabel(m.joined ?? 0)}</td><td class="lbl">now</td></tr>`);
+  const old = [...(s.alumni ?? [])].reverse().map((a) => `<tr class="out"><td><strong>${esc(a.name)}</strong>${a.name !== a.realName ? `<br><small class="lbl">${esc(a.realName)}</small>` : ''}</td><td>${ROLE_LABEL[a.role]}</td><td>${dateLabel(a.joined)}</td><td class="lbl">${dateLabel(a.left)}, ${a.how === 'fired' ? 'fired' : a.how === 'quit' ? 'quit' : 'poached'}</td></tr>`);
+  return `<h3 class="sub">Line-up</h3>
+    <div class="chart-wrap"><table class="chart ledger lineup"><thead><tr><th>Name</th><th>Role</th><th>Joined</th><th>Left</th></tr></thead><tbody>${cur.join('')}${old.join('')}</tbody></table></div>`;
+}
+
+function toursBlock(s: GameState): string {
+  if (!s.tours?.length) return '';
+  const rows = [...s.tours].reverse().map((t) => `<tr class="${t.abandoned ? 'out' : ''}"><td><strong>${esc(t.name)}</strong>${t.abandoned ? '<br><small class="lbl">abandoned</small>' : ''}</td><td>${dateLabel(t.start)}</td><td>${t.weeks}</td><td>${t.gigs}</td><td>${t.people.toLocaleString('en-GB')}</td><td>${t.fans >= 0 ? '+' : ''}${t.fans.toLocaleString('en-GB')}</td><td class="${t.net < 0 ? 'neg' : ''}">${t.net < 0 ? '-' : ''}£${Math.abs(t.net).toLocaleString('en-GB')}</td><td>${t.legends || ''}</td></tr>`);
+  return `<h3 class="sub">Tours</h3>
+    <div class="chart-wrap"><table class="chart ledger"><thead><tr><th>Tour</th><th>Start</th><th>Wks</th><th>Gigs</th><th>People</th><th>Fans</th><th>Net</th><th>Legendary</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
+}
+
+function awardsBlock(s: GameState): string {
+  if (!s.awards?.length) return '';
+  return `<h3 class="sub">Awards</h3>
+    <ul class="awards">${[...s.awards].reverse().map((a) => `<li><strong>${a.year}</strong> ${esc(a.title)} <span class="lbl">${esc(a.from)}</span></li>`).join('')}</ul>`;
 }
 
 const MILESTONE_LABEL: Record<string, string> = { career: 'Career', release: 'Record', lineup: 'Line-up', chart: 'Charts', tour: 'Tour', drama: 'Drama' };

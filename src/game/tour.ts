@@ -10,8 +10,8 @@ import { trend } from './world';
 import type { GameState, Lodging, Musician, TourPolicy, TourStop } from './types';
 import { LODGING, WHEELS, defaultLodging, lodgingCost, tourWheels } from './wheels';
 
-type Region = 'southeast' | 'uk' | 'europe' | 'ukeurope' | 'northamerica' | 'world';
-type VenueType = 'pub' | 'club' | 'theatre' | 'euroclub' | 'arena' | 'usvenue' | 'stadium';
+type Region = 'southeast' | 'uk' | 'europe' | 'ukeurope' | 'japan' | 'northamerica' | 'world';
+type VenueType = 'pub' | 'club' | 'theatre' | 'euroclub' | 'arena' | 'jphall' | 'usvenue' | 'stadium';
 type Need = 'none' | 'release' | 'record' | 'album' | 'national' | 'world' | 'worldtop10';
 
 export interface TourTier {
@@ -38,6 +38,7 @@ export const TOUR_TIERS: TourTier[] = [
   { id: 'theatres', name: 'UK theatres and universities', region: 'uk', venue: 'theatre', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [700, 2500], fee: 900, weeklyCost: 2600, fans: 900, buzz: 25, need: 'record' },
   { id: 'europe', name: 'European club tour', region: 'europe', venue: 'euroclub', minWeeks: 3, maxWeeks: 6, gigsPerWeek: 5, capacity: [300, 1200], fee: 450, weeklyCost: 2300, fans: 1800, buzz: 40, need: 'record' },
   { id: 'arenas', name: 'Arena tour, UK and Europe', region: 'ukeurope', venue: 'arena', minWeeks: 4, maxWeeks: 8, gigsPerWeek: 4, capacity: [5000, 15000], fee: 9000, weeklyCost: 22000, fans: 12000, buzz: 50, need: 'national' },
+  { id: 'japan', name: 'Japan tour', region: 'japan', venue: 'jphall', minWeeks: 2, maxWeeks: 4, gigsPerWeek: 4, capacity: [2500, 12000], fee: 8000, weeklyCost: 21000, fans: 15000, buzz: 50, need: 'national' },
   { id: 'america', name: 'North American tour', region: 'northamerica', venue: 'usvenue', minWeeks: 6, maxWeeks: 12, gigsPerWeek: 5, capacity: [1500, 15000], fee: 6000, weeklyCost: 24000, fans: 25000, buzz: 55, need: 'world' },
   { id: 'stadiums', name: 'World stadium tour', region: 'world', venue: 'stadium', minWeeks: 10, maxWeeks: 20, gigsPerWeek: 3, capacity: [30000, 80000], fee: 70000, weeklyCost: 140000, fans: 60000, buzz: 65, need: 'worldtop10' },
 ];
@@ -52,7 +53,7 @@ const NEED_TEXT: Record<Need, string> = {
   worldtop10: 'a World Top 10 hit',
 };
 
-const CITIES: Record<Exclude<Region, 'ukeurope' | 'world'>, [string, string][]> = {
+const CITIES: Record<Exclude<Region, 'ukeurope' | 'world' | 'japan'>, [string, string][]> = {
   southeast: [
     'Croydon', 'Guildford', 'Reading', 'Brighton', 'Southend', 'Chelmsford', 'Luton', 'Watford', 'Oxford', 'Canterbury', 'Hastings',
     'Portsmouth', 'Southampton', 'Basildon', 'Slough', 'Maidstone', 'Colchester', 'Crawley', 'Aylesbury', 'Bedford', 'Kingston', 'Romford',
@@ -86,6 +87,9 @@ const CITIES: Record<Exclude<Region, 'ukeurope' | 'world'>, [string, string][]> 
   ],
 };
 
+const JAPAN: [string, string][] = ['Tokyo', 'Osaka', 'Nagoya', 'Yokohama', 'Fukuoka', 'Sapporo', 'Kobe', 'Hiroshima', 'Sendai', 'Kyoto'].map((c) => [c, 'Japan']);
+const JPHALLS = ['Kōkaidō', 'Sun Plaza Hall', 'Festival Hall', 'Civic Hall', 'Kōsei Hall', 'Dome Theatre'];
+
 const FAR_AWAY: [string, string][] = [
   ['Tokyo', 'Japan'], ['Osaka', 'Japan'], ['Nagoya', 'Japan'], ['Sydney', 'Australia'], ['Melbourne', 'Australia'],
   ['Brisbane', 'Australia'], ['Auckland', 'New Zealand'], ['Rio de Janeiro', 'Brazil'], ['São Paulo', 'Brazil'],
@@ -95,8 +99,9 @@ const FAR_AWAY: [string, string][] = [
 function citiesFor(region: Region): [string, string][] {
   switch (region) {
     case 'ukeurope': return [...CITIES.uk, ...CITIES.europe];
+    case 'japan': return JAPAN;
     case 'world': return [...CITIES.uk.slice(0, 10), ...CITIES.europe.slice(0, 16), ...CITIES.northamerica.slice(0, 14), ...FAR_AWAY];
-    default: return CITIES[region];
+    default: return CITIES[region as Exclude<Region, 'ukeurope' | 'world' | 'japan'>];
   }
 }
 
@@ -138,6 +143,7 @@ function venueName(rng: Rng, type: VenueType, city: string, country = ''): strin
     case 'euroclub': return `${rng.pick(EUROCLUBS[country] ?? EUROCLUB_FALLBACK)}, ${city}`;
     case 'arena': return `${city} ${rng.pick(EUROARENAS[country] ?? ARENAS)}`;
     case 'usvenue': return `${city} ${rng.pick(USVENUES)}`;
+    case 'jphall': return `${city} ${rng.pick(JPHALLS)}`;
     case 'stadium': return `${city} ${rng.pick(country === 'France' ? ['Parc des Sports', 'Stade Municipal'] : country === 'West Germany' ? ['Olympiastadion', 'Waldstadion'] : country === 'Italy' ? ['Stadio Comunale', 'Stadio Olimpico'] : country === 'Spain' ? ['Estadio Municipal'] : STADIUMS)}`;
   }
 }
@@ -202,13 +208,13 @@ export function startTour(s: GameState, rng: Rng, tierId: string, weeks: number,
   }
   const lodge = lodging ?? defaultLodging(t.id);
   const ride = tourWheels(s, t.id);
-  s.tour = { tier: t.id, name: t.name, weeks: w, week: 0, policy, lodging: lodge, route, gigsPerWeek: t.gigsPerWeek, gigsPlayed: 0, people: 0, fansGained: 0, startMoney: s.money };
+  s.tour = { tier: t.id, name: t.name, weeks: w, week: 0, policy, lodging: lodge, route, gigsPerWeek: t.gigsPerWeek, gigsPlayed: 0, people: 0, fansGained: 0, startMoney: s.money, legendsAtStart: s.flags.legendaryGigs ?? 0 };
   log(s, `${s.bandName} set off on the ${t.name}: ${w} week${w === 1 ? '' : 's'}, ${n} dates. ${POLICY_LABEL[policy]}. ${ride.hired ? 'A hired tour bus' : WHEELS[ride.wheels].name}, ${LODGING[lodge].name.toLowerCase()}.`, 'neutral');
   playTourWeek(s, rng);
 }
 
 /** Share of a tour crowd that can still be won over, by tier. */
-const CONVERSION: Record<string, number> = { pubs: 1, clubs: 1, theatres: 0.8, europe: 0.8, arenas: 0.5, america: 0.5, stadiums: 0.3 };
+const CONVERSION: Record<string, number> = { pubs: 1, clubs: 1, theatres: 0.8, europe: 0.8, arenas: 0.5, japan: 0.6, america: 0.5, stadiums: 0.3 };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -223,7 +229,7 @@ export function playTourWeek(s: GameState, rng: Rng): void {
   roadLine(s, rng, t);
 
   const familiar = Math.min(1, (s.flags[`toured_${t.region}`] ?? 0) / 2);
-  const abroad = t.region === 'europe' || t.region === 'northamerica' || t.region === 'world';
+  const abroad = t.region === 'europe' || t.region === 'japan' || t.region === 'northamerica' || t.region === 'world';
   const cancelledRecently = s.flags.cancelledTour !== undefined && s.week - s.flags.cancelledTour < 26;
   const policyHabit = { wild: 1.8, steady: 1, clean: 0.2 }[tour.policy];
   const policyEnergy = { wild: 1.25, steady: 1, clean: 0.85 }[tour.policy];
@@ -282,7 +288,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     weekFans += fanDelta;
     weekMoney += pay;
     weekGate += pay;
-    const merch = merchTake(s, crowd) * (t.id === 'stadiums' ? 0.7 : 1);
+    // Japan buys everything with the band's name on it, twice.
+    const merch = Math.round(merchTake(s, crowd) * (t.id === 'stadiums' ? 0.7 : t.id === 'japan' ? 1.8 : 1));
     weekMoney += merch;
     weekMerch += merch;
     perfSum += perf;
@@ -348,6 +355,7 @@ function roadLine(s: GameState, rng: Rng, t: TourTier): void {
     uk: ['Motorway services at 3 a.m. Someone buys a cassette of brass band classics.', 'The M6 in the rain, forever.', 'A guest house where the landlady locks the door at eleven.', 'The heater in the van only works on full.', 'A bed and breakfast with nylon sheets and a picture of the Queen.'],
     europe: ['The night ferry to the Hook of Holland. Nobody sleeps, everybody is sick.', 'The autobahn at full speed in a bus with a hole in the floor.', 'A border guard asks what is in the flight cases. "Dreams," says the drummer.', 'Every hotel has a different plug and none of them fit the hairdryers.', 'Breakfast is cheese, cold meat and confusion.'],
     ukeurope: ['Two tour buses now. One for the band, one for the hairspray.', 'A catering crew. Nobody has eaten this well in their lives.', 'Lorries full of lights roll out after every show.'],
+    japan: ['Fans at the airport with banners, and gifts, and more gifts. The drummer now owns forty origami cranes.', 'The bullet train. The band sits in silence, which is new.', 'A crowd that listens to every note and claps politely, then screams for exactly one minute.', 'A promoter in white gloves. A hotel room with a bath the size of a bucket.', 'Every fan has every record, including the ones the band forgot.'],
     northamerica: ['Three thousand miles on a bus with a video player and one tape.', 'A truck stop in Nebraska. Everyone stares at the leather trousers.', 'Jet lag, then highway lag, then just lag.', 'A motel pool shaped like a guitar. Somebody jumps in fully clothed.'],
     world: ['A private jet with your logo painted on it. Somebody already spilled wine on the logo.', 'Time zones stop meaning anything after week two.', 'Airports, hotels, stadiums, airports. The band hasn\'t seen daylight in a week.'],
   };
@@ -378,6 +386,7 @@ export function endTour(s: GameState, abandoned: boolean): void {
     tour.fansGained > 0 ? 'good' : 'neutral',
   );
   milestone(s, 'tour', `${abandoned ? 'Abandoned' : 'Finished'} the ${t.name}: ${tour.gigsPlayed} gigs, ${tour.people.toLocaleString('en-GB')} people.`);
+  (s.tours ??= []).push({ name: t.name, tier: t.id, start: s.week - tour.week, weeks: tour.week, gigs: tour.gigsPlayed, people: tour.people, fans: tour.fansGained, net, abandoned, legends: (s.flags.legendaryGigs ?? 0) - (tour.legendsAtStart ?? 0) });
   s.tour = null;
 }
 

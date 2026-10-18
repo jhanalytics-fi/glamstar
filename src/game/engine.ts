@@ -2,7 +2,8 @@ import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName, isBlockedPerson } from './names';
-import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor } from './world';
+import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor, type ChartId } from './world';
+import { awardsNight } from './awards';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
@@ -66,6 +67,9 @@ export function newGame(input: NewGameInput): GameState {
     flags: {},
     releases: [],
     ledger: {},
+    tours: [],
+    alumni: [],
+    awards: [],
     wheels: 'van',
     pending: null,
     scene: null,
@@ -114,6 +118,10 @@ export function upgradeSave(s: GameState): GameState {
   s.releases ??= [];
   s.pending ??= null;
   s.ledger ??= {};
+  s.tours ??= [];
+  s.alumni ??= [];
+  s.awards ??= [];
+  for (const m of s.members) m.joined ??= Math.max(0, s.week - m.weeksInBand);
   s.wheels ??= s.flags.noVan ? 'bus' : 'van';
   if (s.tour) s.tour.lodging ??= 'bnb';
   s.world.charts.us ??= [];
@@ -230,6 +238,7 @@ export function hire(state: GameState, candidateId: string, replaceId?: string):
     if (s.members.length >= MAX_MEMBERS) throw new Error('The van only fits six.');
     s.candidates = s.candidates.filter((x) => x.id !== candidateId);
     for (const m of s.members) addAffinity(s, m.id, c.id, rng.int(-10, 20));
+    c.joined = s.week;
     s.members.push(c);
     log(s, `${c.name} joins ${s.bandName} on ${ROLE_LABEL[c.role].toLowerCase()}.`, 'good');
     milestone(s, 'lineup', `${c.name} joined on ${ROLE_LABEL[c.role].toLowerCase()}.`);
@@ -280,7 +289,7 @@ export function reach(s: GameState): { us: number; europe: number; world: number
   return {
     us: Math.min(1, dist * 0.4 + toured('northamerica') * 0.4 + toured('world') * 0.1 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
     europe: Math.min(1, dist * 0.6 + toured('europe') * 0.25 + toured('ukeurope') * 0.25),
-    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
+    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + toured('japan') * 0.15 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
   };
 }
 
@@ -419,8 +428,19 @@ function endOfWeek(s: GameState, rng: Rng): void {
     log(s, n.text, n.tone);
     if (n.milestone) milestone(s, 'chart', n.text);
   }
+  // Each record remembers its best position on each chart.
+  for (const c of Object.keys(s.world.charts) as ChartId[]) {
+    for (const e of s.world.charts[c]) {
+      if (!e.isPlayer || !e.id.startsWith('player-')) continue;
+      const r = s.releases.find((x) => x.id === e.id.slice(7));
+      if (!r) continue;
+      const peaks = (r.peaks ??= {});
+      peaks[c] = Math.min(peaks[c] ?? 99, e.pos);
+    }
+  }
 
   s.week++;
+  awardsNight(s, rng);
   checkOver(s);
 }
 
