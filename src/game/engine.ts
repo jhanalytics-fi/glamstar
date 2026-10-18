@@ -190,13 +190,14 @@ export function finishTour(state: GameState, policy: TourPolicy): GameState {
   const lines: { text: string; tone: LogEntry['tone'] }[] = [];
   let weeks = 0;
   while (s.tour && !s.pending && !s.over && weeks < 30) {
-    s = act(s, { type: 'tour', option: `continue:${policy}` });
+    s = act({ ...s, flags: { ...s.flags, autoTour: 1 } }, { type: 'tour', option: `continue:${policy}` });
     weeks++;
     for (const l of s.log.slice(-40)) if (l.week === s.week - 1 && /^(Tour week|Tour over|Tour abandoned|Disaster|Legend)/.test(l.text) && !lines.some((x) => x.text === l.text)) lines.push({ text: l.text, tone: l.tone });
     for (const l of s.log.slice(-40)) if (l.week === s.week - 1 && /the night they still talk about|cancelled\./.test(l.text) && !lines.some((x) => x.text === l.text)) lines.push({ text: l.text, tone: l.tone });
   }
   if (!weeks) return s;
   return mutate(s, (st) => {
+    delete st.flags.autoTour;
     const name = st.tour?.name ?? lines[0]?.text.split(':')[0] ?? 'Tour';
     openScene(st, 'tour', `${name}: weeks ${from} to ${from + weeks - 1}`, 'gig');
     for (const l of lines) beat(st, undefined, l.text, l.tone === 'good' ? 'good' : l.tone === 'bad' ? 'bad' : 'neutral');

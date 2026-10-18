@@ -45,6 +45,7 @@ export const CALAMITY_EVENTS: EventDef[] = [
     id: 'bus_crash',
     weight: 2,
     where: 'tour',
+    big: true,
     when: (s) => (s.tour && s.tour.week >= 1 && since(s, 'busCrash', 150) ? {} : null),
     title: () => 'The bus is in a ditch',
     text: (s) => `Three in the morning on the road to ${s.tour!.route[Math.min(s.tour!.route.length - 1, (s.tour!.week + 1) * s.tour!.gigsPerWeek)]?.city ?? 'the next town'}, the driver fell asleep and the bus went through a fence into a field. Everyone walked away. The bus did not. The gear is scattered across half an acre of cabbages.`,
@@ -82,6 +83,7 @@ export const CALAMITY_EVENTS: EventDef[] = [
     id: 'crowd_riot',
     weight: 2,
     where: 'tour',
+    big: true,
     when: (s) => (s.tour && s.fans >= 3000 && since(s, 'riot', 100) ? { city: s.tour!.route[Math.min(s.tour!.route.length - 1, s.tour!.week * s.tour!.gigsPerWeek)].city } : null),
     title: (_s, p) => `Riot in ${p.city}`,
     text: (_s, p) => `Too many tickets sold, not enough door. The crowd outside in ${p.city} pushed, the crowd inside pushed back, and by the second song the barriers were down and the police were in. Seventeen hurt, none badly. The council wants someone to blame.`,
@@ -108,6 +110,7 @@ export const CALAMITY_EVENTS: EventDef[] = [
     id: 'member_arrested_abroad',
     weight: 2,
     where: 'tour',
+    big: true,
     when: (s, rng) => {
       const t = tierById(s.tour?.tier ?? '');
       if (!s.tour || !t || t.region === 'uk' || t.region === 'southeast' || !since(s, 'arrestedAbroad', 80)) return null;

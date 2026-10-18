@@ -27,6 +27,8 @@ export interface EventDef {
   weight: number;
   /** 'home' events never happen on tour, 'tour' events only on tour. Default: both. */
   where?: 'home' | 'tour';
+  /** Big enough to interrupt a tour that is being played through in one go. */
+  big?: boolean;
   when: (s: GameState, rng: Rng) => Params | null;
   title: (s: GameState, p: Params) => string;
   text: (s: GameState, p: Params) => string;
@@ -2656,10 +2658,12 @@ export function rollEvents(s: GameState, rng: Rng): void {
   if (s.pending || s.over) return;
   const fits = (e: EventDef) => (s.tour ? e.where !== 'home' : e.where !== 'tour');
   const forced = s.tour ? undefined : EVENTS.find((e) => e.id === 'christmas' && e.when(s, rng));
-  if (!forced && !rng.chance(s.tour ? 0.55 : 0.35)) return;
+  // Playing a tour through in one go: only the big stuff interrupts, and not every week.
+  const auto = !!s.tour && !!s.flags.autoTour;
+  if (!forced && !rng.chance(auto ? 0.12 : s.tour ? 0.55 : 0.35)) return;
   const eligible: { def: EventDef; p: Params }[] = [];
   // On the road, road stories come first.
-  const pool = forced ? [forced] : rng.shuffle(EVENTS.filter(fits)).sort((a, b) => (s.tour ? (b.where === 'tour' ? 1 : 0) - (a.where === 'tour' ? 1 : 0) : 0));
+  const pool = forced ? [forced] : rng.shuffle(EVENTS.filter(fits).filter((e) => !auto || e.big)).sort((a, b) => (s.tour ? (b.where === 'tour' ? 1 : 0) - (a.where === 'tour' ? 1 : 0) : 0));
   for (const def of pool) {
     const p = def.when(s, rng);
     if (p) eligible.push({ def, p });
@@ -2683,12 +2687,22 @@ function def(id: string): EventDef {
   return d;
 }
 
+/** Prices follow the band's means: a lawyer, a bribe or a repair costs what you can be seen to afford. */
+export function priceFactor(s: GameState): number {
+  return clamp(Math.sqrt(Math.max(0, s.money) / 2000), 1, 25);
+}
+const scaled = (s: GameState, cost: number) => Math.round((cost * priceFactor(s)) / (cost >= 1000 ? 100 : 10)) * (cost >= 1000 ? 100 : 10);
+
 function optionsFor(s: GameState): EventOption[] {
   const p = s.pending!;
-  return def(p.def).options(s, p.params).map((o) => ({
-    ...o,
-    locked: o.locked ?? (o.cost && s.money < o.cost ? `Costs £${o.cost}. You have £${s.money}.` : undefined),
-  }));
+  return def(p.def).options(s, p.params).map((o) => {
+    const cost = o.cost ? scaled(s, o.cost) : o.cost;
+    return {
+      ...o,
+      cost,
+      locked: o.locked ?? (cost && s.money < cost ? `Costs £${cost.toLocaleString('en-GB')}. You have £${s.money.toLocaleString('en-GB')}.` : undefined),
+    };
+  });
 }
 
 export function viewPending(s: GameState): PendingView | null {

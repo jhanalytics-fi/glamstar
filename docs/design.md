@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.16)
+## Prototype status (v0.17)
 
 Playable in the browser. Implemented:
 
@@ -330,3 +330,8 @@ An album records its tracks (`song.album`). While the latest album is under a ye
 ## Who answers the advert (v0.16.1)
 
 Applicant quality was capped at the "good" tier (mean 62) from 1,000 fans on. Now every applicant's mean rating gets a boost: +5 x log10(fans / 100), capped at 20 (1,000 fans +5, 10,000 +10, 100,000 +15), plus up to +8 when the band's own average overall is above 55. A famous band of good players is answered by musicians of their own level; a pub band still gets hopefuls.
+
+## Playing through, and prices that follow the money (v0.17)
+
+- When a tour is played through in one go, only **big** situations (`big: true`: the bus crash, a riot, an arrest abroad, customs, the police, a crooked promoter, homesickness) can interrupt, and the weekly odds drop from 55% to 12%. Week by week, nothing changes.
+- Event option prices scale with means: cost x sqrt(money / 2,000), between x1 and x25, rounded. At £20,000 a £150 lawyer costs about £470; at £1,000,000 about £3,400. Hints and locks show the scaled price. Action costs (studio, parties, ads) are not scaled: they are real prices, and fame has its own luxury tier.

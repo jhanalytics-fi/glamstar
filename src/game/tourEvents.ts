@@ -56,6 +56,7 @@ export const TOUR_EVENTS: EventDef[] = [
   },
   {
     id: 'tour_customs',
+    big: true,
     weight: 2,
     where: 'tour',
     when: (s) => (s.tour && abroad(s) ? { country: nextStop(s).country } : null),
@@ -119,6 +120,7 @@ export const TOUR_EVENTS: EventDef[] = [
   },
   {
     id: 'tour_promoter',
+    big: true,
     weight: 2,
     where: 'tour',
     when: (s) => (s.tour ? { city: nextStop(s).city } : null),
@@ -224,6 +226,7 @@ export const TOUR_EVENTS: EventDef[] = [
   },
   {
     id: 'tour_homesick',
+    big: true,
     weight: 3,
     where: 'tour',
     when: (s) => {
@@ -333,6 +336,7 @@ export const TOUR_EVENTS: EventDef[] = [
   },
   {
     id: 'tour_police',
+    big: true,
     weight: 2,
     where: 'tour',
     when: (s) => (s.tour && s.members.some((m) => m.habit >= 45) ? { city: nextStop(s).city } : null),

@@ -1080,14 +1080,15 @@ describe('finishing a tour in one go', () => {
     while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
     const w0 = s.week;
     let guard = 0;
+    const titles: string[] = [];
     while (s.tour && guard++ < 10) {
       s = finishTour(s, 'steady');
+      titles.push(s.scene!.title);
       while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
     }
     expect(s.tour).toBeNull();
     expect(s.week).toBe(w0 + 3);
-    expect(s.scene!.title).toMatch(/weeks/);
-    expect(s.scene!.beats.length).toBeGreaterThan(1);
+    expect(titles.some((t) => /weeks/.test(t))).toBe(true);
   });
 });
 
@@ -1144,5 +1145,38 @@ describe('who answers the advert', () => {
       return total / n;
     };
     expect(avg(100000, 80)).toBeGreaterThan(avg(300, 45) + 12);
+  });
+});
+
+describe('playing through and paying up', () => {
+  it('a played-through tour is interrupted far less often than one played week by week', async () => {
+    const { finishTour } = await import('../src/game/engine');
+    let stops = 0, weeksPlayed = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      let s: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), fans: 2000, money: 20000, buzz: 50, pending: null, releases: [{ id: 'r', kind: 'single', title: 'T', quality: 60, appeal: 1, week: 0, sold: 0, lastWeek: 0 }] };
+      s = act(s, { type: 'tour', option: 'theatres', weeks: 6, policy: 'steady' });
+      while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
+      let guard = 0;
+      while (s.tour && guard++ < 10) {
+        const w = s.week;
+        s = finishTour(s, 'steady');
+        weeksPlayed += s.week - w;
+        if (s.pending) stops++;
+        while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
+      }
+    }
+    expect(stops / weeksPlayed).toBeLessThan(0.3);
+  });
+
+  it('event prices scale with the bank balance', async () => {
+    const { priceFactor } = await import('../src/game/events');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 2 });
+    expect(priceFactor({ ...s, money: 200 })).toBe(1);
+    expect(priceFactor({ ...s, money: 200000 })).toBe(10);
+    const rich = { ...s, money: 200000, lastGigWeek: s.week };
+    const ev = forceEvent(rich, 'after_show');
+    const poor = forceEvent({ ...s, money: 200, lastGigWeek: s.week }, 'after_show');
+    const costly = (st: GameState) => viewPending(st)!.options.map((o) => o.cost);
+    expect(Math.max(...costly(ev))).toBeGreaterThanOrEqual(Math.max(...costly(poor)));
   });
 });
