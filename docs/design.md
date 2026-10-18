@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.24)
+## Prototype status (v0.25)
 
 Playable in the browser. Implemented:
 
@@ -412,3 +412,12 @@ The Business tab shows what is owed to Tony and the admirer's allowance.
 
 - **Certifications** (`src/game/certs.ts`): singles go Silver at 250,000, Gold at 500,000, Platinum at 1,000,000 and Multi-platinum at 2,000,000 copies; albums at 60,000 / 100,000 / 300,000 / 900,000. Checked every week after sales. Each new disc: buzz +4 to +10, mood +3 to +6, a milestone, a badge in the discography. Demos and bootlegs do not count.
 - **Fan club** (`src/game/fanclub.ts`): offered as a choice event from 1,200 fans (£150 for a PO box). Members = 8% of fans (10% in-house), £0.15 per member per week in subscriptions and mail-order shirts, 30% of it to whoever runs it from their spare room until you bring it in-house. A club slows the weekly fan drift from 0.5% to 0.4%. After 40 weeks, **Where does the money go?**: an office and a bookkeeper (wages £80 + fans x 0.01 a week on the weekly bill, every penny yours, more members), a quiet word, or lawyers (money back, the sister sacked, her brother in the band stops talking to you). The Business tab shows members and the weekly take; the ledger has a Fan club column.
+
+## Drying out and talking it through (v0.25)
+
+Rest grows four options:
+
+- **A fortnight in a drying-out clinic** (shown when anyone is at habit 25+): £400 + fans x 0.08 (max £12,000). Habit -40, energy +30, mood -10 for anyone at 40+ (and their vice shows). 25% of the time the worst case climbs out of a window on day nine (habit +15 back).
+- **A month at a Swiss sanatorium** (luxury, unlocks at twice the fee): £4,000 + fans x 0.4 (max £80,000). Habit to 5, energy to 100, mood +10, and the body learns: hidden stamina +5, vice -3, loyalty +3. Half the time the press runs the story (buzz +5, image +1).
+- **A weekend with a yogi in Totnes** (£120): energy +15, mood +10, habit -5, big egos -2.
+- **A Harley Street psychiatrist for everyone** (luxury, £900, unlocks at £3,000): mood +18 (+28 under 40), habit -4, egos over 65 lose 4 and are revealed, reliability +2.

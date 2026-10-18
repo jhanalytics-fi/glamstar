@@ -223,6 +223,23 @@ describe('action choices', () => {
     expect(dup).toBe(0);
   });
 
+  it('the clinic and the sanatorium cut habits, and the sanatorium builds tolerance', () => {
+    const base = { ...newGame(input), money: 200000, fans: 5000 };
+    base.members.forEach((m) => { m.habit = 70; m.hidden.stamina = 50; m.mood = 30; });
+    const ids = actionOptions(base, 'rest').map((o) => o.id);
+    expect(ids).toEqual(expect.arrayContaining(['clinic', 'sanatorium', 'yogi', 'shrink']));
+    const c = act(base, A('rest', 'clinic'));
+    expect(c.members.every((m) => m.habit <= 50)).toBe(true);
+    const sa = act(base, A('rest', 'sanatorium'));
+    expect(sa.members.every((m) => m.habit <= 5)).toBe(true);
+    expect(sa.members.every((m) => m.hidden.stamina === 55)).toBe(true);
+    const sh = act(base, A('rest', 'shrink'));
+    expect(sh.members.every((m) => m.mood > 40)).toBe(true);
+    const clean = newGame(input);
+    clean.members.forEach((m) => { m.habit = 5; });
+    expect(actionOptions(clean, 'rest').some((o) => o.id === 'clinic')).toBe(false);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

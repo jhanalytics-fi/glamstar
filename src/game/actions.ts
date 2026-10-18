@@ -277,8 +277,12 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'seaside', label: 'Day trip to Brighton', cost: 25, hint: 'Chips, sea air and band bonding.' },
         { id: 'dry', label: 'Lock the drinks cupboard', cost: 0, hint: 'Habits drop fast. Withdrawal is grim.' },
         { id: 'mum', label: famous(s) ? "Everyone goes home to their mum's, in a limo" : "Everyone goes home to their mum's", cost: 0, hint: famous(s) ? 'Sunday roast, clean laundry, the neighbours at the window. Mum still gives you a fiver.' : 'Full recovery and a fiver each. The scene forgets you a bit.' },
+        ...(s.members.some((m) => m.habit >= 25) ? [{ id: 'clinic', label: 'A fortnight in a drying-out clinic', cost: clinicFee(s), hint: 'Doctors, locked doors, group sessions. Habits cut hard, moods take a knock.' }] : []),
+        { id: 'yogi', label: 'A weekend with a yogi in Totnes', cost: 120, hint: 'Breathing, lentils, a man called Ravi. Calmer heads, smaller egos.' },
         ...luxury(s, [
+          { id: 'shrink', label: 'A Harley Street psychiatrist for everyone', cost: 900, unlock: 3000, hint: 'Six sessions each. Moods mended, egos examined, secrets out.' },
           { id: 'spa', label: 'A week at a country spa hotel', cost: 600, unlock: 2000, hint: 'Massages, mud and no minibar. Energy, mood and a clear head.' },
+          { id: 'sanatorium', label: 'A month at a Swiss sanatorium', cost: sanatoriumFee(s), unlock: sanatoriumFee(s) * 2, hint: 'Clean mountain air, a famous doctor, no visitors. Habits gone, and a body that can take more next time.' },
           { id: 'bahamas', label: 'Fly the band to the Bahamas', cost: 3000, unlock: 10000, hint: 'Two weeks of sun, sea and nothing. The band comes back new. Costs a fortune.' },
           { id: 'retreat', label: 'Rent a villa in Ibiza for the writing', cost: 9000, unlock: 40000, hint: 'Sun, a pool and a grand piano. The band comes back rested, closer and with songs.' },
         ]),
@@ -742,6 +746,14 @@ function party(s: GameState, rng: Rng, option: string): void {
   }
 }
 
+/** What a clinic charges a band of this standing. */
+export function clinicFee(s: GameState): number {
+  return Math.round(clamp(400 + s.fans * 0.08, 400, 12000) / 50) * 50;
+}
+export function sanatoriumFee(s: GameState): number {
+  return Math.round(clamp(4000 + s.fans * 0.4, 4000, 80000) / 100) * 100;
+}
+
 function rest(s: GameState, rng: Rng, option: string): void {
   restCommentary(s, option, rng);
   for (const m of s.members) {
@@ -784,6 +796,35 @@ function rest(s: GameState, rng: Rng, option: string): void {
         adjust(m, 'habit', wobble(rng, -8));
         grow(m, 'writing', 3, rng);
         break;
+      case 'clinic':
+        adjust(m, 'energy', wobble(rng, 30));
+        adjust(m, 'mood', wobble(rng, m.habit >= 40 ? -10 : 2));
+        if (m.habit >= 40) revealLog(s, m, 'vice', 1);
+        adjust(m, 'habit', wobble(rng, -40));
+        break;
+      case 'sanatorium':
+        m.energy = 100;
+        m.habit = Math.min(m.habit, 5);
+        adjust(m, 'mood', wobble(rng, 10));
+        m.hidden.stamina = clamp(m.hidden.stamina + 5, 1, 99);
+        m.hidden.vice = clamp(m.hidden.vice - 3, 1, 99);
+        m.hidden.loyalty = clamp(m.hidden.loyalty + 3, 1, 99);
+        revealLog(s, m, 'stamina', 1);
+        break;
+      case 'yogi':
+        adjust(m, 'energy', wobble(rng, 15));
+        adjust(m, 'mood', wobble(rng, 10));
+        adjust(m, 'habit', wobble(rng, -5));
+        if (m.hidden.ego >= 60) { m.hidden.ego = clamp(m.hidden.ego - 2, 1, 99); }
+        break;
+      case 'shrink':
+        adjust(m, 'energy', wobble(rng, 10));
+        adjust(m, 'mood', wobble(rng, m.mood < 40 ? 28 : 18));
+        adjust(m, 'habit', wobble(rng, -4));
+        if (m.hidden.ego >= 65) { m.hidden.ego = clamp(m.hidden.ego - 4, 1, 99); revealLog(s, m, 'ego', 2); }
+        m.hidden.reliability = clamp(m.hidden.reliability + 2, 1, 99);
+        revealLog(s, m, 'reliability', 1);
+        break;
     }
     if (option === 'sleep' && m.habit >= 50) {
       adjust(m, 'mood', wobble(rng, -6));
@@ -802,6 +843,8 @@ function rest(s: GameState, rng: Rng, option: string): void {
       newSong(s, rng, best.writing * 0.8 + 12 + rng.int(-6, 12), best, 'standard', player(s).style);
     }
   }
+  if (option === 'sanatorium' && rng.chance(0.5)) { addBuzz(s, 5); for (const m of s.members) adjust(m, 'image', 1); log(s, `${PRESS} ran "${s.bandName.toUpperCase()}: OUR MONTH IN THE MOUNTAINS" with a photo of the drummer in a dressing gown. Record sales are up. So is sympathy.`, 'neutral'); }
+  if (option === 'clinic' && s.members.some((m) => m.habit >= 20) && rng.chance(0.25)) { const x = [...s.members].sort((a, b) => b.habit - a.habit)[0]; adjust(x, 'habit', 15); log(s, `${first(x)} climbed out of a window on day nine and was found in a pub in Esher. Back for the last session, slightly ashamed.`, 'bad'); }
   if (option === 'mum') {
     s.money += 5 * s.members.length;
     earn(s, 'other', 5 * s.members.length);
@@ -813,6 +856,10 @@ function rest(s: GameState, rng: Rng, option: string): void {
     dry: 'The drinks cupboard is padlocked. The band is sober, sweaty and short-tempered.',
     mum: "Everyone went home to their mum's. Clean laundry, Sunday roasts and a fiver each.",
     spa: 'A week at a spa hotel in the Cotswolds. Mud, massages and a padlocked minibar. Everyone came back glowing.',
+    clinic: 'A fortnight in a clinic in Surrey: locked doors, group sessions, a doctor who has seen every band in the charts. Everyone came out clean, thin and furious.',
+    sanatorium: 'A month in a sanatorium above Lake Geneva: mountain air, a famous doctor, no telephone and no visitors. The band came back clean, calm, and built to last a little longer next time.',
+    yogi: 'A weekend in Totnes with a yogi called Ravi. Breathing, lentils, and a long talk about the ego that the drummer took personally.',
+    shrink: 'Six sessions each with a Harley Street psychiatrist. Nobody will say what came up. Everybody is sleeping better.',
     bahamas: 'Two weeks in the Bahamas. Sun, sea and a band that remembered why it liked each other. The tan made the papers.',
     retreat: 'A villa in Ibiza with a pool and a grand piano. Songs got written. Some of them by the pool.',
   };

@@ -1256,6 +1256,26 @@ const REST: Record<string, { mon: Line<MateCtx>[]; mid: Line<MateCtx>[]; end: Li
     mid: ['Day four. Nobody has worn shoes. {mate2} has learned to snorkel and talks of nothing else.', 'A rum punch at eleven in the morning is, {mate} explains, "cultural".', 'Sunset on the beach with acoustic guitars. For once, nobody is showing off.'],
     end: ['Two weeks gone in a blink. Brown, rested and talking about "the next record" like a band again.', 'The flight home is quiet. Everyone sleeps. Everyone is, for once, fine.', 'Home with a tan, a conch shell and the best mood the band has had in years.'],
   },
+  clinic: {
+    mon: ['A clinic in Surrey behind high hedges. A nurse takes everyone\'s bags and, from {mate}\'s, a bottle.', 'Check-in. A form with a question about "units per week" that {mate} answers with a laugh and then, slowly, a number.', 'Day one. Group session. Nobody speaks. The drummer cries first.'],
+    mid: ['Day five. Shakes, soup and a counsellor who was in a band once and will not say which.', 'Table tennis, cold showers and a lot of honest conversations {mate2} would rather not have had.', 'A visiting day. Mums. {mate}\'s mum brought cake and a look.'],
+    end: ['Discharged clean, thin and furious with everyone, including the doctor, who said that was normal.', 'Home with a folder of leaflets and a band that has not had a drink in a fortnight. The silence in the van is new.', 'Checked out on a Sunday. {mate} says it was the worst two weeks of their life and asks when the next one is.'],
+  },
+  sanatorium: {
+    mon: ['A clinic above Lake Geneva with a famous doctor, white corridors and no telephone. The band\'s coats are taken away.', 'Arrival by lake steamer. Mountains, silence, and a nurse who confiscates {mate}\'s "vitamins" without comment.', 'Day one. Blood tests, a mountain walk, and bed at nine. Nobody has been in bed at nine since school.'],
+    mid: ['Week two. Cold baths, long walks, a diet of things that grew on the mountain. {mate2} has started whistling.', 'The famous doctor explains the liver with diagrams. {mate} asks for a copy for the wall of the van.', 'Week three. A Swiss banker in the next room turns out to be a fan. He has every record and a chalet.'],
+    end: ['A month later: clean, clear-eyed, and somehow sturdier. The doctor says the band will "take more punishment now", and does not mean it kindly.', 'Home over the Alps with new lungs and a bill with a lot of zeros. The band looks like it could run up a hill. It will not.', 'Back in London glowing. The press asks about the "mystery illness". The band says "Switzerland" and nothing else.'],
+  },
+  yogi: {
+    mon: ['A converted barn in Totnes and a man called Ravi, who was called Keith until 1979.', 'Mats on a wooden floor, incense, and a rule about shoes that {mate} breaks in the first minute.', 'Ravi asks everyone to close their eyes and "find the breath". {mate2} finds a cigarette.'],
+    mid: ['Lentils for lunch, lentils for dinner, a long talk about the ego that the drummer takes personally.', 'Sun salutations at dawn. {mate} manages three and lies down for the rest, which Ravi says is also yoga.', 'A silent walk on the moor. The silence lasts eleven minutes, which Ravi says is a record for a band.'],
+    end: ['Home calmer, lighter, and with a lentil recipe nobody will ever make.', 'Ravi hugs everyone at the gate. {mate} buys a book about chakras and leaves it on the train.', 'Back to London with straighter backs and, for a week, a different kind of quiet in the van.'],
+  },
+  shrink: {
+    mon: ['Harley Street. A brass plate, a leather couch, a man with a pipe and a notebook who has heard it all.', 'Six sessions each, booked under false names. {mate} chose "Mr Smith". So did {mate2}.', 'Session one. The psychiatrist asks about childhood. The drummer talks about a cymbal.'],
+    mid: ['Session three. Someone cried in the waiting room. Nobody will say who. It was {mate}.', 'A long talk about fathers, bands and why anyone would do this for a living. No conclusions, some relief.', 'The psychiatrist has a theory about lead singers. You are not allowed to hear it.'],
+    end: ['Six weeks of Tuesdays, done. Everybody is sleeping better and nobody is telling anybody why.', 'The notes are locked in a filing cabinet in Harley Street. The band is, for once, on speaking terms with itself.', 'Home with a bill, a few less secrets and, in {mate}\'s case, a diagnosis they keep in their wallet.'],
+  },
   retreat: {
     mon: ['A villa above the sea in Ibiza. A pool, a terrace, and a grand piano nobody admits to being able to play.', 'The hire car does not survive the track up to the villa. The gear does. {mate} walks the last mile with the cymbals.', 'Guitars out on the terrace by sundown. The cicadas are in a different key.'],
     mid: ['A song by the pool before breakfast, another after lunch. The piano turns out to be in tune and {mate2} turns out to play it.', 'A night at a club in town. Nobody writes anything the next day. The day after, two songs.', 'The chorus came to {mate} underwater. The lyrics came to you on the terrace at three a.m.'],
