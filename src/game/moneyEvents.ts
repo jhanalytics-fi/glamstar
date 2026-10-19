@@ -82,7 +82,7 @@ export const MONEY_EVENTS: EventDef[] = [
     where: 'home',
     when: (s) => (s.songs.filter((x) => !x.released).length >= 8 && since(s, 'producerPick', 30) && !s.flags.nextProducer ? {} : null),
     title: () => 'Who produces the album?',
-    text: (s) => `Eight songs ready and the studio booked. ${s.contract ? 'The label has' : 'You have'} a shortlist of producers. Each one costs more than the last, and each one has opinions.`,
+    text: (s) => `Eight songs ready and the studio booked. ${s.contract ? 'The label has' : 'You have'} a shortlist of producers for the next album: whoever you pick is paid now and waits in the studio until you record it. Each one costs more than the last, and each one has opinions.`,
     options: (s) => [
       {
         label: 'Your mate with the eight-track',

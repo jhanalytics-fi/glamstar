@@ -1,15 +1,17 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, retire, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, retire, setSplit, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerWord } from '../game/managers';
-import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
-import type { BandGender, Difficulty, Lineup, Lodging, TourPolicy } from '../game/types';
+import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type Ask, type LabelTier } from '../game/labels';
+import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
+import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
+import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
 import { CERT_LABEL } from '../game/certs';
@@ -195,7 +197,9 @@ function onClick(e: Event, root: HTMLElement): void {
       }
       case 'dismiss': state = dismissCandidates(state!); break;
       case 'offerSign': state = signOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
-      case 'offerHaggle': state = haggle(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'offerHaggle': state = haggle(state!, arg!, (arg2 as Ask) || 'advance'); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'managerJob': state = managerJob(state!, arg as ManagerJob); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'setSplit': state = setSplit(state!, arg as Split); break;
       case 'offerRead': state = readSmallPrint(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerDecline': state = declineOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'audit': state = audit(state!); labelNote = state.log.at(-1)?.text ?? ''; break;
@@ -582,7 +586,8 @@ function managerBlock(s: GameState): string {
         <div><dt>Taken so far</dt><dd>${money(m.taken)}</dd></div>
         <div><dt>Contract</dt><dd>${m.read ? 'Read by a solicitor' : 'Nobody read it'}</dd></div>
       </dl>
-      <p class="hint">A manager squeezes promoters for bigger fees, gets labels to listen and helps you haggle. Then takes their cut.</p>
+      <p class="hint">A manager squeezes promoters for bigger fees (+${Math.round(m.clout / 1.5)}% on gig money), gets labels to listen, helps you haggle, and does jobs. Then takes their cut.</p>
+      <div class="choices">${(['tv', 'private', 'label', 'press'] as ManagerJob[]).map((j) => { const why = jobLocked(s, j); return `<button class="choice" data-do="managerJob" data-arg="${j}" ${why ? 'disabled' : ''}><span class="choice-head"><strong>${JOB_LABEL[j]}</strong><span class="cost free">${why ? '' : 'no week spent'}</span></span><span class="choice-hint">${esc(why ?? jobHint(s, j))}</span></button>`; }).join('')}</div>
       <div class="card-foot"><button class="btn ghost" data-do="sackManager" ${s.money < cost ? 'disabled' : ''}>${armedSack ? `Really pay ${money(cost)} to sack them?` : `Sack: ${money(cost)} pay-off`}</button></div>
     </article>`;
 }
@@ -623,7 +628,23 @@ function moneyBlock(s: GameState): string {
 }
 
 function labelSection(s: GameState): string {
-  return labelDeals(s) + managerBlock(s) + moneyBlock(s) + incomeBlock(s);
+  return labelDeals(s) + managerBlock(s) + splitBlock(s) + moneyBlock(s) + incomeBlock(s);
+}
+
+/** The band deal: who gets what on paper. */
+function splitBlock(s: GameState): string {
+  const split = s.split ?? 'equal';
+  const rec = shares(s, 'albums');
+  const gig = shares(s, 'gigs');
+  const w = writerShares(s);
+  const pct = (v: number | undefined) => `${Math.round((v ?? 0) * 100)}%`;
+  const rows = s.members.map((m) => `<tr><td><strong>${esc(m.isPlayer ? 'You' : first(m))}</strong></td><td>${pct(gig[m.id])}</td><td>${pct(rec[m.id])}</td><td>${pct(w[m.id])}</td><td>£${Math.round(m.earned ?? 0).toLocaleString('en-GB')}</td></tr>`);
+  const old = [...(s.alumni ?? [])].filter((a) => (a.earned ?? 0) > 0).reverse().slice(0, 4).map((a) => `<tr class="out"><td>${esc(a.name)}</td><td></td><td></td><td></td><td>£${Math.round(a.earned ?? 0).toLocaleString('en-GB')}</td></tr>`);
+  return `<h3 class="sub">The band deal</h3>
+    <div class="chips">${(['equal', 'writers', 'leader'] as Split[]).map((x) => `<button class="chip" data-do="setSplit" data-arg="${x}" aria-pressed="${split === x}" title="${esc(SPLIT_WORD[x])}">${SPLIT_LABEL[x]}</button>`).join('')}</div>
+    <p class="hint">${esc(SPLIT_WORD[split])} Changing it costs you with whoever loses by it.</p>
+    <div class="chart-wrap"><table class="chart ledger"><thead><tr><th>Who</th><th>Gigs</th><th>Records</th><th>Wrote</th><th>Earned</th></tr></thead><tbody>${rows.join('')}${old.join('')}</tbody></table></div>
+    <p class="hint">Paper shares of one shared bank account: what each would walk away with. Former members take their share with them.</p>`;
 }
 
 /** Where the money came from, year by year. */
@@ -707,7 +728,7 @@ function offerCards(s: GameState): string {
         <p class="hint">Offer open for ${left} more week${left === 1 ? '' : 's'}.</p>
         <div class="card-foot">
           <button class="btn" data-do="offerSign" data-arg="${o.id}">Sign</button>
-          <button class="btn ghost" data-do="offerHaggle" data-arg="${o.id}" ${o.haggled >= 2 ? 'disabled' : ''}>${o.haggled >= 2 ? 'Final offer' : 'Push for more'}</button>
+          ${o.haggled >= 2 ? '<button class="btn ghost" disabled>Final offer</button>' : (['advance', 'rate', 'albums', 'budget'] as Ask[]).map((a) => `<button class="btn ghost" data-do="offerHaggle" data-arg="${o.id}" data-arg2="${a}" title="${esc(ASK_HINT[a])}" ${a === 'albums' && o.terms.albums <= 1 ? 'disabled' : ''}>${ASK_LABEL[a]}</button>`).join('')}
           ${o.read ? '' : `<button class="btn ghost" data-do="offerRead" data-arg="${o.id}" ${s.money < LAWYER_FEE ? 'disabled' : ''}>Lawyer reads it: ${money(LAWYER_FEE)}</button>`}
           <button class="btn ghost" data-do="offerDecline" data-arg="${o.id}">Turn down</button>
         </div>

@@ -2757,6 +2757,8 @@ function news(s: GameState, rng: Rng): void {
 // ---------------------------------------------------------------- engine hooks
 
 /** Called at the end of each week. May set a pending choice and log some news. */
+const SCANDALS = new Set(['polaroids', 'kiss_and_tell', 'label_scandal', 'hotel_raid', 'tour_police', 'fan_club_books']);
+
 export function rollEvents(s: GameState, rng: Rng): void {
   if (rng.chance(0.18)) news(s, rng);
   if (s.pending || s.over) return;
@@ -2776,6 +2778,12 @@ export function rollEvents(s: GameState, rng: Rng): void {
   const total = eligible.reduce((a, e) => a + e.def.weight, 0);
   let r = rng.next() * total;
   const pick = eligible.find((e) => (r -= e.def.weight) < 0) ?? eligible[0];
+  // A favour owed by a Sunday editor: one scandal never runs.
+  if (s.flags.pressFavour && SCANDALS.has(pick.def.id)) {
+    delete s.flags.pressFavour;
+    log(s, `${s.manager?.name ?? 'Your manager'} called in the favour. A story about the band was pulled at midnight and replaced with a horse.`, 'good');
+    return;
+  }
   s.pending = { def: pick.def.id, params: pick.p, week: s.week + 1 };
 }
 

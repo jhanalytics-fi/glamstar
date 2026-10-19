@@ -224,3 +224,69 @@ describe('videos and producers', () => {
     expect(produced.royalty!).toBeLessThan(plain.royalty!);
   });
 });
+
+describe('negotiating on more than money', () => {
+  const fresh = () => ({ ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 3 }), fans: 2000, buzz: 50 });
+  const withOffer = (s: GameState, label: string): GameState => {
+    const terms = makeTerms(s, labelById(label), new Rng(1));
+    terms.albums = 4;
+    const o: Offer = { id: 'o1', label, week: s.week, expires: s.week + 6, terms, read: false, haggled: 0 };
+    return { ...s, offers: [o] };
+  };
+  it('each ask changes the terms it says it does, when it lands', () => {
+    const base = withOffer(fresh(), 'imperial');
+    const t0 = base.offers[0].terms;
+    const landed = (ask: 'advance' | 'rate' | 'albums' | 'budget') => {
+      for (let seed = 1; seed <= 40; seed++) {
+        const r = haggle({ ...base, rng: seed }, 'o1', ask);
+        const o = r.offers[0];
+        if (o && JSON.stringify(o.terms) !== JSON.stringify(t0)) return o.terms;
+      }
+      throw new Error('never landed');
+    };
+    expect(landed('rate').rate).toBeCloseTo(t0.rate + 0.02, 5);
+    expect(landed('rate').advance).toBeLessThan(t0.advance);
+    expect(landed('albums').albums).toBe(3);
+    expect(landed('budget').budget).toBeGreaterThan(t0.budget * 1.3);
+    expect(landed('advance').advance).toBeGreaterThan(t0.advance);
+  });
+});
+
+describe('the manager earns their cut', () => {
+  it('jobs pay, cool down, and need a manager', async () => {
+    const { managerJob, jobLocked } = await import('../src/game/managers');
+    const s = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 5 }), fans: 5000, money: 1000 };
+    expect(jobLocked(s, 'private')).toMatch(/No manager/);
+    s.manager = { name: 'Clive', honesty: 70, clout: 80, cut: 0.2, signed: 0, read: true, taken: 0 };
+    const paid = managerJob(s, 'private');
+    expect(paid.money).toBeGreaterThan(1000 + 500);
+    expect(paid.week).toBe(s.week);
+    expect(jobLocked(paid, 'private')).toMatch(/weeks/);
+    expect(jobLocked(paid, 'label')).toMatch(/label/);
+    let tv = 0;
+    for (let seed = 1; seed <= 20; seed++) if (managerJob({ ...s, rng: seed }, 'tv').fans > 5000) tv++;
+    expect(tv).toBeGreaterThan(8);
+    const favour = managerJob({ ...s, rng: 2, flags: { ...s.flags } }, 'press');
+    expect(favour.log.at(-1)!.text).toMatch(/favour|editor/);
+  });
+});
+
+describe('the band deal', () => {
+  it('shares follow the deal, writers get the publishing, and changing it costs the losers', async () => {
+    const { shares, writerShares } = await import('../src/game/split');
+    const { setSplit } = await import('../src/game/engine');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 7 });
+    s.songs = [1, 2, 3, 4].map((i) => ({ title: `S${i}`, quality: 60, writer: i === 4 ? s.members[1].id : 'p', kind: 'standard' as const, genre: 'glam' as const, released: true }));
+    expect(writerShares(s).p).toBeCloseTo(0.75, 5);
+    const eq = shares(s, 'albums');
+    expect(eq.p).toBeCloseTo(0.25, 5);
+    const w = shares({ ...s, split: 'writers' }, 'albums');
+    expect(w.p).toBeCloseTo(0.5 / 4 + 0.5 * 0.75, 5);
+    expect(shares({ ...s, split: 'writers' }, 'gigs').p).toBeCloseTo(0.25, 5);
+    expect(shares({ ...s, split: 'leader' }, 'gigs').p).toBeCloseTo(0.4, 5);
+    const changed = setSplit(s, 'leader');
+    expect(changed.members[1].mood).toBeLessThan(s.members[1].mood);
+    const played = act({ ...changed, fans: 500 }, { type: 'gig', option: 'venue1' });
+    expect(played.members[0].earned ?? 0).toBeGreaterThan(played.members[1].earned ?? 0);
+  });
+});

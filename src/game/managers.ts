@@ -1,7 +1,7 @@
 // Managers: the person who answers the phone, books the gigs and takes twenty per cent of everything.
 // A good one pays for themselves. A bad one owns your songs "throughout the universe".
 import { Rng, clamp } from './rng';
-import { addBuzz, adjust, log, milestone, mutate } from './helpers';
+import { addBuzz, adjust, earn, log, milestone, mutate } from './helpers';
 import type { GameState, Manager } from './types';
 
 const NAMES = [
@@ -88,3 +88,88 @@ export function managerWeek(s: GameState, rng: Rng): void {
     log(s, `£${gone} went from the band account as "management expenses". The receipt is for a dinner in Mayfair you were not at.`, 'bad');
   }
 }
+
+// ---------------------------------------------------------------- jobs for the manager
+
+export type ManagerJob = 'tv' | 'private' | 'label' | 'press';
+export const JOB_LABEL: Record<ManagerJob, string> = { tv: 'Get us on the telly', private: 'Book a private party', label: 'Lean on the label', press: 'Kill a story' };
+export const JOB_WEEKS: Record<ManagerJob, number> = { tv: 8, private: 6, label: 13, press: 20 };
+
+export function jobHint(s: GameState, job: ManagerJob): string {
+  const m = s.manager!;
+  switch (job) {
+    case 'tv': return `A slot on a pop show, if ${m.name} knows the producer. Buzz, fans, and the band in make-up. Odds ${Math.round(jobOdds(s, job) * 100)}%.`;
+    case 'private': return `A rich kid's twenty-first, a corporate do, a wedding: about £${privateFee(s).toLocaleString('en-GB')} for one night nobody will admit to. Energy -8.`;
+    case 'label': return s.contract ? `A shouting match in the A&R office: a chunk off the tab and a warmer label, or a colder one. Odds ${Math.round(jobOdds(s, job) * 100)}%.` : 'Needs a label to lean on.';
+    case 'press': return `Next scandal, the paper runs a different story. Buys silence once, for a while. Odds ${Math.round(jobOdds(s, job) * 100)}%.`;
+  }
+}
+
+export function jobOdds(s: GameState, job: ManagerJob): number {
+  const c = s.manager?.clout ?? 0;
+  return clamp(job === 'tv' ? 0.2 + c / 120 : job === 'label' ? 0.35 + c / 150 : job === 'press' ? 0.3 + c / 130 : 1, 0.05, 0.95);
+}
+
+export const privateFee = (s: GameState) => Math.round(((150 + s.fans * 0.25) * (0.6 + (s.manager?.clout ?? 30) / 100)) / 10) * 10;
+
+export function jobLocked(s: GameState, job: ManagerJob): string | null {
+  if (!s.manager) return 'No manager.';
+  if (s.tour) return 'On tour.';
+  const last = s.flags[`job_${job}`];
+  if (last !== undefined && s.week - last < JOB_WEEKS[job]) return `${s.manager.name} is still working on the last one. ${JOB_WEEKS[job] - (s.week - last)} weeks.`;
+  if (job === 'label' && !s.contract) return 'Needs a label to lean on.';
+  if (job === 'press' && s.flags.pressFavour) return 'A favour is already owed.';
+  return null;
+}
+
+/** The manager earns their cut: one job, no week spent. */
+export function managerJob(state: GameState, job: ManagerJob): GameState {
+  const why = jobLocked(state, job);
+  if (why) throw new Error(why);
+  return mutate(state, (s, rng) => {
+    const m = s.manager!;
+    s.flags[`job_${job}`] = s.week;
+    const ok = rng.chance(jobOdds(s, job));
+    switch (job) {
+      case 'tv': {
+        if (!ok) { log(s, `${m.name} rang the telly people. The telly people rang back to say no, politely, and then not at all.`, 'neutral'); return; }
+        const gain = Math.round(200 + s.fans * 0.03 + m.clout * 10);
+        addBuzz(s, 6 + Math.round(m.clout / 10));
+        s.fans += gain;
+        for (const x of s.members) adjust(x, 'image', 1);
+        log(s, `${m.name} got the band three minutes on a Saturday-morning pop show, between a cartoon and a cookery slot. ${gain.toLocaleString('en-GB')} new fans and a letter from a vicar.`, 'good');
+        return;
+      }
+      case 'private': {
+        const fee = privateFee(s);
+        s.money += fee;
+        earn(s, 'gigs', fee);
+        commission(s, fee);
+        for (const x of s.members) { adjust(x, 'energy', -8); adjust(x, 'mood', rng.int(-4, 3)); }
+        log(s, `${m.name} booked ${rng.pick(['a shipping heir\'s twenty-first in Surrey', 'a software company\'s Christmas do in July', 'a wedding in Hertfordshire where the bride cried through the encore', 'a nightclub opening in Marbella', 'a car launch in a hangar'])}. £${fee.toLocaleString('en-GB')} in an envelope, and nobody mentions it again.`, 'good');
+        return;
+      }
+      case 'label': {
+        const c = s.contract!;
+        const l = labelName(c.label);
+        if (!ok) { c.goodwill = clamp(c.goodwill - 8, 0, 100); log(s, `${m.name} went in shouting and came out quieter. ${l} are "disappointed in the tone". Nothing off the tab.`, 'bad'); return; }
+        const off = Math.round(Math.min(c.unrecouped, 500 + c.unrecouped * (0.05 + m.clout / 500)));
+        c.unrecouped -= off;
+        c.goodwill = clamp(c.goodwill + 5, 0, 100);
+        log(s, `${m.name} spent an afternoon in ${l}'s office with a calculator and a voice. £${off.toLocaleString('en-GB')} of "promotional expenses" vanished from the tab, and they sent flowers.`, 'good');
+        return;
+      }
+      case 'press': {
+        if (!ok) { log(s, `${m.name} took a tabloid editor to lunch. The editor ate, listened, and promised nothing.`, 'neutral'); return; }
+        s.flags.pressFavour = 1;
+        log(s, `${m.name} has a favour in the bank with a Sunday editor. The next thing that should not get out will not. Once.`, 'good');
+        return;
+      }
+    }
+  });
+}
+
+function labelName(id: string): string {
+  return LABEL_NAMES[id] ?? id;
+}
+const LABEL_NAMES: Record<string, string> = { badpenny: 'Bad Penny Records', waxlyrical: 'Wax Lyrical', gutterpress: 'Gutterpress Recordings', goldtooth: 'Goldtooth Music', starlight: 'Starlight Entertainment Group', colossus: 'Colossus Phonographic', imperial: 'Imperial Gramophone', polyvox: 'Polyvox International' };

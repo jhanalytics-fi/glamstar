@@ -255,7 +255,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
           { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'For the merch table. The label does not care.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
           { id: 'single', label: `Single on ${l.name}`, cost: 0, hint: `Proper studio, proper promotion. ${bill(0.15)}.`, locked: need(2) },
           { id: 'ep', label: `EP on ${l.name}`, cost: 0, hint: `Four songs, label muscle. ${bill(0.35)}.`, locked: need(4) },
-          { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.`, locked: need(8) },
+          { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.${producerNote(s)}`, locked: need(8) },
           ...liftOption(s, 0),
         ];
       }
@@ -263,7 +263,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'Sell tapes at gigs, send one to the radio.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
         { id: 'single', label: 'Self-financed 7" single', cost: 300, hint: 'A real record in real shops. Can chart if enough people buy it.', locked: need(2) },
         { id: 'ep', label: 'Self-financed 12" EP', cost: 650, hint: 'Four songs. Sells slower, earns more per copy.', locked: need(4) },
-        { id: 'album', label: 'Self-financed album', cost: 1500, hint: 'Eight songs. Huge risk without a label behind you.', locked: need(8) },
+        { id: 'album', label: 'Self-financed album', cost: 1500, hint: `Eight songs. Huge risk without a label behind you.${producerNote(s)}`, locked: need(8) },
         ...liftOption(s, 150),
       ];
     }
@@ -562,6 +562,12 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
   headline(s, 'New song', `${song.quality}`);
   setVerdict(s, song.quality >= 92 ? 'The one' : song.quality >= 65 ? 'A belter' : song.quality >= 50 ? 'Keeper' : 'Filler', song.quality >= 50 ? 'good' : 'neutral');
   return song;
+}
+
+/** Who is booked to produce the next album: the producer is chosen beforehand and waits for the session. */
+function producerNote(s: GameState): string {
+  const p = s.flags.nextProducer ?? 0;
+  return p === 3 ? ' Producer booked: the legend (+12 quality, tighter band).' : p === 2 ? ' Producer booked: a name producer (+6 quality).' : p === 1 ? ' Producer booked: your mate with the eight-track (+1).' : ' No producer booked: the house engineer does it. A producer offer comes once eight songs are ready.';
 }
 
 /** A songwriter for hire costs what the band can be seen to pay. */

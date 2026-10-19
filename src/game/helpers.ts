@@ -1,5 +1,6 @@
 // Small shared helpers for the game logic modules.
 import { Rng, clamp } from './rng';
+import { shareOut } from './split';
 import { reveal } from './characters';
 import { addAffinity, getAffinity } from './chemistry';
 import type { IncomeKind, Beat, EffectChip, GameState, HiddenTrait, LogEntry, MilestoneKind, Musician, Scene, Vibe } from './types';
@@ -60,6 +61,7 @@ export function earn(s: GameState, kind: IncomeKind, amount: number): void {
   const y = String(1982 + Math.floor(s.week / 52));
   const row = (s.ledger ??= {})[y] ??= {};
   row[kind] = (row[kind] ?? 0) + Math.round(amount);
+  shareOut(s, kind, amount);
 }
 
 /** Merch money per head: badges and shirts, more when the band looks the part. */
@@ -89,7 +91,7 @@ export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | '
     }
   }
   for (const k of Object.keys(s.affinity)) if (k.split('|').includes(id)) delete s.affinity[k];
-  (s.alumni ??= []).push({ name: m.name, realName: m.realName, role: m.role, joined: m.joined ?? Math.max(0, s.week - m.weeksInBand), left: s.week, how });
+  (s.alumni ??= []).push({ name: m.name, realName: m.realName, role: m.role, joined: m.joined ?? Math.max(0, s.week - m.weeksInBand), left: s.week, how, earned: m.earned ?? 0 });
   milestone(s, 'lineup', how === 'fired' ? `${m.name} was fired.` : how === 'quit' ? `${m.name} quit the band.` : `${m.name} left for another band.`);
   if (how === 'fired') log(s, `You fired ${m.name}. ${m.hidden.ego >= 70 ? 'Took the good amp on the way out.' : 'Took it better than expected.'}`, 'bad');
 }

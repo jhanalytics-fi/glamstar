@@ -270,17 +270,31 @@ export function readSmallPrint(state: GameState, id: string): GameState {
   });
 }
 
-export function haggle(state: GameState, id: string): GameState {
+export type Ask = 'advance' | 'rate' | 'albums' | 'budget';
+export const ASK_LABEL: Record<Ask, string> = { advance: 'More money up front', rate: 'A better royalty', albums: 'A shorter deal', budget: 'A bigger recording budget' };
+export const ASK_HINT: Record<Ask, string> = {
+  advance: 'Advance +25%, royalty +1 point. The classic.',
+  rate: 'Royalty +2 points, advance -10%. Pays off if the records sell.',
+  albums: 'One album fewer owed, advance -15%. Freedom sooner.',
+  budget: 'Recording budget +40%. Better records, and it all goes on the tab.',
+};
+
+/** Push the label on one thing. Two pushes per offer; each one risks the offer. */
+export function haggle(state: GameState, id: string, ask: Ask = 'advance'): GameState {
   return mutate(state, (s, rng) => {
     const o = offer(s, id);
     const l = labelById(o.label);
     if (o.haggled >= 2) throw new Error(`${l.name} have made their final offer.`);
+    if (ask === 'albums' && o.terms.albums <= 1) throw new Error('One album is as short as it gets.');
     o.haggled++;
-    const odds = clamp(0.3 + heat(s) / 5000 + (s.offers.length - 1) * 0.15 - (o.haggled - 1) * 0.15 + managerHaggle(s), 0.1, 0.85);
+    const odds = clamp(0.3 + heat(s) / 5000 + (s.offers.length - 1) * 0.15 - (o.haggled - 1) * 0.15 + managerHaggle(s) - (ask === 'albums' && l.tier === 'shark' ? 0.15 : 0), 0.1, 0.85);
     if (rng.chance(odds)) {
-      o.terms.advance = Math.round((o.terms.advance * 1.25) / 50) * 50;
-      o.terms.rate = Math.round((o.terms.rate + 0.01) * 100) / 100;
-      log(s, `You played hard to get. ${l.name} came back with £${o.terms.advance.toLocaleString('en-GB')} and ${Math.round(o.terms.rate * 100)}%.`, 'good');
+      const t = o.terms;
+      if (ask === 'advance') { t.advance = Math.round((t.advance * 1.25) / 50) * 50; t.rate = Math.round((t.rate + 0.01) * 100) / 100; }
+      if (ask === 'rate') { t.rate = Math.round((t.rate + 0.02) * 100) / 100; t.advance = Math.round((t.advance * 0.9) / 50) * 50; }
+      if (ask === 'albums') { t.albums -= 1; t.advance = Math.round((t.advance * 0.85) / 50) * 50; }
+      if (ask === 'budget') t.budget = Math.round((t.budget * 1.4) / 100) * 100;
+      log(s, `${s.manager ? `${s.manager.name} did the talking` : 'You played hard to get'}. ${l.name} came back with £${t.advance.toLocaleString('en-GB')}, ${Math.round(t.rate * 100)}%, ${t.albums} album${t.albums === 1 ? '' : 's'} and a £${t.budget.toLocaleString('en-GB')} budget.`, 'good');
     } else if (rng.chance(l.tier === 'major' ? 0.4 : 0.25)) {
       s.offers = s.offers.filter((x) => x.id !== id);
       s.flags[`passed_${l.id}`] = s.week;

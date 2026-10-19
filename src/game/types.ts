@@ -39,6 +39,8 @@ export interface Musician {
   weeksInBand: number;
   /** Instruments and amps, 1-100. Junk through a practice amp, or vintage through a stack. */
   kit?: number;
+  /** Their share of everything the band has earned, under the band deal. Paper money: the bank is shared. */
+  earned?: number;
   /** The week they joined, for the line-up history. */
   joined?: number;
   blurb: string;
@@ -111,6 +113,7 @@ export interface TourRecord {
 
 /** Someone who used to be in the band. */
 export interface Alumnus {
+  earned?: number;
   name: string;
   realName: string;
   role: Role;
@@ -284,6 +287,8 @@ export interface GameState {
   wheels: Wheels;
   bandGender?: BandGender;
   difficulty?: Difficulty;
+  /** How the money is split on paper. */
+  split?: Split;
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
@@ -335,6 +340,8 @@ export interface NewGameInput {
 }
 
 export type BandGender = 'male' | 'female' | 'mixed';
+/** The band deal: equal shares, the writers keep the publishing, or the leader's band. */
+export type Split = 'equal' | 'writers' | 'leader';
 export type Difficulty = 'easy' | 'normal' | 'hard';
 export type Lineup = 'solo' | 'duo' | 'trio' | 'full';
 

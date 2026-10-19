@@ -6,16 +6,18 @@ import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor, type ChartId
 import { awardsNight } from './awards';
 import { ladderDone } from './goals';
 import { fanClubWeek } from './fanclub';
+import { splitWeek, shares } from './split';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
-import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, removeMember, revealLog, snapshot } from './helpers';
+import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
 import { catalogueWeek } from './catalogue';
 import { ruinWeek } from './ruinEvents';
-import type { Action, GameState, LogEntry, Musician, NewGameInput, TourPolicy } from './types';
+import { SPLIT_LABEL } from './split';
+import type { Action, GameState, LogEntry, Musician, NewGameInput, Split, TourPolicy } from './types';
 
 export { first } from './helpers';
 
@@ -319,6 +321,26 @@ export function retire(state: GameState): GameState {
   });
 }
 
+/** Change the band deal. Whoever loses by it remembers. */
+export function setSplit(state: GameState, split: Split): GameState {
+  if (state.pending) throw new Error('Deal with the situation first.');
+  if ((state.split ?? 'equal') === split) return state;
+  return mutate(state, (s) => {
+    const before = shares(s, 'albums');
+    s.split = split;
+    const after = shares(s, 'albums');
+    const me = player(s);
+    for (const m of s.members) {
+      if (m.isPlayer) continue;
+      const d = (after[m.id] ?? 0) - (before[m.id] ?? 0);
+      if (d < -0.02) { adjust(m, 'mood', -10); addAffinity(s, m.id, me.id, -8); m.hidden.loyalty = clamp(m.hidden.loyalty - 4, 1, 99); }
+      else if (d > 0.02) { adjust(m, 'mood', 8); addAffinity(s, m.id, me.id, 5); }
+    }
+    milestone(s, 'drama', `The band deal changed: ${SPLIT_LABEL[split].toLowerCase()}.`);
+    log(s, `New band deal: ${SPLIT_LABEL[split].toLowerCase()}. ${split === 'leader' ? 'A lawyer drew it up. The band signed it in the order they were asked.' : split === 'writers' ? 'The writers nodded. The rhythm section looked at the floor.' : 'Everybody gets the same. The one who writes everything smiled with their teeth.'}`, 'neutral');
+  });
+}
+
 export function fire(state: GameState, memberId: string): GameState {
   if (state.pending) throw new Error('Deal with the situation first.');
   return mutate(state, (s) => removeMember(s, memberId, 'fired'));
@@ -415,6 +437,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   labelWeek(s, rng);
   catalogueWeek(s, rng);
   fanClubWeek(s);
+  splitWeek(s, rng);
   const ruin = ruinWeek(s, rng);
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
