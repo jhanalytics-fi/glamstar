@@ -312,7 +312,7 @@ describe('action choices', () => {
   it('you can retire at the top, and only at the top', () => {
     const s = newGame(input);
     expect(() => retire(s)).toThrow(/rung/);
-    const top = { ...s, fans: 120000, lastGigWeek: 5, songs: [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 70, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: true })) };
+    const top = { ...s, fans: 1200000, lastGigWeek: 5, songs: [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 70, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: true })) };
     top.releases = [{ id: 'a', kind: 'single', title: 'S1', quality: 70, appeal: 1, week: 1, sold: 900000, lastWeek: 0, peaks: { uk: 1, world: 1 } }];
     top.world = structuredClone(s.world);
     top.world.peaks = { london: 1, uk: 1, world: 1 };

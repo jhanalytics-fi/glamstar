@@ -804,7 +804,7 @@ function effectChips(fx: EffectChip[]): string {
 
 function nextBlock(s: GameState): string {
   if (s.over) {
-    return `<div class="over"><h2>${s.over.won ? 'You made it. Sort of.' : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
+    return `<div class="over"><h2>${s.over.won ? (s.over.reason.includes('walked away') ? 'Rock gods. Retired.' : 'You made it. Sort of.') : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
   }
   const ev = eventCard(s);
   if (ev) return ev;

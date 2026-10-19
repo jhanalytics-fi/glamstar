@@ -379,7 +379,8 @@ function fadeFans(s: GameState): void {
   // People grow up, move on, get mortgages: half a per cent of casual fans drift off every week regardless.
   const casualNow = s.fans - (s.flags.coreFans ?? 0);
   // A fan club keeps a few more of them writing in.
-  if (casualNow > 200) s.fans -= Math.round(casualNow * (s.flags.fanClub !== undefined ? 0.004 : 0.005));
+  // A huge fan base churns slower in proportion: the world is a bigger pool and it forgets more slowly.
+  if (casualNow > 200) s.fans -= Math.round(casualNow * (s.flags.fanClub !== undefined ? 0.004 : 0.005) / (1 + casualNow / 800000));
   if (s.tour) return;
   const lastRelease = s.releases.reduce((a, r) => Math.max(a, r.week), -99);
   const lastSeen = Math.max(s.lastGigWeek ?? -99, lastRelease, s.flags.lastTourWeek ?? -99, 0);
@@ -465,6 +466,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
     }
   }
 
+  { const r = reach(s); s.flags.reachBonus = Math.round((r.us + r.europe + r.world) * 100) / 100; }
   const records = sellRecords(s, rng, heatCurve);
   certify(s);
   const sold = records.reduce((a, r) => a + r.units, 0);

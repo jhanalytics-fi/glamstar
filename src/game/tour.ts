@@ -282,7 +282,9 @@ export function playTourWeek(s: GameState, rng: Rng): void {
     const pay = Math.round(t.fee * Math.min(1, crowd / stop.capacity) + crowd * 0.4);
     const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
     // New towns mean new people, until you have played them all to death.
-    const novelty = clamp(1 - s.fans / (t.fans * 10), 0.1, 1);
+    // A world tour plays to the world: the pool of people who have not seen you is far bigger.
+    const pool = t.id === 'stadiums' ? 80 : t.id === 'america' || t.id === 'japan' ? 30 : 10;
+    const novelty = clamp(1 - s.fans / (t.fans * pool), 0.1, 1);
     // In a club most of the room is new to you; in a stadium most of them already own the album.
     const gain = Math.round(((crowd * (perf - 40)) / 90) * 0.2 * CONVERSION[t.id] * (perf > 40 ? fashion * novelty : 1));
     const fanDelta = Math.max(gain, -Math.round(crowd * 0.03));

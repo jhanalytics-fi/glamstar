@@ -1012,7 +1012,9 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
       if (cash < 0) { const take = Math.round(units * MARGIN[r.kind] * (r.outside ? OUTSIDE_CUT : 1)); s.money += take; earn(s, STREAM[r.kind], take); }
       earn(s, UNITS[r.kind], units);
       // Records win new listeners, but each extra fan is harder to find than the last.
-      s.fans += Math.round(units * 0.04 * (3000 / (3000 + s.fans)));
+      // Records win new listeners at home and, as far as the band's reach goes, abroad.
+      const abroad = r.label ? 1 + (s.flags.reachBonus ?? 0) * 0.4 : 1;
+      s.fans += Math.round((units * 0.04 * abroad) / (1 + s.fans / 120000));
       out.push({ id: r.id, title: r.title, units, kind: r.kind, label: r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : 'Kebab Shop Records' });
     }
   }

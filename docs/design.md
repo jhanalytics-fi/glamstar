@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.29)
+## Prototype status (v0.30)
 
 Playable in the browser. Implemented:
 
@@ -448,3 +448,12 @@ New-game choices beyond the name and the sound:
 ## Retiring at the top (v0.29)
 
 Once every rung of the ladder is climbed, the goal line turns gold and offers **Retire at the top** (two taps; not on tour, not with a situation pending). The game ends won, with a career summary: years, fans, records and copies, UK and world number ones, tour dates, awards, former members, money in the bank. The 1991 ending uses the same summary. `retire()` in engine; `ladderDone()` in goals.
+
+## Millions of fans (v0.30)
+
+The fan ceiling sat around 450,000 because records stopped winning fans past a few thousand (`units x 0.04 x 3000/(3000+fans)`), tours ran out of new faces at ten times the tier's fan gate, and half a per cent of everyone drifted off every week. Now:
+
+- Records win `units x 0.04 x (1 + 0.4 x reach) / (1 + fans/120,000)` fans, where reach is the sum of US, Euro and World reach (0-3) for a label record: a band with distribution and tours behind it wins fans abroad.
+- Stadium tours play to a pool of 80x the tier gate, America and Japan 30x (clubs and arenas 10x as before).
+- Weekly drift is divided by `1 + casual fans/800,000`: a huge fan base forgets you more slowly.
+- A new last rung: **A million fans around the world**. Retiring at the top needs it. The bot's median career now ends around 600,000 fans; a good player will pass a million.

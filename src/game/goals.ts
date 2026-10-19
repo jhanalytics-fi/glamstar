@@ -31,6 +31,7 @@ export const LADDER: Rung[] = [
   { text: 'Fill the stadiums of the world', done: (s) => toured(s, 'world') },
   { text: 'Number one in the world', done: (s) => peak(s, 'world') === 1 },
   { text: '100,000 fans', done: (s) => s.fans >= 100000 },
+  { text: 'A million fans around the world', done: (s) => s.fans >= 1000000 },
 ];
 
 /** Every rung climbed: the band has nothing left to prove. */
