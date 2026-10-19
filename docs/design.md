@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.30)
+## Prototype status (v0.31)
 
 Playable in the browser. Implemented:
 
@@ -462,3 +462,12 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 
 - **Fights need bad blood.** The rehearsal-room fight used to pick the worst pair whatever their affinity. Now the odds depend on it: 90% when the pair is under -20, 50% under 10, 15% under 35 (35% if both have big egos), and 2% (8%) when everyone gets on. A band with chemistry in the nineties almost never comes to blows; when it does, the fight's resolution moves affinity and so the chemistry.
 - **Chemistry is not the song.** The writing base takes `6 + chem x 0.14` instead of `chem x 0.2`, so a feuding band loses a few points, not a dozen. And sparks: when chemistry is under 45 and the two best writers (55+ and 50+) are different people, 30% of jams, trend and ballad sessions get +8 to +16, "written at each other".
+
+## The endgame has its own prices (v0.31)
+
+- **Prices past a million:** event option prices grow with the square root of the bank up to £1.25m (x25), then in step with it, so a £40 bribe is £1,000 at £1.25m and £3,200 at £4m. Real price tags (a van, a bus, a jet) are marked `fixed` and are not scaled.
+- **Poaching, rich edition:** past 50,000 fans a rival band's offer becomes a solo deal. A bigger cut still works, but a member with loyalty under 40 walks 40% of the time, "it was never about the money". From 20,000 fans a new option: one more album together, then decide (loyalty +10, the band rallies).
+- **Wanting a life:** past 50,000 fans the "real life" offer is a year painting in Provence, a film, a baby, a boat, a quiet record of their own, and money is not the point. New options: give them the year (26 weeks out, loyalty +15, writing +3 steps) or one more album first.
+- **Wheels for the band you are:** the offer is the best set the band's fans and money can carry, so a stadium band skips the splitter van. Old saves that toured America or the world start with a bus of their own.
+- **The long haul:** from week seven of a tour everyone loses energy (up to 10 a week, x0.6 in suites, x0.8 in hotels), from week nine mood 2 a week, and from week eleven half the pairs in the band lose 2 affinity a week. Twenty weeks on the road are felt whatever the sheets.
+- The header shows the biggest chart you are on (World, US, UK, Albums) instead of London once a record charts.

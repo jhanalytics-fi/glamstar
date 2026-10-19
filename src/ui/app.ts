@@ -421,6 +421,10 @@ function renderCreate(): string {
 function renderGame(s: GameState): string {
   const chem = chemistry(s);
   const pos = playerPosition(s.world, 'london');
+  // The chart that matters most right now: the biggest one you are on, else London.
+  const chartStat = (['world', 'us', 'uk', 'albums'] as const).map((c) => ({ c, p: playerPosition(s.world, c) })).find((x) => x.p !== null);
+  const chartLabel = chartStat ? (chartStat.c === 'world' ? 'World chart' : chartStat.c === 'us' ? 'US chart' : chartStat.c === 'uk' ? 'UK chart' : 'Albums chart') : 'London chart';
+  const chartPos = chartStat ? chartStat.p : pos;
   return `
     <header class="top">
       <div>
@@ -433,7 +437,7 @@ function renderGame(s: GameState): string {
         <div><dt>${tip('Buzz', 'buzz')}</dt><dd data-stat="buzz">${s.buzz}</dd></div>
         <div title="Style ${chem.style}, relationships ${chem.affinity}, mood ${chem.mood}${chem.knownEgoPenalty ? `, egos -${chem.knownEgoPenalty}` : ''}"><dt>${tip('Chemistry', 'chemistry')}</dt><dd>${chem.total}</dd></div>
         <div><dt>${tip('Tightness', 'tightness')}</dt><dd data-stat="tightness">${s.tightness}</dd></div>
-        <div><dt>${tip('London chart', 'londonchart')}</dt><dd>${pos ? `#${pos}` : '-'}</dd></div>
+        <div title="${chartStat ? 'Your best record on the biggest chart it is on. London gigs chart until then.' : ''}"><dt>${chartStat ? chartLabel : tip('London chart', 'londonchart')}</dt><dd>${chartPos ? `#${chartPos}` : '-'}</dd></div>
       </dl>
       ${bandPulse(s)}
     </header>

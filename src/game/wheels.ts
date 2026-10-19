@@ -71,6 +71,13 @@ export function nextWheels(s: GameState): Wheels | null {
   return WHEELS_ORDER.find((w) => WHEELS[w].rank === own + 1 && w !== 'van') ?? null;
 }
 
+/** The best set of wheels a band of this standing can be offered: a stadium band is not shown a splitter van. */
+export function bestWheels(s: GameState): Wheels | null {
+  const own = WHEELS[wheelsOf(s)].rank;
+  const fit = WHEELS_ORDER.filter((w) => w !== 'van' && WHEELS[w].rank > own && s.fans >= WHEELS[w].fans && s.money >= WHEELS[w].price * 1.3);
+  return fit.length ? fit[fit.length - 1] : null;
+}
+
 /** The lodging a tour of this size defaults to. */
 export function defaultLodging(tierId: string): Lodging {
   return tierId === 'pubs' || tierId === 'clubs' ? 'floors' : tierId === 'theatres' || tierId === 'europe' ? 'bnb' : 'hotels';

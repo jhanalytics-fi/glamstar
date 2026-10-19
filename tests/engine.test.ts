@@ -1053,6 +1053,31 @@ describe('touring', () => {
     expect(plain.money).toBeLessThan(rough.money + 1);
   });
 
+  it('a stadium band is offered a bus or a jet, never a splitter van', async () => {
+    const { bestWheels } = await import('../src/game/wheels');
+    const s = newGame(input);
+    expect(bestWheels({ ...s, wheels: 'van', fans: 1000, money: 10000 })).toBe('splitter');
+    expect(bestWheels({ ...s, wheels: 'van', fans: 300000, money: 100000 })).toBe('coach');
+    expect(bestWheels({ ...s, wheels: 'van', fans: 300000, money: 3000000 })).toBe('jet');
+    expect(bestWheels({ ...s, wheels: 'jet', fans: 300000, money: 3000000 })).toBeNull();
+  });
+
+  it('long tours wear the band down even in suites', () => {
+    const run = (weeks: number, lodging: 'suites' | 'floors') => {
+      let s: GameState = { ...ready(80000, 5000000), buzz: 70, wheels: 'coach' };
+      s.world.peaks.uk = 1; s.world.peaks.world = 1;
+      s.members.forEach((m) => { m.energy = 100; m.mood = 90; });
+      s = settle(act(s, A('tour', 'stadiums', { weeks, policy: 'steady', lodging })));
+      for (let i = 0; i < weeks + 2 && s.tour; i++) s = settle(act(s, A('tour', 'continue:steady')));
+      return s;
+    };
+    const long = run(16, 'suites');
+    const short = run(10, 'suites');
+    const avgMood = (g: GameState) => g.members.reduce((a, m) => a + m.mood, 0) / g.members.length;
+    expect(avgMood(long)).toBeLessThan(avgMood(short));
+    expect(long.log.some((l) => /Tour over/.test(l.text))).toBe(true);
+  });
+
   it('arena tours come with a hired bus, and the van only dies now and then', async () => {
     const { tourWheels, nextWheels } = await import('../src/game/wheels');
     const s = newGame(input);

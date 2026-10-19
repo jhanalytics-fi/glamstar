@@ -4,7 +4,7 @@ import { Rng, clamp } from './rng';
 import { applyLegend, gigFate, tourHiccup } from './fate';
 import { seizeTourProfit, tourSupport } from './labels';
 import { commission } from './managers';
-import { available, missingForGig, performance } from './chemistry';
+import { addAffinity, available, forEachPair, missingForGig, performance } from './chemistry';
 import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, revealLog, setVibe, verdict } from './helpers';
 import { trend } from './world';
 import type { GameState, Lodging, Musician, TourPolicy, TourStop } from './types';
@@ -317,6 +317,20 @@ export function playTourWeek(s: GameState, rng: Rng): void {
 
   // Where you sleep decides what is left of you by Friday.
   for (const m of available(s)) { adjust(m, 'energy', lodge.energy); adjust(m, 'mood', lodge.mood); }
+  // The long haul: past six weeks the road wears everyone whatever the thread count, and past ten the band
+  // starts to get on its own nerves. Silk sheets soften it; nothing removes it.
+  const haul = Math.max(0, tour.week - 6);
+  if (haul > 0) {
+    const soft = tour.lodging === 'suites' ? 0.6 : tour.lodging === 'hotels' ? 0.8 : 1;
+    for (const m of available(s)) {
+      adjust(m, 'energy', -Math.min(10, haul * 1.5) * soft);
+      if (tour.week > 8) adjust(m, 'mood', -2 * soft);
+    }
+    if (tour.week > 10) {
+      forEachPair(available(s), (a, b) => { if (rng.chance(0.5)) addAffinity(s, a.id, b.id, -2); });
+      if (tour.week === 11) beat(s, undefined, rng.pick(['Week eleven. Everyone has a seat on the bus that is theirs and a face they pull when someone else sits in it.', 'The band has stopped talking at breakfast. Not angrily. There is nothing left to say.', 'Someone has started a list of things the drummer does with his fork.']), 'neutral');
+    }
+  }
   // The road wears everyone down; homesickness sets in after three weeks.
   for (const m of available(s)) {
     if (tour.week >= 3) adjust(m, 'mood', -3);

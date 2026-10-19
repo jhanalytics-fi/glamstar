@@ -16,7 +16,7 @@ import { CATALOGUE_EVENTS } from './catalogueEvents';
 import { RUIN_EVENTS } from './ruinEvents';
 import { FANCLUB_EVENTS } from './fanclubEvents';
 import { KIT_EVENTS } from './kitEvents';
-import { WHEELS, nextWheels, setWheels, wheelsOf } from './wheels';
+import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
 
@@ -24,6 +24,8 @@ export interface EventOption {
   label: string;
   hint: string;
   cost?: number;
+  /** A real price tag (a van, a jet): not scaled to the band's means. */
+  fixed?: boolean;
   locked?: string;
   resolve: (s: GameState, rng: Rng, p: Params) => void;
 }
@@ -76,8 +78,8 @@ const WHEELS_EVENT: EventDef = {
   weight: 3,
   where: 'home',
   when: (s) => {
-    const w = nextWheels(s);
-    return w && s.fans >= WHEELS[w].fans && s.money >= WHEELS[w].price * 1.3 && since(s, 'wheelsOffer', 20) ? { w } : null;
+    const w = bestWheels(s);
+    return w && since(s, 'wheelsOffer', 20) ? { w } : null;
   },
   title: (_s, p) => (p.w === 'jet' ? 'A jet, going cheap' : p.w === 'coach' ? 'A tour bus with your name on it' : 'A splitter van, one careful owner'),
   text: (s, p) => {
@@ -91,6 +93,7 @@ const WHEELS_EVENT: EventDef = {
         label: `Buy it: £${WHEELS[w].price.toLocaleString('en-GB')}`,
         hint: w === 'jet' ? 'Nobody arrives tired again. Nobody arrives rich either.' : w === 'coach' ? 'Sleep on the move, arrive human. The running costs are real.' : 'Bunks and a fridge. The band arrives with its spine intact.',
         cost: WHEELS[w].price,
+        fixed: true,
         resolve: (st) => {
           st.flags.wheelsOffer = st.week;
           setWheels(st, w);
@@ -719,21 +722,37 @@ const BASE_EVENTS: EventDef[] = [
       const c = mates(s).filter((m) => m.skill >= 50).sort((a, b) => a.hidden.loyalty - b.hidden.loyalty)[0];
       return c && s.fans >= 40 ? { m: c.id, rival: pickRivalName(s.world, rng) } : null;
     },
-    title: (s, p) => `${p.rival} want ${nm(s, p.m)}`,
-    text: (s, p) => `${p.rival} have offered ${nm(s, p.m)} a place. They have a manager and a proper van.`,
+    title: (s, p) => (s.fans >= 50000 ? `${nm(s, p.m)} has been offered a solo deal` : `${p.rival} want ${nm(s, p.m)}`),
+    text: (s, p) => (s.fans >= 50000 ? `A label has offered ${nm(s, p.m)} a solo record: their own name on the sleeve, their own producer, their own tour. ${p.rival}'s manager is handling it. ${nm(s, p.m)} has not said no.` : `${p.rival} have offered ${nm(s, p.m)} a place. They have a manager and a proper van.`),
     options: (s, p) => {
       const m = mem(s, p.m);
       return [
         {
           label: 'Offer a bigger cut',
-          hint: 'Money talks.',
+          hint: s.fans >= 50000 ? 'Money talks, but less loudly than it used to.' : 'Money talks.',
           cost: 40,
-          resolve: (st) => {
+          resolve: (st, rng) => {
             const x = mem(st, m.id);
+            if (st.fans >= 50000 && x.hidden.loyalty < 40 && rng.chance(0.4)) {
+              removeMember(st, x.id, 'poached');
+              log(st, `${x.name} looked at the figure, said it was never about the money, and signed the solo deal.`, 'bad');
+              return;
+            }
             x.hidden.loyalty = clamp(x.hidden.loyalty + 15, 1, 99); adjust(x, 'mood', 5);
             log(st, `${first(x)} took the money and stayed.`, 'good');
           },
         },
+        ...(s.fans >= 20000 ? [{
+          label: 'One more album together, then decide',
+          hint: 'Loyalty, not money. The record had better be good.',
+          resolve: (st: GameState) => {
+            const x = mem(st, m.id);
+            x.hidden.loyalty = clamp(x.hidden.loyalty + 10, 1, 99); adjust(x, 'mood', 8);
+            st.flags.oneMoreAlbum = st.week;
+            for (const o of mates(st)) if (o.id !== x.id) { adjust(o, 'mood', 4); addAffinity(st, o.id, x.id, 4); }
+            log(st, `${first(x)} agreed: one more album, the best one, and then we talk. The band shook on it. Nobody mentioned the solo deal again, out loud.`, 'good');
+          },
+        }] : []),
         {
           label: 'Promise them the next A-side',
           hint: 'Flattery. The other writers will mind.',
@@ -799,9 +818,17 @@ const BASE_EVENTS: EventDef[] = [
       const c = mates(s).filter((m) => m.weeksInBand >= 4 && !s.flags[`straight_${m.id}`]);
       if (s.week < 8 || !c.length) return null;
       const m = [...c].sort((a, b) => a.hidden.loyalty - b.hidden.loyalty)[0];
+      const famous = s.fans >= 50000;
       return {
         m: m.id,
-        what: rng.pick([
+        famous: famous ? 1 : 0,
+        what: rng.pick(famous ? [
+          'a year painting in a farmhouse in Provence, with a gallery already interested',
+          'a film part, a proper one, with lines, shooting for six months in Morocco',
+          'a family: there is a baby on the way and a house in Surrey with a studio in the garden',
+          'a sailing boat and a plan to see the world without a tour manager',
+          'a record of their own, quiet songs, no band, no bus',
+        ] : [
           'a place at a polytechnic to read quantity surveying',
           'a trainee manager job at a carpet warehouse in Purley',
           'an apprenticeship with an uncle who fits double glazing',
@@ -809,8 +836,8 @@ const BASE_EVENTS: EventDef[] = [
         ]),
       };
     },
-    title: (s, p) => `${nm(s, p.m)} has been offered a real life`,
-    text: (s, p) => `${nm(s, p.m)} has been offered ${p.what}. Their mum has already told the neighbours. They want to know if the band is "actually going anywhere".`,
+    title: (s, p) => (p.famous ? `${nm(s, p.m)} wants a life` : `${nm(s, p.m)} has been offered a real life`),
+    text: (s, p) => (p.famous ? `${nm(s, p.m)} wants ${p.what}. Not instead of the band, ${nm(s, p.m)} says, and then goes quiet. Money is not the point; ${nm(s, p.m)} has money. Time is.` : `${nm(s, p.m)} has been offered ${p.what}. Their mum has already told the neighbours. They want to know if the band is "actually going anywhere".`),
     options: (s, p) => {
       const m = mem(s, p.m);
       const flag = (st: GameState) => { st.flags[`straight_${m.id}`] = st.week; };
@@ -830,18 +857,42 @@ const BASE_EVENTS: EventDef[] = [
             }
           },
         },
-        {
+        ...(p.famous ? [
+          {
+            label: 'Give them the year. The band waits',
+            hint: 'Six months out, then back with something. The band idles and the fans drift.',
+            resolve: (st: GameState) => {
+              flag(st);
+              const x = mem(st, m.id);
+              x.outWeeks = Math.max(x.outWeeks, 26);
+              trait(x, 'loyalty', 15); adjust(x, 'mood', 20);
+              grow(x, 'writing', 3, new Rng(st.week));
+              log(st, `${first(x)} has gone to do it. Six months. The band plays golf, badly, and waits. ${first(x)} will come back with songs, and a tan, and a different look in the eye.`, 'neutral');
+            },
+          },
+          {
+            label: 'One more album, then the year is yours',
+            hint: 'A promise. Loyalty, not money, keeps them this time.',
+            resolve: (st: GameState) => {
+              flag(st);
+              const x = mem(st, m.id);
+              trait(x, 'loyalty', 8); adjust(x, 'mood', 8);
+              st.flags.oneMoreAlbum = st.week;
+              log(st, `A deal: one more record, the best one, and then ${first(x)} gets the year. ${first(x)} wrote it on a beer mat and kept the beer mat.`, 'good');
+            },
+          },
+        ] : [{
           label: 'Offer a bigger cut',
           hint: 'Money keeps them. The others will notice.',
           cost: 60,
-          resolve: (st) => {
+          resolve: (st: GameState) => {
             flag(st);
             const x = mem(st, m.id);
             trait(x, 'loyalty', 12); adjust(x, 'mood', 6);
             for (const o of mates(st)) if (o.id !== x.id) adjust(o, 'mood', -3);
             log(st, `${first(x)} stays, on a bigger cut. The rest of the band did the maths out loud.`, 'neutral');
           },
-        },
+        }]),
         {
           label: 'Suggest they do both',
           hint: 'Days at the job, nights in the band. Something will give.',
@@ -2742,14 +2793,16 @@ function def(id: string): EventDef {
 
 /** Prices follow the band's means: a lawyer, a bribe or a repair costs what you can be seen to afford. */
 export function priceFactor(s: GameState): number {
-  return clamp(Math.sqrt(Math.max(0, s.money) / 2000), 1, 25);
+  // Up to £1.25m the price grows with the square root of the bank balance; past that, in step with it.
+  const m = Math.max(0, s.money);
+  return m <= 1250000 ? clamp(Math.sqrt(m / 2000), 1, 25) : 25 * (m / 1250000);
 }
 const scaled = (s: GameState, cost: number) => Math.round((cost * priceFactor(s)) / (cost >= 1000 ? 100 : 10)) * (cost >= 1000 ? 100 : 10);
 
 function optionsFor(s: GameState): EventOption[] {
   const p = s.pending!;
   return def(p.def).options(s, p.params).map((o) => {
-    const cost = o.cost ? scaled(s, o.cost) : o.cost;
+    const cost = o.cost && !o.fixed ? scaled(s, o.cost) : o.cost;
     return {
       ...o,
       cost,

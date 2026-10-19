@@ -132,7 +132,8 @@ export function upgradeSave(s: GameState): GameState {
   s.awards ??= [];
   for (const m of s.members) m.joined ??= Math.max(0, s.week - m.weeksInBand);
   for (const m of s.members) m.kit ??= Math.round(25 + (s.gear ?? 0) * 8 + Math.min(30, Math.log10(Math.max(1, s.fans) / 100) * 10));
-  s.wheels ??= s.flags.noVan ? 'bus' : 'van';
+  // Old saves: a band that has toured the world has long since had a bus of its own.
+  s.wheels ??= s.flags.toured_world || s.flags.toured_northamerica ? 'coach' : s.flags.noVan ? 'bus' : 'van';
   if (s.tour) s.tour.lodging ??= 'bnb';
   s.world.charts.us ??= [];
   for (const [i, star] of s.world.stars.entries()) star.label ??= labelFor(new Rng(i + 7), star.origin);
