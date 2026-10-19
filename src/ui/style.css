@@ -231,7 +231,7 @@ section + section { margin-top: 32px; }
 .who span { display: block; color: var(--muted); font-size: 0.9rem; }
 .who .real { font-style: italic; }
 
-.attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; text-align: center; margin: 0; }
+.attrs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; margin: 0; }
 .attrs dt { font-family: var(--cond); font-size: 0.85rem; color: var(--muted); }
 .attrs dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 1.05rem; }
 

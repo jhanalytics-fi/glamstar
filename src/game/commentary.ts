@@ -915,6 +915,11 @@ interface MateCtx {
 }
 
 const REHEARSE: Record<string, { mon: Line<MateCtx>[]; wed: Line<MateCtx>[]; fri: Line<MateCtx>[] }> = {
+  shop: {
+    mon: ['Denmark Street at ten. Every shop has a sign saying NO STAIRWAY and a man who ignores it.', 'The band in a music shop, touching everything. The assistant follows {mate} round like a detective.', 'A morning of plugging in, turning up, and being asked to turn down.'],
+    wed: ['{mate} plays the same riff on nine guitars and buys the tenth, which is the first one.', '{mate2} finds a snare drum that "speaks". It says £400.', 'An argument about valves versus transistors that nobody wins and nobody will ever win.'],
+    fri: ['Home with cases, boxes and a receipt the length of the van.', 'Everything is set up in the rehearsal room and everything sounds, for once, like a record.', 'New gear, new strings, new confidence. The kebab shop downstairs has complained already.'],
+  },
   regular: {
     mon: [
       'The band drags itself up the stairs above the kebab shop.',

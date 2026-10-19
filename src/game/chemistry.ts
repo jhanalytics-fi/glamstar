@@ -1,4 +1,5 @@
 import { clamp } from './rng';
+import { backlineBonus, kitFactor } from './kit';
 import type { GameState, Genre, Musician } from './types';
 
 const COMPAT: Record<Genre, Record<Genre, number>> = {
@@ -75,12 +76,13 @@ export function missingForGig(s: GameState): string[] {
 }
 
 /** How good the band sounds tonight, roughly 0-120. */
-export function performance(s: GameState, wasted: Set<string> = new Set()): number {
+export function performance(s: GameState, wasted: Set<string> = new Set(), capacity?: number): number {
   const here = available(s);
   if (here.length === 0) return 0;
   const indiv =
     here.reduce((acc, m) => {
-      let v = m.skill * 0.6 + m.stage * 0.4;
+      // The instrument caps the player: a plywood guitar through a practice amp sounds like one.
+      let v = (m.skill * 0.6 + m.stage * 0.4) * kitFactor(m.kit ?? 30);
       if (m.energy < 30) v *= 0.75;
       if (wasted.has(m.id)) v *= 0.55;
       return acc + v;
@@ -88,7 +90,7 @@ export function performance(s: GameState, wasted: Set<string> = new Set()): numb
   const songBonus = topSongs(s).length ? (avgQuality(s) - 40) * 0.15 : -6; // covers only
   const chem = chemistry(s).total;
   const factor = 0.6 + (chem / 100) * 0.7;
-  return Math.max(0, Math.round((indiv + s.tightness * 0.2 + songBonus + (s.gear ?? 0) * 3) * factor));
+  return Math.max(0, Math.round((indiv + s.tightness * 0.2 + songBonus + backlineBonus(s, capacity)) * factor));
 }
 
 export function topSongs(s: GameState, n = 6) {

@@ -13,6 +13,7 @@ import type { BandGender, Difficulty, Lineup, Lodging, TourPolicy } from '../gam
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
 import { CERT_LABEL } from '../game/certs';
+import { KIT_WORD, bandKit } from '../game/kit';
 import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
@@ -596,6 +597,8 @@ function moneyBlock(s: GameState): string {
       <dl class="deal">
         ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
         <div title="${esc(WHEELS[wheelsOf(s)].word)}"><dt>Wheels</dt><dd>${esc(WHEELS[wheelsOf(s)].name)}</dd></div>
+        <div title="Average of everyone's instruments. Better gear from the Rehearse menu, or when someone asks."><dt>The band's kit</dt><dd>${bandKit(s)}, ${esc(KIT_WORD(bandKit(s)))}</dd></div>
+        <div title="PA, amps and lights of your own. Big venues supply their own; pubs do not."><dt>Backline</dt><dd>${['Borrowed', 'A PA and a stack', 'Decent backline', 'A proper rig', 'A lorry of lights', 'Stadium rig'][Math.min(5, s.gear ?? 0)]}</dd></div>
         ${s.flags.fanClub !== undefined ? `<div title="${s.flags.fanClubInHouse ? 'Run from your own office: every penny is yours.' : 'Run from a spare room for a 30% cut.'}"><dt>Fan club</dt><dd>${clubMembers(s).toLocaleString('en-GB')} members, ${money(Math.round(clubIncome(s) * (s.flags.fanClubInHouse ? 1 : 0.7)))} / week</dd></div>` : ''}
         ${s.flags.shark ? `<div title="Half of everything above £50 goes to Tony's collector every week, and the rest grows 3% a week. His lads call round after twelve weeks."><dt>Owed to Big Tony</dt><dd class="neg">${money(s.flags.shark)}</dd></div>` : ''}
         ${s.flags.patron !== undefined ? `<div title="An envelope every Friday, for as long as you are interesting."><dt>The admirer's allowance</dt><dd>${money(Math.round(60 + s.fans * 0.02))} / week</dd></div>` : ''}
@@ -1124,6 +1127,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
           <div><dt>${tip('Stage', 'stage')}</dt><dd>${stat(m.stage)}</dd></div>
           <div><dt>${tip('Image', 'image')}</dt><dd>${stat(m.image)}</dd></div>
           <div><dt>${tip('Write', 'write')}</dt><dd>${stat(m.writing)}</dd></div>
+          <div title="Instruments and amps. ${esc(KIT_WORD(m.kit ?? 30))}. Junk caps what a player can do; past pro level it is for the player, not the room."><dt>Kit</dt><dd>${m.kit ?? 30}</dd></div>
         </dl>
         <dl class="traits">${traits}</dl>
         ${candidate ? '' : `<div class="meters">${meter('Energy', m.energy)}${meter('Mood', m.mood)}${meter('Habit', m.habit, 'habit')}</div>`}

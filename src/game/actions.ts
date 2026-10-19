@@ -13,6 +13,7 @@ import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost } from './managers';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
+import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
 import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
 import type { Action, ActionType, GameState, Genre, IncomeKind, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
@@ -220,6 +221,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'coach', label: 'Hire a session pro to coach you', cost: 60, hint: 'Everyone plays better. Some will resent being taught.' },
         { id: 'stageshow', label: 'Work on the stage show', cost: 35, hint: 'Moves, poses and a smoke machine. Stage presence up.' },
         { id: 'lessons', label: `Private lessons for ${lessonTarget(s) ? (lessonTarget(s)!.isPlayer ? 'yourself' : first(lessonTarget(s)!)) : 'the weakest player'}`, cost: 40, hint: 'Your weakest link gets a teacher. Proud players may take it badly.' },
+        { id: 'shop', label: shopLabel(s), cost: shopCost(s), hint: `Everyone's kit is ${KIT_WORD(bandKit(s))} (${bandKit(s)}). A day in the music shops: better instruments for the whole band, and a morale boost.` },
       ];
     case 'write': {
       const hot = hotGenres(s.week)[0];
@@ -347,7 +349,9 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     const p = ((m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15) * (1.4 - m.hidden.stamina / 125);
     if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
-  let perf = performance(s, wasted);
+  let perf = performance(s, wasted, g.capacity);
+  const worn = wearKit(s, rng, 0.12);
+  if (worn) log(s, `${first(worn)}'s ${worn.role === 'drums' ? 'snare skin split' : worn.role === 'vocals' ? 'microphone took a knock' : 'amp started crackling'} mid-set. Kit wears.`, 'neutral');
   const fate = gigFate(s, rng, perf, g.capacity);
   let crowdMult = 1;
   if (fate?.kind === 'disaster') { perf = Math.round(perf * fate.perfMult); crowdMult = fate.crowdMult; }
@@ -423,7 +427,30 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   }
 }
 
+/** A shopping trip sized to the band's standing: a few hundred quid at first, a small fortune later. */
+export function shopCost(s: GameState): number {
+  return Math.round(clamp(400 + s.fans * 0.15, 400, 40000) / 50) * 50;
+}
+export function shopLabel(s: GameState): string {
+  const c = shopCost(s);
+  return c < 1000 ? 'A day in the Denmark Street music shops' : c < 8000 ? 'A proper shopping trip: new gear all round' : 'Fly the band to the instrument fair in Frankfurt';
+}
+
+function shop(s: GameState, rng: Rng): void {
+  const spend = shopCost(s) / Math.max(1, available(s).length);
+  rehearsalCommentary(s, 'shop', rng);
+  for (const m of available(s)) {
+    const before = m.kit ?? 30;
+    m.kit = clamp(before + kitGain(before, spend) + rng.int(-2, 2), 1, 100);
+    adjust(m, 'mood', wobble(rng, 8));
+    if (m.hidden.ego >= 65 && rng.chance(0.3)) { adjust(m, 'image', 1); log(s, `${first(m)} bought something in ${rng.pick(['sparkle finish', 'leopard print', 'mirror chrome', 'a colour not found in nature'])}. It will be on the posters.`, 'neutral'); }
+  }
+  const best = [...available(s)].sort((a, b) => (b.kit ?? 0) - (a.kit ?? 0))[0];
+  log(s, `New gear all round: the band's kit is now ${KIT_WORD(bandKit(s))} (${bandKit(s)}). ${first(best)} has the nicest ${best.role === 'drums' ? 'kit' : best.role === 'vocals' ? 'microphone' : best.role === 'keys' ? 'keyboard' : best.role}, and will not stop saying so.`, 'good');
+}
+
 function rehearse(s: GameState, rng: Rng, option: string): void {
+  if (option === 'shop') return shop(s, rng);
   const here = available(s);
   rehearsalCommentary(s, option, rng);
   let gain = 6 + Math.round(chemistry(s).total / 25);
@@ -704,7 +731,9 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
     if (s.flags.arPush) { appeal *= 1.2; delete s.flags.arPush; }
     if (s.flags.sessionPlayer) { polish = 4; delete s.flags.sessionPlayer; }
   }
-  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + polish + prod.quality + rng.int(-4, 4)), 1, 99);
+  // Good instruments record better; the studio can only do so much with a cardboard snare.
+  const kitEdge = kind === 'demo' ? 0 : clamp((bandKit(s) - 50) / 20, -2.5, 2);
+  const quality = clamp(Math.round(songs.reduce((a, x) => a + x.quality, 0) / songs.length + s.tightness * 0.1 + studio + polish + prod.quality + kitEdge + rng.int(-4, 4)), 1, 99);
   const title = songs[0].title;
   if (kind === 'demo') {
     s.releases = s.releases.filter((r) => r.kind !== 'demo');

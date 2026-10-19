@@ -15,6 +15,7 @@ import { STARDOM_EVENTS } from './stardomEvents';
 import { CATALOGUE_EVENTS } from './catalogueEvents';
 import { RUIN_EVENTS } from './ruinEvents';
 import { FANCLUB_EVENTS } from './fanclubEvents';
+import { KIT_EVENTS } from './kitEvents';
 import { WHEELS, nextWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
@@ -1631,7 +1632,7 @@ const BASE_EVENTS: EventDef[] = [
     weight: 2,
     when: (s) => (s.gear >= 1 && s.lastGigWeek !== null && !s.flags.noVan && since(s, 'kitStolen', 30) ? {} : null),
     title: () => 'The van has been done',
-    text: () => 'Someone jemmied the back of the van outside the gig. The drum kit, two amps and a tambourine are gone.',
+    text: () => 'Someone jemmied the back of the van outside the gig. The drum kit, two amps, somebody\'s favourite guitar and a tambourine are gone.',
     options: (s) => {
       const opts: EventOption[] = [];
       if (s.flags.insured === 2) {
@@ -1649,7 +1650,7 @@ const BASE_EVENTS: EventDef[] = [
       }
       opts.push(
         { label: 'Buy replacements', hint: 'Back in business straight away.', cost: 120, resolve: (st) => { st.flags.kitStolen = st.week; everyone(st, 'mood', -2); log(st, 'Replacements bought. The new tambourine is not as good.', 'neutral'); } },
-        { label: 'Borrow kit and make do', hint: 'Free. You will sound like it.', resolve: (st) => { st.flags.kitStolen = st.week; addGear(st, -1); tighten(st, -2); log(st, 'Borrowed drums and an amp held together with tape. It sounds like a shed falling over.', 'bad'); } },
+        { label: 'Borrow kit and make do', hint: 'Free. You will sound like it.', resolve: (st, rng) => { st.flags.kitStolen = st.week; addGear(st, -1); tighten(st, -2); for (const m of rng.shuffle(available(st)).slice(0, 2)) m.kit = clamp((m.kit ?? 30) - 15, 1, 100); log(st, 'Borrowed drums and an amp held together with tape. It sounds like a shed falling over.', 'bad'); } },
         {
           label: 'Search the Sunday market',
           hint: 'Stolen gear always turns up somewhere.',
@@ -2465,6 +2466,7 @@ const EVENTS: EventDef[] = [
   ...CATALOGUE_EVENTS,
   ...RUIN_EVENTS,
   ...FANCLUB_EVENTS,
+  ...KIT_EVENTS,
   WHEELS_EVENT,
   ...TOUR_EVENTS,
 ];

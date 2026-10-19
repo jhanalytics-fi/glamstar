@@ -37,6 +37,8 @@ export interface Musician {
   /** Weeks this member is unavailable (hospital, the clinic, vanished). */
   outWeeks: number;
   weeksInBand: number;
+  /** Instruments and amps, 1-100. Junk through a practice amp, or vintage through a stack. */
+  kit?: number;
   /** The week they joined, for the line-up history. */
   joined?: number;
   blurb: string;

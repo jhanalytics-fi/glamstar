@@ -9,6 +9,7 @@ import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, mil
 import { trend } from './world';
 import type { GameState, Lodging, Musician, TourPolicy, TourStop } from './types';
 import { LODGING, WHEELS, defaultLodging, lodgingCost, tourWheels } from './wheels';
+import { wearKit } from './kit';
 
 type Region = 'southeast' | 'uk' | 'europe' | 'ukeurope' | 'japan' | 'northamerica' | 'world';
 type VenueType = 'pub' | 'club' | 'theatre' | 'euroclub' | 'arena' | 'jphall' | 'usvenue' | 'stadium';
@@ -269,7 +270,8 @@ export function playTourWeek(s: GameState, rng: Rng): void {
       const p = ((m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15) * (1.4 - m.hidden.stamina / 125);
       if (rng.chance(p * 0.5 * (tour.policy === 'wild' ? 1.4 : tour.policy === 'clean' ? 0.5 : 1))) wasted.add(m.id);
     }
-    let perf = Math.round(performance(s, wasted) * (gaps.length ? 0.9 : 1));
+    let perf = Math.round(performance(s, wasted, stop.capacity) * (gaps.length ? 0.9 : 1));
+    wearKit(s, rng, 0.25);
     const fate = gigFate(s, rng, perf, stop.capacity);
     if (fate?.kind === 'disaster') { perf = Math.round(perf * fate.perfMult); weekMoney -= fate.cost; addBuzz(s, fate.buzz); }
     const demand = s.fans / t.fans;

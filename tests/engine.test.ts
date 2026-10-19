@@ -291,6 +291,24 @@ describe('action choices', () => {
     expect(w.songs.every((x) => x.genre === 'punk')).toBe(true);
   });
 
+  it('kit caps what a player can do, and the music shops raise it', async () => {
+    const { kitFactor, kitGain } = await import('../src/game/kit');
+    expect(kitFactor(100)).toBeCloseTo(1, 5);
+    expect(kitFactor(16)).toBeLessThan(0.9);
+    expect(kitFactor(100) - kitFactor(64)).toBeLessThan(kitFactor(36) - kitFactor(16));
+    expect(kitGain(20, 500)).toBeGreaterThan(kitGain(70, 500));
+    const s = newGame(input);
+    expect(s.members.every((m) => (m.kit ?? 0) > 0)).toBe(true);
+    const junk = structuredClone(s); junk.members.forEach((m) => { m.kit = 10; });
+    const pro = structuredClone(s); pro.members.forEach((m) => { m.kit = 90; });
+    expect(performance(pro)).toBeGreaterThan(performance(junk) + 5);
+    // A proper venue supplies the backline; a pub does not.
+    expect(performance({ ...junk, gear: 0 }, new Set(), 5000)).toBeGreaterThan(performance({ ...junk, gear: 0 }, new Set(), 100));
+    const shopped = act({ ...junk, money: 2000 }, A('rehearse', 'shop'));
+    expect(shopped.members.every((m) => (m.kit ?? 0) > 20)).toBe(true);
+    expect(shopped.money).toBeLessThan(2000 - 200);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -498,6 +516,7 @@ describe('choice events', () => {
     bootleg_lp: (s) => { s.fans = 6000; s.lastGigWeek = s.week - 1; s.songs[0].released = true; },
     last_chance: (s) => { s.flags.lastChanceOpen = 1; s.money = -300; },
     fan_club_start: (s) => { s.fans = 1500; },
+    endorsement: (s) => { s.fans = 20000; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },
   };

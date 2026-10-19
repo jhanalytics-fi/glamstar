@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.27)
+## Prototype status (v0.28)
 
 Playable in the browser. Implemented:
 
@@ -434,3 +434,13 @@ New-game choices beyond the name and the sound:
 
 - **Change direction** (Write menu, with a "new sound" chip row above the choices): the band's genre changes for every song from here on. 12% of casual fans leave (+4% for each previous change, up to 22%), buzz +8 and a press headline, tightness -6, a week of arguing and no songs. Members already playing the new style get mood +10 and like you more; loyal ones (loyalty 60+) come round half the time; the rest lose 10 mood and 6 affinity, and big egos show. Six months between changes. A milestone records it.
 - **Songs table** (Songs & records): title, rating, type (genre plus song, ballad, chart chaser, cover, solo song, or outside writer), who wrote it, and status (unreleased, released, on the album, lifted as a single, publishing outside). The current sound is stated under it.
+
+## Kit (v0.28)
+
+`src/game/kit.ts`. Every musician has **Kit** (1-100): instruments and amps, from junk through a practice amp to vintage through a stack. Shown on the card next to Skill, Stage, Image and Write; the band average and the backline are on the Business tab.
+
+- **Effect:** a player's contribution to a performance is scaled by `0.78 + 0.22 x sqrt(kit/100)`: steep at the bottom (kit 16 = x0.87, 36 = x0.91), flat at the top (64 = x0.96, 100 = x1). Studio records take -2.5 to +2 quality from the band's average. The old band-level `gear` (0-5) is now **backline** (PA, amps, lights): +3 per level in small rooms; venues of 1,500+ supply their own, so the bonus there is at least level 3.
+- **Where it comes from:** starting mates 20-45 by tier (the player 22-38, posh +18, easy +15, hard -10); applicants by tier plus up to +25 for the band's fame. Old saves get 25 + backline x 8 + a fame bonus.
+- **Buying:** Rehearse gains **A day in the music shops** (£400 + fans x 0.15, up to £40,000; at £8,000+ it is the instrument fair in Frankfurt): everyone's kit rises by `(100 - kit) x (1 - e^(-spend per head / 500)) x 0.9`, so the first few hundred pounds do most of the work and a pro's kit barely moves. Mood +8; proud players buy something in leopard print.
+- **Events:** **kit_wish** (every 10+ weeks): someone wants a named instrument (Harlow Comet, Valhalla Thunderwood, Polyvox Prophecy) at £120 + fans x 0.06 + kit x 4. Buy it (kit up, mood +12, loyalty +4, affinity +6), go halves, or tell them to save up (mood -6, affinity -3; a 70+ ego buys it on the band account anyway 40% of the time). **endorsement** (15,000+ fans, yearly): a maker offers free top kit (to 88) for exclusivity, with a poster and a trade fair.
+- **Wear:** 12% chance per home gig and 25% per tour week that someone's kit drops 1-3. The van being done now costs two members 15 kit each on the "make do" option.

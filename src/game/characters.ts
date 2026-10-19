@@ -1,5 +1,6 @@
 import { Rng, clamp } from './rng';
 import { hometown, knownAs, personName } from './names';
+import { startingKit } from './kit';
 import type { Background, Gender, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
 
 export const HIDDEN_TRAITS: HiddenTrait[] = ['potential', 'ego', 'reliability', 'vice', 'stamina', 'loyalty'];
@@ -172,6 +173,7 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
     habit: rng.int(0, 25),
     outWeeks: 0,
     weeksInBand: 0,
+    kit: startingKit(rng, tier),
     blurb: rng.pick(BLURBS),
     seen: 15,
     fog: rng.next() * 2 - 1,
@@ -226,6 +228,7 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
     habit: 5,
     outWeeks: 0,
     weeksInBand: 0,
+    kit: clamp(rng.int(22, 38) + (input.background === 'posh' ? 18 : 0) + (input.difficulty === 'easy' ? 15 : input.difficulty === 'hard' ? -10 : 0), 5, 95),
     blurb: BACKGROUNDS[input.background].text,
     seen: 100,
     fog: 0,
