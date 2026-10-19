@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, retire, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -17,7 +17,7 @@ import { KIT_WORD, bandKit } from '../game/kit';
 import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
 
 import { tip } from './glossary';
-import { nextGoal } from '../game/goals';
+import { ladderDone, nextGoal } from '../game/goals';
 
 const SAVE_KEY = 'glamstar.save.v1';
 const DEBUG_KEY = 'glamstar.debug';
@@ -51,6 +51,7 @@ let playedScene: number | null = null;
 /** Scene folded down to one line so the choices sit near the top. */
 let collapsedScene: number | null = null;
 let armedFire: string | null = null;
+let armedRetire = false;
 let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
@@ -126,6 +127,7 @@ function onClick(e: Event, root: HTMLElement): void {
   // Any interaction finishes the playback of the current scene.
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
+  if (what !== 'retire') armedRetire = false;
   if (what !== 'buyOut') armedBuyout = false;
   if (what !== 'sackManager') armedSack = false;
   if (what === 'tab') labelNote = '';
@@ -204,6 +206,10 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'buyOut':
         if (armedBuyout) { state = buyOut(state!); labelNote = state.log.at(-1)?.text ?? ''; armedBuyout = false; }
         else armedBuyout = true;
+        break;
+      case 'retire':
+        if (armedRetire) { state = retire(state!); armedRetire = false; }
+        else armedRetire = true;
         break;
       case 'fire':
         // Two-step button instead of a browser dialog.
@@ -855,6 +861,9 @@ function offersBanner(s: GameState): string {
 /** The next rung on the road to rock immortality. */
 function goalLine(s: GameState): string {
   const g = nextGoal(s);
+  if (ladderDone(s) && !s.over) {
+    return `<p class="goal-line done"><span class="goal-step">Road to rock immortality</span><strong>Every rung climbed. ${esc(g.text)}</strong><span class="goal-actions"><button class="btn ${armedRetire ? '' : 'ghost'}" data-do="retire" ${s.tour || s.pending ? 'disabled' : ''}>${armedRetire ? 'Really retire? A farewell show and the end.' : 'Retire at the top'}</button></span></p>`;
+  }
   return `<p class="goal-line"><span class="goal-step">Road to rock immortality</span><strong>Next: ${esc(g.text)}</strong></p>`;
 }
 

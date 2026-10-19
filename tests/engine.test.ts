@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { act, canAct, dismissCandidates, fire, first, hire, newGame, rename } from '../src/game/engine';
+import { act, canAct, dismissCandidates, fire, first, hire, newGame, rename, retire } from '../src/game/engine';
 import { actionOptions, sellRecords } from '../src/game/actions';
 import { EVENT_IDS, forceEvent, resolvePending, viewPending } from '../src/game/events';
 import { chemistry, missingForGig, performance } from '../src/game/chemistry';
@@ -307,6 +307,21 @@ describe('action choices', () => {
     const shopped = act({ ...junk, money: 2000 }, A('rehearse', 'shop'));
     expect(shopped.members.every((m) => (m.kit ?? 0) > 20)).toBe(true);
     expect(shopped.money).toBeLessThan(2000 - 200);
+  });
+
+  it('you can retire at the top, and only at the top', () => {
+    const s = newGame(input);
+    expect(() => retire(s)).toThrow(/rung/);
+    const top = { ...s, fans: 120000, lastGigWeek: 5, songs: [1, 2, 3].map((i) => ({ title: `S${i}`, quality: 70, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: true })) };
+    top.releases = [{ id: 'a', kind: 'single', title: 'S1', quality: 70, appeal: 1, week: 1, sold: 900000, lastWeek: 0, peaks: { uk: 1, world: 1 } }];
+    top.world = structuredClone(s.world);
+    top.world.peaks = { london: 1, uk: 1, world: 1 };
+    top.flags = { ...s.flags, toured_southeast: 1, toured_uk: 1, toured_europe: 1, toured_ukeurope: 1, toured_northamerica: 1, toured_world: 1, labelCalling: 1 };
+    const r = retire(top);
+    expect(r.over?.won).toBe(true);
+    expect(r.over?.reason).toMatch(/walked away at the top/);
+    expect(r.over?.reason).toMatch(/1 UK number one/);
+    expect(r.milestones.at(-1)!.text).toMatch(/retired/);
   });
 
   it('the newsagent card brings two candidates, a poach brings one', () => {

@@ -4,6 +4,7 @@ import { addAffinity, available, forEachPair } from './chemistry';
 import { bandName as genBandName, isBlockedPerson } from './names';
 import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor, type ChartId } from './world';
 import { awardsNight } from './awards';
+import { ladderDone } from './goals';
 import { fanClubWeek } from './fanclub';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
@@ -280,6 +281,41 @@ export function rename(state: GameState, memberId: string, name: string): GameSt
   });
 }
 
+/** The epitaph: what the band was, in numbers and in one line. */
+export function careerSummary(s: GameState): string {
+  const years = Math.max(1, Math.round((s.week / 52) * 10) / 10);
+  const ones = s.releases.filter((r) => r.peaks?.uk === 1 || r.peaks?.albums === 1).length;
+  const worldOnes = s.releases.filter((r) => r.peaks?.world === 1).length;
+  const sold = s.releases.reduce((a, r) => a + r.sold, 0);
+  const gigs = (s.tours ?? []).reduce((a, t) => a + t.gigs, 0);
+  const bits = [
+    `${years} years`,
+    `${s.fans.toLocaleString('en-GB')} fans`,
+    `${s.releases.filter((r) => r.kind !== 'demo').length} records and ${sold.toLocaleString('en-GB')} copies`,
+    ones ? `${ones} UK number one${ones === 1 ? '' : 's'}` : null,
+    worldOnes ? `${worldOnes} world number one${worldOnes === 1 ? '' : 's'}` : null,
+    gigs ? `${gigs} tour dates` : null,
+    (s.awards ?? []).length ? `${s.awards.length} award${s.awards.length === 1 ? '' : 's'}` : null,
+    (s.alumni ?? []).length ? `${s.alumni.length} former member${s.alumni.length === 1 ? '' : 's'}` : null,
+    `£${Math.max(0, s.money).toLocaleString('en-GB')} in the bank`,
+  ].filter(Boolean);
+  return bits.join(', ') + '.';
+}
+
+/** Bow out at the top. Only once every rung of the ladder is climbed. */
+export function retire(state: GameState): GameState {
+  if (state.over) throw new Error('The game is over.');
+  if (state.pending) throw new Error('Deal with the situation first.');
+  if (state.tour) throw new Error('Finish the tour first.');
+  if (!ladderDone(state)) throw new Error('There is still a rung to climb.');
+  return mutate(state, (s) => {
+    milestone(s, 'career', `${s.bandName} retired at the top.`);
+    s.over = { won: true, reason: `${s.bandName} walked away at the top. A farewell show, a long speech, a longer party, and then the phone stopped ringing on purpose. ${careerSummary(s)} Legends.` };
+    s.pending = null;
+    log(s, s.over.reason, 'good');
+  });
+}
+
 export function fire(state: GameState, memberId: string): GameState {
   if (state.pending) throw new Error('Deal with the situation first.');
   return mutate(state, (s) => removeMember(s, memberId, 'fired'));
@@ -505,7 +541,7 @@ function checkOver(s: GameState): void {
     const big = s.fans >= 30000 ? 'Legends.' : s.fans >= 8000 ? 'A proper rock band.' : s.fans >= 1500 ? 'A cult band with a loyal following.' : 'A local band that nearly made it.';
     s.over = {
       won: s.fans >= 5000,
-      reason: `The eighties are over. ${s.bandName}: ${s.fans.toLocaleString('en-GB')} fans${best ? `, best chart position #${best}` : ''}. ${big}`,
+      reason: `The eighties are over. ${s.bandName}: ${big} ${careerSummary(s)}${best ? ` Best chart position #${best}.` : ''}`,
     };
   }
   if (s.members.filter((m) => !m.isPlayer).length === 0) s.flags.aloneSince ??= s.week;

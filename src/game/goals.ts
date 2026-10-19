@@ -33,6 +33,11 @@ export const LADDER: Rung[] = [
   { text: '100,000 fans', done: (s) => s.fans >= 100000 },
 ];
 
+/** Every rung climbed: the band has nothing left to prove. */
+export function ladderDone(s: GameState): boolean {
+  return LADDER.every((r) => r.done(s));
+}
+
 /** The next unclaimed rung, how far up the ladder you are, and how many rungs there are. */
 export function nextGoal(s: GameState): { text: string; step: number; total: number } {
   const i = LADDER.findIndex((r) => !r.done(s));

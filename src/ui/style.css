@@ -703,3 +703,6 @@ section + section { margin-top: 32px; }
 
 .rename { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .rename input { flex: 1 1 160px; min-width: 0; background: var(--velvet); color: inherit; border: 1px solid var(--smoke); border-radius: 8px; padding: 8px 10px; font: inherit; }
+
+.goal-line.done { border-left-color: var(--nicotine); background: rgba(232, 178, 58, 0.08); }
+.goal-actions { margin-top: 8px; }
