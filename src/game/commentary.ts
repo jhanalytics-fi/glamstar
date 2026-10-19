@@ -1175,6 +1175,10 @@ const WRITE: Record<string, { mon: Line<MateCtx>[]; mid: Line<MateCtx>[] }> = {
       'The farmer comes round about the noise, stays for a drink, and ends up on the backing vocals.',
     ],
   },
+  direction: {
+    mon: ['A band meeting with a flip chart. The word "direction" is written on it and underlined three times.', 'Records from the new sound on the floor of the rehearsal room, and a long, careful silence.', 'You play the band the new idea. {mate} folds arms. {mate2} nods, slowly, then faster.'],
+    mid: ['Two days of arguing about one chord. The chord wins.', 'A haircut, a new jacket and a riff that would have been unthinkable last month.', '{mate} says it is "a betrayal". {mate2} says it is "about time". Both are right.'],
+  },
   ballad: {
     mon: [
       'The lights go down. Someone produces a lighter, for inspiration.',

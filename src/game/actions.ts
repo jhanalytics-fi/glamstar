@@ -1,6 +1,6 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
-import { GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
+import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
 import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
@@ -234,6 +234,13 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         ...(s.contract ? [{ id: 'publisher', label: `Listen to the tapes ${labelById(s.contract.label).name}'s publishers keep sending`, cost: 0, hint: 'A song by a proper songwriter, free, and not yours. The label is thrilled; your writers are not.' }] : []),
         ...(s.fans >= 2000 || s.money >= hiredFee(s) * 2 ? [{ id: 'hired', label: 'Bring in a hit songwriter', cost: hiredFee(s), hint: `A week with someone who has written for everybody. Big song, big ego bruise, publishing split.` }] : []),
         ...(s.money >= retreatCost(s) ? [{ id: 'retreat', label: 'Rent a house in the country', cost: retreatCost(s), hint: 'Two or three songs, a rested band, and a farmer who wants a word about the noise.' }] : []),
+        {
+          id: 'direction',
+          label: 'Change direction',
+          cost: 0,
+          hint: `Pick the new sound above. Some fans walk, the press talks, the purists in the band sulk. A week spent arguing, not writing. Selling right now: ${hotGenres(s.week).slice(0, 2).map((g) => GENRE_LABEL[g].toLowerCase()).join(' and ')}.`,
+          locked: s.flags.direction !== undefined && s.week - s.flags.direction < 26 ? 'You changed direction less than six months ago. Let it settle.' : undefined,
+        },
       ];
     }
     case 'release': {
@@ -318,7 +325,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
   switch (a.type) {
     case 'gig': return gig(s, rng, gigSpecs(s)[a.option]);
     case 'rehearse': return rehearse(s, rng, a.option);
-    case 'write': return write(s, rng, a.option);
+    case 'write': return write(s, rng, a.option, a.genre);
     case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : release(s, rng, a.option as ReleaseKind);
     case 'party': return party(s, rng, a.option);
     case 'rest': return rest(s, rng, a.option);
@@ -539,7 +546,37 @@ export function retreatCost(s: GameState): number {
   return Math.round(clamp(1500 + s.fans * 0.25, 1500, 40000) / 50) * 50;
 }
 
-function write(s: GameState, rng: Rng, option: string): void {
+/** The band changes its sound: a new genre for every song from here on, and a price for it. */
+function changeDirection(s: GameState, rng: Rng, genre: Genre): void {
+  const me = player(s);
+  const from = me.style;
+  me.style = genre;
+  s.flags.direction = s.week;
+  s.flags.directions = (s.flags.directions ?? 0) + 1;
+  const core = s.flags.coreFans ?? 0;
+  const casual = Math.max(0, s.fans - core);
+  const lost = Math.round(casual * (0.12 + Math.min(0.1, (s.flags.directions - 1) * 0.04)));
+  s.fans -= lost;
+  addBuzz(s, 8);
+  for (const m of available(s)) {
+    if (m.isPlayer) continue;
+    if (m.style === genre) { adjust(m, 'mood', 10); addAffinity(s, m.id, me.id, 5); }
+    else if (m.hidden.loyalty >= 60 && rng.chance(0.5)) { m.style = genre; adjust(m, 'mood', 3); }
+    else { adjust(m, 'mood', -10); addAffinity(s, m.id, me.id, -6); if (m.hidden.ego >= 60) revealLog(s, m, 'ego', 1); }
+  }
+  s.tightness = clamp(s.tightness - 6, 0, 100);
+  const sulk = available(s).filter((m) => !m.isPlayer && m.style !== genre);
+  milestone(s, 'career', `${s.bandName} went ${GENRE_LABEL[genre].toLowerCase()}, leaving ${GENRE_LABEL[from].toLowerCase()} behind.`);
+  log(s, `${s.bandName} is a ${GENRE_LABEL[genre].toLowerCase()} band now. ${PRESS}: "${rng.pick(['SELL-OUTS OR GENIUSES?', 'THE NEW SOUND OF ' + s.bandName.toUpperCase(), s.bandName.toUpperCase() + ' GO ' + GENRE_LABEL[genre].toUpperCase() + ', FANS GO HOME'])}". ${lost.toLocaleString('en-GB')} fans went with the old sound.${sulk.length ? ` ${sulk.map((m) => first(m)).join(' and ')} played the new songs with ${sulk.length === 1 ? 'a face' : 'faces'} like a wet weekend.` : ' The band was ready for it.'}`, 'neutral');
+}
+
+function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
+  if (option === 'direction') {
+    const g = genre && genre !== player(s).style ? genre : GENRES.filter((x) => x !== player(s).style).sort((a, b) => trend(b, s.week) - trend(a, s.week))[0];
+    writingCommentary(s, rng, 'direction');
+    changeDirection(s, rng, g);
+    return;
+  }
   const here = available(s);
   writingCommentary(s, rng, option);
   const me = player(s);

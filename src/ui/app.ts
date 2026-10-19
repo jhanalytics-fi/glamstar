@@ -39,6 +39,7 @@ let draft: NewGameInput & { firstName: string; lastName: string } = {
   lineup: 'full',
 };
 let adRole: Role = 'guitar';
+let newSound: Genre | null = null;
 let chartTab: ChartId = 'london';
 let chartAll = false;
 let openAction: ActionType | null = null;
@@ -145,6 +146,7 @@ function onClick(e: Event, root: HTMLElement): void {
         state = newGame(draft);
         break;
       case 'adRole': adRole = arg as Role; break;
+      case 'newSound': newSound = arg as Genre; break;
       case 'open':
         openAction = openAction === arg ? null : (arg as ActionType);
         // Hiring with a hole in the line-up: the ad is for the missing player by default.
@@ -175,7 +177,7 @@ function onClick(e: Event, root: HTMLElement): void {
         else armedAbandon = true;
         break;
       case 'choose':
-        state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole });
+        state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole, genre: newSound ?? undefined });
         openAction = null;
         break;
       case 'respond': state = resolvePending(state!, Number(arg)); break;
@@ -817,7 +819,9 @@ function nextBlock(s: GameState): string {
   const roleSelect =
     open === 'advertise'
       ? `<div class="role-pick"><span>Looking for</span><div class="chips">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<button class="chip ${gaps.includes(r) ? 'gap' : ''}" data-do="adRole" data-arg="${r}" aria-pressed="${r === adRole}">${ROLE_LABEL[r]}${gaps.includes(r) ? ' (missing)' : ''}</button>`).join('')}</div></div>`
-      : '';
+      : open === 'write'
+        ? `<div class="role-pick"><span>New sound, if you change direction</span><div class="chips">${GENRES.filter((g) => g !== s.members[0].style).map((g) => `<button class="chip" data-do="newSound" data-arg="${g}" aria-pressed="${g === newSound}">${GENRE_LABEL[g]}</button>`).join('')}</div></div>`
+        : '';
   return `
     ${offersBanner(s)}
     ${hopefuls(s)}
@@ -1024,7 +1028,12 @@ function recordsSection(s: GameState): string {
         <tbody>${rows.join('')}</tbody>
       </table></div>
       <p class="hint">UK peak is the singles chart for singles and EPs, the albums chart for albums.</p>` : ''}
-      <p class="hint">Songs: ${songs.map((x) => `"${esc(x.title)}" ${x.quality}${x.kind === 'ballad' ? ' (ballad)' : x.kind === 'cover' ? ' (cover)' : x.kind === 'hired' ? ' (outside writer)' : ''}${x.released ? ' (released)' : ''}`).join(', ') || 'none yet'}.</p>
+      ${songs.length ? `<h3 class="sub">Songs</h3>
+      <div class="chart-wrap"><table class="chart ledger songs">
+        <thead><tr><th>Title</th><th>Rating</th><th>Type</th><th>Writer</th><th>Status</th></tr></thead>
+        <tbody>${songs.map((x) => { const w = s.members.find((m) => m.id === x.writer); return `<tr class="${x.released ? 'out' : ''}"><td><strong>"${esc(x.title)}"</strong></td><td>${x.quality}</td><td>${GENRE_LABEL[x.genre]} ${x.kind === 'ballad' ? 'ballad' : x.kind === 'trend' ? 'chart chaser' : x.kind === 'cover' ? 'cover' : x.kind === 'hired' ? 'song, outside writer' : x.kind === 'solo' ? 'solo song' : 'song'}</td><td class="lbl">${x.kind === 'cover' ? 'Somebody else' : x.kind === 'hired' ? 'Hired pen' : w ? esc(w.isPlayer ? 'You' : first(w)) : 'An old member'}</td><td class="lbl">${x.released ? (x.album ? 'On the album' : 'Released') : x.lifted ? 'Single' : 'Unreleased'}${x.outside ? ', publishing outside' : ''}</td></tr>`; }).join('')}</tbody>
+      </table></div>
+      <p class="hint">Sound right now: ${GENRE_LABEL[s.members[0].style]}. Change direction from the Write menu.</p>` : '<p class="hint">No songs yet. Write some.</p>'}
     </section>`;
 }
 

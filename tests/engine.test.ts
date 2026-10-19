@@ -65,7 +65,7 @@ describe('action choices', () => {
     for (const t of types) {
       const n = actionOptions(s, t).length;
       expect(n).toBeGreaterThanOrEqual(2);
-      expect(n).toBeLessThanOrEqual(t === 'gig' ? 8 : 6);
+      expect(n).toBeLessThanOrEqual(t === 'gig' ? 8 : t === 'write' ? 10 : 6);
     }
   });
 
@@ -275,6 +275,20 @@ describe('action choices', () => {
     const clean = newGame(input);
     clean.members.forEach((m) => { m.habit = 5; });
     expect(actionOptions(clean, 'rest').some((o) => o.id === 'clinic')).toBe(false);
+  });
+
+  it('changing direction changes the sound, costs fans and upsets the purists', () => {
+    const s = { ...newGame(input), fans: 2000, buzz: 20 };
+    s.flags = { ...s.flags, coreFans: 10 };
+    s.members.forEach((m, i) => { if (i) { m.style = 'glam'; m.hidden.loyalty = 20; } });
+    expect(actionOptions(s, 'write').some((o) => o.id === 'direction')).toBe(true);
+    const r = act(s, { type: 'write', option: 'direction', genre: 'punk' });
+    expect(r.members[0].style).toBe('punk');
+    expect(r.fans).toBeLessThan(1850);
+    expect(r.members.slice(1).every((m) => m.mood < s.members[1].mood)).toBe(true);
+    expect(actionOptions(r, 'write').find((o) => o.id === 'direction')!.locked).toMatch(/six months/);
+    const w = act(settle(r), A('write', 'jam'));
+    expect(w.songs.every((x) => x.genre === 'punk')).toBe(true);
   });
 
   it('the newsagent card brings two candidates, a poach brings one', () => {

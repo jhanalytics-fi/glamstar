@@ -349,6 +349,8 @@ export interface Action {
   policy?: TourPolicy;
   /** For starting a tour: where the band sleeps. */
   lodging?: Lodging;
+  /** For changing direction: the new sound. */
+  genre?: Genre;
 }
 
 export type TourPolicy = 'wild' | 'steady' | 'clean';
