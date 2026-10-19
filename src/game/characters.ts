@@ -1,6 +1,6 @@
 import { Rng, clamp } from './rng';
 import { hometown, knownAs, personName } from './names';
-import type { Background, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
+import type { Background, Gender, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
 
 export const HIDDEN_TRAITS: HiddenTrait[] = ['potential', 'ego', 'reliability', 'vice', 'stamina', 'loyalty'];
 export const GENRES: Genre[] = ['metal', 'hardrock', 'glam', 'punk', 'newwave'];
@@ -135,9 +135,10 @@ function genreNear(rng: Rng, base: Genre): Genre {
   return rng.pick(GENRES);
 }
 
-export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = [], boost = 0): Musician {
+export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = [], boost = 0, gender?: Gender): Musician {
   const mean = Math.min(88, TIER_MEAN[tier] + boost);
-  const real = personName(rng, takenNames);
+  const g: Gender = gender ?? (rng.chance(0.5) ? 'male' : 'female');
+  const real = personName(rng, takenNames, g);
   const age = rng.int(18, 29);
   const skill = rng.around(mean, 14);
   const hidden = {
@@ -152,8 +153,9 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
   if (tier === 'good' && rng.chance(0.5)) hidden.ego = clamp(hidden.ego + 20, 1, 99);
   return {
     id,
-    name: knownAs(rng, real, takenNames),
+    name: knownAs(rng, real, takenNames, g),
     realName: real,
+    gender: g,
     from: hometown(rng),
     age,
     role,
@@ -228,6 +230,8 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
     seen: 100,
     fog: 0,
   };
+  const d = input.difficulty === 'easy' ? 6 : input.difficulty === 'hard' ? -6 : 0;
+  p.skill += d; p.stage += d; p.writing += d;
   switch (input.background) {
     case 'choirboy': p.skill += 12; p.hidden.vice += 8; break;
     case 'artschool': p.image += 12; p.writing += 10; p.hidden.vice += 12; break;
@@ -243,16 +247,16 @@ export function createPlayer(rng: Rng, input: NewGameInput): Musician {
 }
 
 /** The three mates from the pub: always guitar, bass and drums, deliberately uneven. */
-export function generateStartingBand(rng: Rng, style: Genre, nextId: () => string, playerName: string): Musician[] {
-  const roles: Role[] = ['guitar', 'bass', 'drums'];
+export function generateStartingBand(rng: Rng, style: Genre, nextId: () => string, playerName: string, count = 3, gender?: Gender, difficulty: 'easy' | 'normal' | 'hard' = 'normal'): Musician[] {
+  const roles: Role[] = ['guitar', 'bass', 'drums'].slice(0, count) as Role[];
   const tiers = rng.shuffle<Tier>(['good', 'average', 'weak']);
   const band: Musician[] = [];
   for (const [i, role] of roles.entries()) {
-    const m = generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.flatMap((x) => [x.name, x.realName])]);
+    const m = generateMusician(rng, nextId(), role, tiers[i], style, [playerName, ...band.flatMap((x) => [x.name, x.realName])], 0, gender);
     for (let k = 0; k < 10 && band.some((x) => x.blurb === m.blurb); k++) m.blurb = rng.pick(BLURBS);
     band.push(m);
   }
-  normaliseBand(band);
+  if (band.length) normaliseBand(band, difficulty);
   return band;
 }
 
@@ -265,20 +269,24 @@ export function headroom(m: Musician): number {
   return m.hidden.potential - Math.max(m.skill, m.stage);
 }
 
-function normaliseBand(band: Musician[]): void {
+function normaliseBand(band: Musician[], difficulty: 'easy' | 'normal' | 'hard' = 'normal'): void {
+  // Per head, so a duo is as good a pair as a trio is a trio; easy and hard shift the whole band.
+  const per = band.length / 3;
+  const targetOvr = Math.round((START_TOTAL_OVR + (difficulty === 'easy' ? 15 : difficulty === 'hard' ? -12 : 0)) * per);
+  const targetHead = Math.round((START_TOTAL_HEADROOM + (difficulty === 'easy' ? 12 : difficulty === 'hard' ? -8 : 0)) * per);
   for (let i = 0; i < 600; i++) {
     const total = band.reduce((a, m) => a + overall(m), 0);
-    if (Math.abs(total - START_TOTAL_OVR) <= 1) break;
+    if (Math.abs(total - targetOvr) <= 1) break;
     const m = band[i % band.length];
     const k = GROWABLE[Math.floor(i / band.length) % GROWABLE.length];
-    m[k] = clamp(m[k] + (total < START_TOTAL_OVR ? 1 : -1), 8, 92);
+    m[k] = clamp(m[k] + (total < targetOvr ? 1 : -1), 8, 92);
   }
   for (let i = 0; i < 600; i++) {
     const total = band.reduce((a, m) => a + headroom(m), 0);
-    if (Math.abs(total - START_TOTAL_HEADROOM) <= 1) break;
+    if (Math.abs(total - targetHead) <= 1) break;
     const m = band[i % band.length];
     const floor = Math.max(m.skill, m.stage);
-    m.hidden.potential = clamp(m.hidden.potential + (total < START_TOTAL_HEADROOM ? 1 : -1), floor, 99);
+    m.hidden.potential = clamp(m.hidden.potential + (total < targetHead ? 1 : -1), floor, 99);
   }
 }
 

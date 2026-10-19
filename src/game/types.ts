@@ -280,6 +280,8 @@ export interface GameState {
   flags: Record<string, number>;
   /** The band's transport. Mirrored in flags.noVan for older code. */
   wheels: Wheels;
+  bandGender?: BandGender;
+  difficulty?: Difficulty;
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
@@ -323,7 +325,16 @@ export interface NewGameInput {
   background: Background;
   style: Genre;
   seed?: number;
+  /** Who answers the advert: men, women, or whoever turns up. */
+  bandGender?: BandGender;
+  difficulty?: Difficulty;
+  /** How many mates you start with. */
+  lineup?: Lineup;
 }
+
+export type BandGender = 'male' | 'female' | 'mixed';
+export type Difficulty = 'easy' | 'normal' | 'hard';
+export type Lineup = 'solo' | 'duo' | 'trio' | 'full';
 
 export type ActionType = 'rehearse' | 'write' | 'gig' | 'party' | 'rest' | 'advertise' | 'release' | 'tour';
 

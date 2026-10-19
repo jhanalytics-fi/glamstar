@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.25)
+## Prototype status (v0.26)
 
 Playable in the browser. Implemented:
 
@@ -421,3 +421,11 @@ Rest grows four options:
 - **A month at a Swiss sanatorium** (luxury, unlocks at twice the fee): £4,000 + fans x 0.4 (max £80,000). Habit to 5, energy to 100, mood +10, and the body learns: hidden stamina +5, vice -3, loyalty +3. Half the time the press runs the story (buzz +5, image +1).
 - **A weekend with a yogi in Totnes** (£120): energy +15, mood +10, habit -5, big egos -2.
 - **A Harley Street psychiatrist for everyone** (luxury, £900, unlocks at £3,000): mood +18 (+28 under 40), habit -4, egos over 65 lose 4 and are revealed, reliability +2.
+
+## Starting out, your way (v0.26)
+
+New-game choices beyond the name and the sound:
+
+- **The band:** you and three mates (guitar, bass, drums), two (guitar, bass), one (guitar), or just you. Fewer mates are each as good as a trio's members would be; the rest come through adverts. Solo means no gigs until there is a guitarist, a bassist and a drummer.
+- **Who answers the advert:** whoever turns up (50/50), all men, or all women. Applies to the starting mates and to every audition after; names and stage names follow.
+- **How hard:** Trust fund (money x3, band total +15 and headroom +12, you +6 on skill, stage and writing, 20 extra core fans), The dole (as before), Skint and talentless (money x0.5, no van, band -12 and headroom -8, you -6, fewer core fans).

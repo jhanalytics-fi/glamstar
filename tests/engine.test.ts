@@ -101,6 +101,42 @@ describe('action choices', () => {
     }
   });
 
+  it('a solo start, an all-women band and the difficulty levels all hold together', () => {
+    const solo = newGame({ ...input, lineup: 'solo' });
+    expect(solo.members).toHaveLength(1);
+    expect(solo.log[0].text).toMatch(/nobody else yet/);
+    expect(canAct(solo, A('gig', 'venue1'))).toBeTruthy();
+    // A season of random play from a solo start must never throw.
+    for (let seed = 1; seed <= 4; seed++) {
+      let s = newGame({ ...input, seed, lineup: 'solo', difficulty: 'hard' });
+      const r = new Rng(seed);
+      for (let w = 0; w < 40 && !s.over; w++) {
+        s = settle(s);
+        if (s.over) break;
+        const playable = types.flatMap((t) => actionOptions(s, t).filter((o) => !o.locked).map((o) => A(t, o.id, { role: r.pick(['guitar', 'bass', 'drums', 'keys'] as const) }))).filter((a) => !canAct(s, a));
+        if (!playable.length) break;
+        s = act(s, r.pick(playable));
+        s = settle(s);
+        if (s.candidates.length && !s.over && s.members.length < 6) s = hire(s, s.candidates[0].id);
+      }
+    }
+    const women = newGame({ ...input, bandGender: 'female', seed: 3 });
+    expect(women.members.slice(1).every((m) => m.gender === 'female')).toBe(true);
+    const men = newGame({ ...input, bandGender: 'male', seed: 3 });
+    expect(men.members.slice(1).every((m) => m.gender === 'male')).toBe(true);
+    const easy = newGame({ ...input, difficulty: 'easy', seed: 5 });
+    const hard = newGame({ ...input, difficulty: 'hard', seed: 5 });
+    expect(easy.money).toBeGreaterThan(hard.money * 4);
+    expect(easy.fans).toBeGreaterThan(hard.fans);
+    expect(hard.wheels).toBe('bus');
+    const ovr = (g: GameState) => g.members.slice(1).reduce((a, m) => a + overall(m), 0);
+    expect(ovr(easy)).toBeGreaterThan(ovr(hard) + 15);
+    expect(easy.members[0].skill).toBeGreaterThan(hard.members[0].skill);
+    const duo = newGame({ ...input, lineup: 'duo', seed: 5 });
+    expect(duo.members).toHaveLength(2);
+    expect(duo.members[1].role).toBe('guitar');
+  });
+
   it('rehearsing raises tightness and advances the week', () => {
     const s0 = newGame(input);
     const s1 = act(s0, A('rehearse', 'regular'));
@@ -109,8 +145,9 @@ describe('action choices', () => {
   });
 
   it('boot camp tightens more than a usual rehearsal', () => {
-    const s0 = newGame(input);
-    expect(act(s0, A('rehearse', 'bootcamp')).tightness).toBeGreaterThan(act(s0, A('rehearse', 'regular')).tightness);
+    let boot = 0; let reg = 0;
+    for (let seed = 1; seed <= 6; seed++) { const s0 = newGame({ ...input, seed }); boot += act(s0, A('rehearse', 'bootcamp')).tightness; reg += act(s0, A('rehearse', 'regular')).tightness; }
+    expect(boot).toBeGreaterThan(reg);
   });
 
   it('does not mutate the previous state', () => {

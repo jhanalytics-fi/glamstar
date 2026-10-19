@@ -45,13 +45,15 @@ export function newGame(input: NewGameInput): GameState {
   let nextId = 1;
   const id = () => `m${nextId++}`;
   const player = createPlayer(rng, input);
-  const mates = generateStartingBand(rng, input.style, id, player.realName);
+  const LINEUP = { solo: 0, duo: 1, trio: 2, full: 3 } as const;
+  const bandGender = input.bandGender ?? 'mixed';
+  const mates = generateStartingBand(rng, input.style, id, player.realName, LINEUP[input.lineup ?? 'full'], bandGender === 'mixed' ? undefined : bandGender, input.difficulty ?? 'normal');
   const s: GameState = {
     version: 1,
     rng: 0,
     week: 0,
     bandName: input.bandName.trim() || genBandName(rng),
-    money: input.background === 'posh' ? 450 : 200,
+    money: Math.round((input.background === 'posh' ? 450 : 200) * (input.difficulty === 'easy' ? 3 : input.difficulty === 'hard' ? 0.5 : 1)),
     fans: 0,
     buzz: 0,
     tightness: 15,
@@ -72,7 +74,9 @@ export function newGame(input: NewGameInput): GameState {
     tours: [],
     alumni: [],
     awards: [],
-    wheels: 'van',
+    wheels: input.difficulty === 'hard' ? 'bus' : 'van',
+    bandGender,
+    difficulty: input.difficulty ?? 'normal',
     pending: null,
     scene: null,
     tour: null,
@@ -87,21 +91,23 @@ export function newGame(input: NewGameInput): GameState {
   ageCharts(s.world, rng);
   forEachPair(s.members, (a, b) => addAffinity(s, a.id, b.id, rng.int(5, 35)));
   openScene(s, 'start', `London, ${dateLabel(0)}`, 'quiet');
-  log(s, `London, ${dateLabel(0)}. ${s.bandName} is you and three mates from the pub. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}.`, 'neutral');
+  const who = mates.length === 0 ? 'you, a notebook and nobody else yet' : mates.length === 1 ? 'you and one mate from the pub' : mates.length === 2 ? 'you and two mates from the pub' : 'you and three mates from the pub';
+  log(s, `London, ${dateLabel(0)}. ${s.bandName} is ${who}${mates.length ? `. ${mates.map((m) => `${m.name} (${ROLE_LABEL[m.role].toLowerCase()})`).join(', ')}` : ''}.`, 'neutral');
   log(s, 'You have a rehearsal room above a kebab shop, a handful of covers and no original songs.', 'neutral');
   // Core fans: family, flatmates and whoever owes you a favour. They never leave.
-  const core = rng.int(8, 14);
+  const core = rng.int(8, 14) + (input.difficulty === 'easy' ? 20 : 0) - (input.difficulty === 'hard' ? 4 : 0);
   s.fans = core;
   s.flags.coreFans = core;
-  const mum = rng.pick(mates);
-  log(s, `Your fan base: your mum, ${first(mum)}'s sister, two flatmates and a bloke from the pub who calls you "the lads". ${core} people, all of them on the guest list.`, 'neutral');
+  const mum = mates.length ? rng.pick(mates) : null;
+  log(s, `Your fan base: your mum, ${mum ? `${first(mum)}'s sister, ` : ''}two flatmates and a bloke from the pub who calls you "the lads". ${core} people, all of them on the guest list.`, 'neutral');
   milestone(s, 'career', `${s.bandName} formed in London: ${[player, ...mates].map((m) => m.name).join(', ')}.`);
   const intros: string[] = [];
   for (const m of mates) {
     intros.push(introduce(m, intros));
     beat(s, ROLE_LABEL[m.role], intros[intros.length - 1]);
   }
-  beat(s, undefined, 'First week. What does the band do?');
+  if (!mates.length) beat(s, undefined, 'No band yet. A singer with a notebook and a rehearsal room is not a band. Find a musician.');
+  beat(s, undefined, mates.length ? 'First week. What does the band do?' : 'First week. What do you do?');
   s.scene!.recording = false;
   s.rng = rng.state;
   return s;

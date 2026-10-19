@@ -9,7 +9,7 @@ import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerWord } from '../game/managers';
 import { AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type LabelTier } from '../game/labels';
-import type { Lodging, TourPolicy } from '../game/types';
+import type { BandGender, Difficulty, Lineup, Lodging, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
 import { CERT_LABEL } from '../game/certs';
@@ -34,6 +34,9 @@ let draft: NewGameInput & { firstName: string; lastName: string } = {
   bandName: bandName(new Rng(Date.now() % 100000)),
   background: 'artschool',
   style: 'glam',
+  bandGender: 'mixed',
+  difficulty: 'normal',
+  lineup: 'full',
 };
 let adRole: Role = 'guitar';
 let chartTab: ChartId = 'london';
@@ -131,6 +134,9 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'background': draft.background = arg as Background; break;
       case 'style': draft.style = arg as Genre; break;
       case 'gender': draft.gender = arg as Gender; break;
+      case 'bandGender': draft.bandGender = arg as BandGender; break;
+      case 'difficulty': draft.difficulty = arg as Difficulty; break;
+      case 'lineup': draft.lineup = arg as Lineup; break;
       case 'genStage': draft.stageName = stageName(new Rng(Math.floor(Math.random() * 1e9)), draft.gender); break;
       case 'genBand': draft.bandName = bandName(new Rng(Math.floor(Math.random() * 1e9))); break;
       case 'start':
@@ -378,6 +384,23 @@ function renderCreate(): string {
           ${GENRES.map((g) => `<button class="chip" data-do="style" data-arg="${g}" ${pressed(draft.style === g)}>${GENRE_LABEL[g]}</button>`).join('')}
         </div>
         <p class="hint">Your mates mostly share your taste. Mostly.</p>
+      </div>
+      <div class="field">
+        <span class="label">The band</span>
+        <div class="chips">
+          ${(['full', 'trio', 'duo', 'solo'] as Lineup[]).map((l) => `<button class="chip" data-do="lineup" data-arg="${l}" ${pressed(draft.lineup === l)}>${l === 'full' ? 'You and three mates' : l === 'trio' ? 'You and two mates' : l === 'duo' ? 'You and one mate' : 'Just you'}</button>`).join('')}
+        </div>
+        <div class="chips">
+          ${(['mixed', 'male', 'female'] as BandGender[]).map((g) => `<button class="chip" data-do="bandGender" data-arg="${g}" ${pressed(draft.bandGender === g)}>${g === 'mixed' ? 'Whoever turns up' : g === 'male' ? 'All men' : 'All women'}</button>`).join('')}
+        </div>
+        <p class="hint">${draft.lineup === 'solo' ? 'A singer with a notebook. You cannot gig until you have found a guitarist, a bassist and a drummer.' : draft.lineup === 'full' ? 'Guitar, bass and drums from the pub. Up to six in the van, keyboards welcome.' : 'The rest you find through adverts. Up to six in the van.'} ${draft.bandGender === 'mixed' ? 'Adverts bring whoever answers.' : draft.bandGender === 'male' ? 'Adverts bring men.' : 'Adverts bring women.'}</p>
+      </div>
+      <div class="field">
+        <span class="label">How hard</span>
+        <div class="chips">
+          ${(['easy', 'normal', 'hard'] as Difficulty[]).map((d) => `<button class="chip" data-do="difficulty" data-arg="${d}" ${pressed(draft.difficulty === d)}>${d === 'easy' ? 'Trust fund' : d === 'normal' ? 'The dole' : 'Skint and talentless'}</button>`).join('')}
+        </div>
+        <p class="hint">${draft.difficulty === 'easy' ? 'Three times the money, a better band with more room to grow, you a notch sharper, and thirty friends who turn up to everything.' : draft.difficulty === 'hard' ? 'Half the money, no van, a weaker band with less in it, and you a notch duller.' : 'Two hundred quid, a rusty van, three uneven mates. The way it was.'}</p>
       </div>
       ${error ? `<p class="hint" role="alert" style="color:var(--bad)">${esc(error)}</p>` : ''}
       <button class="btn big" data-do="start">Form the band</button>

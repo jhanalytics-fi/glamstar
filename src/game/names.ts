@@ -4,22 +4,24 @@ import type { Rng } from './rng';
 // Real people: British names for musicians born roughly 1955-1966.
 // ---------------------------------------------------------------------------
 
-const FIRST = [
+const FIRST_M = [
   // The original pub regulars
   'Dave', 'Steve', 'Gary', 'Nick', 'Tony', 'Mick', 'Paul', 'Kev', 'Andy', 'Colin', 'Robbie', 'Lee',
   'Darren', 'Phil', 'Ian', 'Martin', 'Simon', 'Carl', 'Wayne', 'Danny', 'Jez', 'Neil', 'Rick', 'Terry',
-  'Sharon', 'Debbie', 'Tracey', 'Julie', 'Karen', 'Mandy', 'Nikki', 'Jo', 'Suzi', 'Lorraine', 'Gail', 'Bev',
   // More lads
   'Mark', 'Pete', 'Rob', 'Chris', 'Nigel', 'Graham', 'Keith', 'Trevor', 'Barry', 'Alan', 'Stuart', 'Russell',
   'Clive', 'Malcolm', 'Roger', 'Glen', 'Dean', 'Shaun', 'Gavin', 'Kenny', 'Dougie', 'Fergus', 'Hamish', 'Gareth',
   'Rhys', 'Declan', 'Seamus', 'Ciaran', 'Winston', 'Delroy', 'Lloyd', 'Errol', 'Raj', 'Sanjay', 'Tariq', 'Mehmet',
   'Stavros', 'Vince', 'Gordon', 'Duncan', 'Les', 'Billy', 'Frank', 'Ray', 'Eddie', 'Joe',
-  // More lasses
+];
+const FIRST_F = [
+  'Sharon', 'Debbie', 'Tracey', 'Julie', 'Karen', 'Mandy', 'Nikki', 'Jo', 'Suzi', 'Lorraine', 'Gail', 'Bev',
   'Sue', 'Jackie', 'Linda', 'Carol', 'Alison', 'Gillian', 'Angela', 'Jane', 'Sarah', 'Helen', 'Lisa', 'Michelle',
   'Dawn', 'Denise', 'Elaine', 'Wendy', 'Theresa', 'Janet', 'Kim', 'Toni', 'Sandra', 'Lesley', 'Paula', 'Jacqui',
   'Siobhan', 'Fiona', 'Morag', 'Kirsty', 'Maxine', 'Hazel', 'Pauline', 'Yvonne', 'Rachel', 'Clare', 'Nicola',
   'Bernie', 'Marcia', 'Beverley', 'Sunita', 'Leonie', 'Annette', 'Gaynor', 'Tina', 'Sam', 'Alex',
 ];
+const FIRST = [...FIRST_M, ...FIRST_F];
 
 const LAST = [
   'Price', 'Walsh', 'Hughes', 'Carter', 'Doyle', 'Fletcher', 'Mason', 'Hardy', 'Webb', 'Lowe', 'Barker',
@@ -809,12 +811,12 @@ export function stageName(rng: Rng, gender?: 'male' | 'female' | 'nonbinary'): s
 }
 
 /** Known-as name for a generated musician: a full stage name, a nickname, or just their real name. */
-export function knownAs(rng: Rng, real: string, taken: string[] = []): string {
+export function knownAs(rng: Rng, real: string, taken: string[] = [], gender?: 'male' | 'female' | 'nonbinary'): string {
   const r = rng.next();
   if (r < 0.4) {
     const used = new Set(taken.map((n) => n.replace(/"[^"]*"\s*/, '').split(' ')[0]));
-    let n = stageName(rng);
-    for (let i = 0; i < 10 && used.has(n.split(' ')[0]); i++) n = stageName(rng);
+    let n = stageName(rng, gender);
+    for (let i = 0; i < 10 && used.has(n.split(' ')[0]); i++) n = stageName(rng, gender);
     return n;
   }
   if (r < 0.7) {
@@ -829,15 +831,16 @@ export function knownAs(rng: Rng, real: string, taken: string[] = []): string {
 }
 
 /** Generates a real name whose first and last names are not in `taken`, so the log never mixes up two Daves. */
-export function personName(rng: Rng, taken: Iterable<string> = []): string {
+export function personName(rng: Rng, taken: Iterable<string> = [], gender?: 'male' | 'female' | 'nonbinary'): string {
   const names = [...taken];
   const used = new Set(names.map((n) => n.split(' ')[0]));
   const usedLast = new Set(names.map((n) => n.split(' ').at(-1)));
-  const free = FIRST.filter((f) => !used.has(f));
+  const pool = gender === 'male' ? FIRST_M : gender === 'female' ? FIRST_F : FIRST;
+  const free = pool.filter((f) => !used.has(f));
   const freeLast = LAST.filter((l) => !usedLast.has(l));
   let name = '';
   for (let i = 0; i < 10; i++) {
-    name = `${rng.pick(free.length ? free : FIRST)} ${rng.pick(freeLast.length ? freeLast : LAST)}`;
+    name = `${rng.pick(free.length ? free : pool)} ${rng.pick(freeLast.length ? freeLast : LAST)}`;
     if (!PEOPLE_BLOCK.has(name)) break;
   }
   return name;
