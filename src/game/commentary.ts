@@ -16,7 +16,19 @@ type Line<C> = string | ((c: C) => string | null);
 /** Picks one line from a pool, skipping the ones that don't fit this context. */
 function pickLine<C>(rng: Rng, lines: readonly Line<C>[], c: C): string {
   const ok = lines.map((l) => (typeof l === 'string' ? l : l(c))).filter((x): x is string => !!x);
-  return rng.pick(ok);
+  return fill(rng.pick(ok), c);
+}
+
+/** Plain-string lines may carry {mate}-style placeholders: fill them from the context. */
+function fill<C>(line: string, c: C): string {
+  if (!line.includes('{') || !c || typeof c !== 'object') return line;
+  return line.replace(/\{(\w+)\}/g, (all, k: string) => {
+    const v = (c as Record<string, unknown>)[k];
+    if (typeof v === 'string') return v;
+    // A Who object: use the sentence-start form, since these lines are written that way.
+    if (v && typeof v === 'object' && typeof (v as Who).n === 'string') return (v as Who).n;
+    return all;
+  });
 }
 
 /** "21:35" give or take a few minutes. */

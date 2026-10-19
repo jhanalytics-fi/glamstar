@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { partyCommentary } from '../src/game/commentary';
 import { act, newGame } from '../src/game/engine';
 import { advertCommentary, crowdBand, gigCommentary, rehearsalCommentary, releaseCommentary, restCommentary, TRIP_LINES } from '../src/game/commentary';
 import { openScene } from '../src/game/helpers';
@@ -194,5 +195,22 @@ describe('audition commentary', () => {
       if (s.scene!.beats.some((b) => /\bdrummer\b/i.test(b.text) && b.time !== 'Monday')) drummers++;
     }
     expect(drummers).toBeGreaterThan(5);
+  });
+});
+
+describe('placeholders', () => {
+  it('no {mate}-style placeholder ever reaches the screen', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed });
+      openScene(s, 'rest', 'x');
+      restCommentary(s, 'yogi', new Rng(seed));
+      restCommentary(s, 'shrink', new Rng(seed));
+      restCommentary(s, 'clinic', new Rng(seed));
+      restCommentary(s, 'sanatorium', new Rng(seed));
+      rehearsalCommentary(s, 'shop', new Rng(seed));
+      partyCommentary(s, new Rng(seed), 'penthouse', s.members[1]);
+      partyCommentary(s, new Rng(seed), 'yacht', s.members[1]);
+      for (const b of s.scene!.beats) expect(b.text, b.text).not.toMatch(/\{\w+\}/);
+    }
   });
 });
