@@ -1497,7 +1497,8 @@ describe('finishing a tour in one go', () => {
     }
     expect(s.tour).toBeNull();
     expect(s.week).toBe(w0 + 3);
-    expect(titles.some((t) => /weeks/.test(t))).toBe(true);
+    expect(titles.at(-1)).toMatch(/^Tour over: UK club tour$/);
+    expect(titles.slice(0, -1).every((t) => /^UK club tour: weeks \d+ to \d+$/.test(t))).toBe(true);
   });
 });
 

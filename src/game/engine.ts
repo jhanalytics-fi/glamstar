@@ -213,6 +213,7 @@ export function act(state: GameState, a: Action): GameState {
 export function finishTour(state: GameState, policy: TourPolicy): GameState {
   if (!state.tour) throw new Error('Not on tour.');
   let s = state;
+  const tourName = state.tour.name;
   const from = s.tour!.week + 1;
   const lines: { text: string; tone: LogEntry['tone'] }[] = [];
   let weeks = 0;
@@ -225,8 +226,9 @@ export function finishTour(state: GameState, policy: TourPolicy): GameState {
   if (!weeks) return s;
   return mutate(s, (st) => {
     delete st.flags.autoTour;
-    const name = st.tour?.name ?? lines[0]?.text.split(':')[0] ?? 'Tour';
-    openScene(st, 'tour', `${name}: weeks ${from} to ${from + weeks - 1}`, 'gig');
+    const abandoned = lines.some((l) => l.text.startsWith('Tour abandoned'));
+    const title = st.tour ? `${tourName}: weeks ${from} to ${from + weeks - 1}` : abandoned ? `Tour abandoned: ${tourName}` : `Tour over: ${tourName}`;
+    openScene(st, 'tour', title, 'gig');
     for (const l of lines) beat(st, undefined, l.text, l.tone === 'good' ? 'good' : l.tone === 'bad' ? 'bad' : 'neutral');
     if (st.pending) beat(st, undefined, 'The tour stops here for a decision.', 'neutral');
     else if (st.tour) beat(st, undefined, `${st.tour.weeks - st.tour.week} week${st.tour.weeks - st.tour.week === 1 ? '' : 's'} to go.`, 'neutral');
