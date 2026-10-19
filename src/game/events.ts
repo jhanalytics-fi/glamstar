@@ -112,6 +112,11 @@ const BASE_EVENTS: EventDef[] = [
     when: (s, rng) => {
       const w = worstPair(s);
       if (!w) return null;
+      // Mates who get on do not come to blows. The worse the pair, the likelier the punch.
+      const bad = getAffinity(s, w[0].id, w[1].id);
+      const clash = w[0].hidden.ego >= 70 && w[1].hidden.ego >= 70;
+      const odds = bad < -20 ? 0.9 : bad < 10 ? 0.5 : bad < 35 ? (clash ? 0.35 : 0.15) : clash ? 0.08 : 0.02;
+      if (!rng.chance(odds)) return null;
       return { a: w[0].id, b: w[1].id, about: rng.pick(['the setlist', 'the last can of lager', 'a girlfriend', 'the front seat of the van', 'who owes who a fiver']) };
     },
     title: (s, p) => `${nm(s, p.a)} and ${nm(s, p.b)} are at it again`,

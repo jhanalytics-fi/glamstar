@@ -612,8 +612,14 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
   const second = writers[1] ?? best;
   const chem = chemistry(s).total;
   const insp = inspiration(s);
-  const base = best.writing * 0.45 + second.writing * 0.25 + chem * 0.2 + insp.bonus;
+  // Chemistry helps, but it is not the song: a band at each other's throats can still write the one.
+  let base = best.writing * 0.45 + second.writing * 0.25 + 6 + chem * 0.14 + insp.bonus;
   if (insp.text) log(s, insp.text, insp.bonus > 0 ? 'good' : 'neutral');
+  // Sparks: two good writers who cannot stand each other sometimes make something out of the fight.
+  if (chem < 45 && best !== second && best.writing >= 55 && second.writing >= 50 && option !== 'solo' && rng.chance(0.3)) {
+    base += rng.int(8, 16);
+    log(s, `${first(best)} and ${first(second)} are not speaking, so they wrote at each other instead. It is better than anything they wrote as friends.`, 'good');
+  }
 
   if (option === 'solo') {
     me.energy = clamp(me.energy - 10, 0, 100);

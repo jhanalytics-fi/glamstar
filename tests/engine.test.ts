@@ -324,6 +324,32 @@ describe('action choices', () => {
     expect(r.milestones.at(-1)!.text).toMatch(/retired/);
   });
 
+  it('mates who get on rarely fight, and bad blood can still write a hit', () => {
+    let calm = 0; let sour = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = newGame({ ...input, seed });
+      const [, a, b, c] = s.members;
+      const key = (x: typeof a, y: typeof a) => [x.id, y.id].sort().join('|');
+      const good = { ...s, affinity: { [key(a, b)]: 80, [key(a, c)]: 80, [key(b, c)]: 80 } };
+      const bad = { ...s, affinity: { [key(a, b)]: -40, [key(a, c)]: 80, [key(b, c)]: 80 } };
+      try { forceEvent(good, 'fight'); calm++; } catch { /* not eligible */ }
+      try { forceEvent(bad, 'fight'); sour++; } catch { /* not eligible */ }
+    }
+    expect(calm).toBeLessThan(5);
+    expect(sour).toBeGreaterThan(22);
+    // Feuding writers: songs still come, and sometimes come out better.
+    let best = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const s = newGame({ ...input, seed });
+      s.members.forEach((m, i) => { m.writing = 65; m.mood = 30; if (i) m.hidden.ego = 90; });
+      s.affinity = {};
+      s.members.forEach((a) => s.members.forEach((b) => { if (a.id < b.id) s.affinity[`${a.id}|${b.id}`] = -60; }));
+      const r = act(s, A('write', 'jam'));
+      for (const x of r.songs) best = Math.max(best, x.quality);
+    }
+    expect(best).toBeGreaterThan(60);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

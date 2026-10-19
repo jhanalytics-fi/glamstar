@@ -457,3 +457,8 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 - Stadium tours play to a pool of 80x the tier gate, America and Japan 30x (clubs and arenas 10x as before).
 - Weekly drift is divided by `1 + casual fans/800,000`: a huge fan base forgets you more slowly.
 - A new last rung: **A million fans around the world**. Retiring at the top needs it. The bot's median career now ends around 600,000 fans; a good player will pass a million.
+
+## Friction (v0.30.1)
+
+- **Fights need bad blood.** The rehearsal-room fight used to pick the worst pair whatever their affinity. Now the odds depend on it: 90% when the pair is under -20, 50% under 10, 15% under 35 (35% if both have big egos), and 2% (8%) when everyone gets on. A band with chemistry in the nineties almost never comes to blows; when it does, the fight's resolution moves affinity and so the chemistry.
+- **Chemistry is not the song.** The writing base takes `6 + chem x 0.14` instead of `chem x 0.2`, so a feuding band loses a few points, not a dozen. And sparks: when chemistry is under 45 and the two best writers (55+ and 50+) are different people, 30% of jams, trend and ballad sessions get +8 to +16, "written at each other".
