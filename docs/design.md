@@ -232,6 +232,8 @@ The comeback: from the retired screen, `comeBack` brings the band back two years
 
 Records and songs can be renamed from the Records tab (`renameRelease`, `renameSong`); renaming a song renames the single that carries it.
 
+Stage presence (v0.42.2): "Work on the stage show" still grows stage toward potential as before, and once there keeps climbing with odds 0.35 x (1 - over/12) per week, up to twelve points over potential. Showmanship is learned.
+
 ## Prototype status (v0.42)
 
 Playable in the browser. Implemented:

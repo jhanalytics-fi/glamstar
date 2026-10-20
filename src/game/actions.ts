@@ -242,7 +242,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'regular', label: 'Usual rehearsal', cost: 0, hint: 'Steady progress. Egos may collide.' },
         { id: 'bootcamp', label: 'Boot camp week, no booze', cost: 0, hint: 'Much tighter and drier. Morale suffers.' },
         { id: 'coach', label: 'Hire a session pro to coach you', cost: 60, hint: 'Everyone plays better. Some will resent being taught.' },
-        { id: 'stageshow', label: 'Work on the stage show', cost: 35, hint: 'Moves, poses and a smoke machine. Stage presence up.' },
+        { id: 'stageshow', label: 'Work on the stage show', cost: 35, hint: 'Moves, poses and a smoke machine. Stage presence up, past the natural ceiling too, slowly.' },
         { id: 'lessons', label: `Private lessons for ${lessonTarget(s) ? (lessonTarget(s)!.isPlayer ? 'yourself' : first(lessonTarget(s)!)) : 'the weakest player'}`, cost: 40, hint: 'Your weakest link gets a teacher. Proud players may take it badly.' },
         { id: 'shop', label: shopLabel(s), cost: shopCost(s), hint: `Everyone's kit is ${KIT_WORD(bandKit(s))} (${bandKit(s)}). A day in the music shops: better instruments for the whole band, and a morale boost.` },
       ];
@@ -508,7 +508,10 @@ function rehearse(s: GameState, rng: Rng, option: string): void {
       }
     }
     if (option === 'stageshow') {
-      grow(m, 'stage', 3, rng);
+      // Showmanship is learned, not born: past the natural ceiling it still climbs, slowly, up to twelve over.
+      const got = grow(m, 'stage', 3, rng);
+      const over = m.stage - m.hidden.potential;
+      if (!got && over >= 0 && over < 12 && rng.chance(0.35 * (1 - over / 12))) adjust(m, 'stage', 1);
       adjust(m, 'image', 1);
     }
   }

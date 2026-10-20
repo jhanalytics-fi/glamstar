@@ -621,6 +621,16 @@ describe('action choices', () => {
     expect(() => renameSong(r3, 'Better Title', 'Better Title')).toThrow();
   });
 
+  it('the stage show keeps raising stage presence past the natural ceiling, slowly', () => {
+    const s: GameState = { ...newGame(input), money: 50000 };
+    for (const m of s.members) { m.stage = m.hidden.potential; m.energy = 100; }
+    let r = s;
+    for (let i = 0; i < 30; i++) r = step({ ...r, members: r.members.map((m) => ({ ...m, energy: 100 })) }, A('rehearse', 'stageshow'));
+    const gained = r.members.map((m, i) => m.stage - s.members[i].hidden.potential);
+    expect(Math.max(...gained)).toBeGreaterThan(2);
+    expect(Math.max(...gained)).toBeLessThanOrEqual(12);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
