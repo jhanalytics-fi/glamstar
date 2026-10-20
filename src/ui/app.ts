@@ -11,6 +11,7 @@ import { sackCost, sackManager, managerWord } from '../game/managers';
 import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type Ask, type LabelTier } from '../game/labels';
 import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
+import { entourage, sackHanger } from '../game/entourage';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
@@ -54,6 +55,7 @@ let playedScene: number | null = null;
 let collapsedScene: number | null = null;
 let armedFire: string | null = null;
 let armedRetire = false;
+let armedHanger: string | null = null;
 let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
@@ -130,6 +132,7 @@ function onClick(e: Event, root: HTMLElement): void {
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
   if (what !== 'retire') armedRetire = false;
+  if (what !== 'sackHanger') armedHanger = null;
   if (what !== 'buyOut') armedBuyout = false;
   if (what !== 'sackManager') armedSack = false;
   if (what === 'tab') labelNote = '';
@@ -200,6 +203,10 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'offerHaggle': state = haggle(state!, arg!, (arg2 as Ask) || 'advance'); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'managerJob': state = managerJob(state!, arg as ManagerJob); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'setSplit': state = setSplit(state!, arg as Split); break;
+      case 'sackHanger':
+        if (armedHanger === arg) { state = sackHanger(state!, arg!); armedHanger = null; }
+        else armedHanger = arg!;
+        break;
       case 'offerRead': state = readSmallPrint(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerDecline': state = declineOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'audit': state = audit(state!); labelNote = state.log.at(-1)?.text ?? ''; break;
@@ -628,7 +635,16 @@ function moneyBlock(s: GameState): string {
 }
 
 function labelSection(s: GameState): string {
-  return labelDeals(s) + managerBlock(s) + splitBlock(s) + moneyBlock(s) + incomeBlock(s);
+  return labelDeals(s) + managerBlock(s) + splitBlock(s) + crewBlock(s) + moneyBlock(s) + incomeBlock(s);
+}
+
+/** Crew, hangers-on and the payroll. */
+function crewBlock(s: GameState): string {
+  const list = entourage(s);
+  if (!list.length) return '';
+  const rows = list.map((h) => `<tr><td><strong>${esc(h.name)}</strong><br><small class="lbl">${esc(h.role)}</small></td><td class="wrap">${esc(h.effect)}${h.leaving && h.sackable ? `<br><small class="lbl">If they go: ${esc(h.leaving)}</small>` : ''}</td><td>${h.weekly ? money(h.weekly) + ' / wk' : ''}</td><td>${h.sackable ? `<button class="btn ghost small" data-do="sackHanger" data-arg="${h.id}">${armedHanger === h.id ? 'Really?' : 'Let go'}</button>` : ''}</td></tr>`);
+  return `<h3 class="sub">Around the band</h3>
+    <div class="chart-wrap"><table class="chart ledger crew"><thead><tr><th>Who</th><th>What they do</th><th>Cost</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table></div>`;
 }
 
 /** The band deal: who gets what on paper. */

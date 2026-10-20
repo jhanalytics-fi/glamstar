@@ -706,3 +706,6 @@ section + section { margin-top: 32px; }
 
 .goal-line.done { border-left-color: var(--nicotine); background: rgba(232, 178, 58, 0.08); }
 .goal-actions { margin-top: 8px; }
+
+.crew td.wrap { white-space: normal; text-align: left; min-width: 180px; }
+.crew td { text-align: left; vertical-align: top; }

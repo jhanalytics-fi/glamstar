@@ -290,3 +290,23 @@ describe('the band deal', () => {
     expect(played.members[0].earned ?? 0).toBeGreaterThan(played.members[1].earned ?? 0);
   });
 });
+
+describe('around the band', () => {
+  it('lists crew and hangers-on, and lets the sackable ones go', async () => {
+    const { entourage, sackHanger } = await import('../src/game/entourage');
+    const s = newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed: 9 });
+    expect(entourage(s)).toHaveLength(0);
+    s.flags = { ...s.flags, roadie: 1, court: 5, rentUp: 150, shark: 900 };
+    s.manager = { name: 'Clive', honesty: 70, clout: 40, cut: 0.2, signed: 0, read: true, taken: 0 };
+    const who = entourage(s).map((h) => h.id);
+    expect(who).toEqual(expect.arrayContaining(['roadie', 'court', 'shark', 'manager']));
+    expect(() => sackHanger(s, 'shark')).toThrow();
+    expect(() => sackHanger(s, 'manager')).toThrow();
+    const r = sackHanger(s, 'court');
+    expect(r.flags.rentUp).toBe(0);
+    expect(entourage(r).some((h) => h.id === 'court')).toBe(false);
+    const r2 = sackHanger(r, 'roadie');
+    expect(r2.flags.roadie).toBe(0);
+    expect(r2.milestones.at(-1)!.text).toMatch(/shown the door/);
+  });
+});

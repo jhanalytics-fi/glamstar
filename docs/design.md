@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.32)
+## Prototype status (v0.33)
 
 Playable in the browser. Implemented:
 
@@ -478,3 +478,7 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 - **The manager's jobs** (Business tab, no week spent, each on its own cooldown): get us on the telly (odds 20% + clout/120; buzz, fans, image), book a private party (£150 + fans x 0.25, scaled by clout, energy -8; every 6 weeks), lean on the label (odds 35% + clout/150; a chunk off the tab and goodwill +5, or goodwill -8; every 13 weeks), kill a story (odds 30% + clout/130; the next scandal event is swallowed, once; every 20 weeks). The manager block also states the gig-fee boost in plain numbers.
 - **The band deal** (`src/game/split.ts`): equal shares, writers keep the publishing (gig money equal; record money and royalties half equal, half by share of songs written), or the leader's band (you 40%, the rest share 60%). Every pound booked to the ledger is also booked to each member's paper share (`m.earned`), shown in a Business table with their gig share, record share, share of songs written and earned to date; former members take their figure with them. Changing the deal: losers lose 10 mood, 8 affinity and 4 loyalty; winners gain. Weekly, 30% of the time once £2,000 has been earned: on equal shares a member who wrote 60%+ of the songs with an ego of 55+ loses 2 mood; on the other deals anyone under 60% of the average loses 2 mood and now and then a point of loyalty. The bank stays one pot.
 - **Producers, explained:** the Release menu says who is booked for the next album and what it adds, and the producer event says the producer is paid now and waits for the session.
+
+## Around the band (v0.33)
+
+`src/game/entourage.ts`. The Business tab lists everyone around the band who is not in it: the roadie (gigs 20% and tour dates 15% lighter on energy), the doctor, the court (image, £150 a week), the fan club (spare room for a 30% cut, or an office on the weekly bill), the manager, the admirer, Big Tony, the gear sponsor, and Trevor or the pilot. Each row says what they do, what they cost, and what letting them go would cost. Roadie, doctor, court and admirer can be let go with a two-tap button; the rest have their own ways out (the manager above, Tony by paying him).
