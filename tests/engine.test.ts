@@ -370,6 +370,27 @@ describe('action choices', () => {
     expect(missingForGig(poor).length).toBe(1);
   });
 
+  it('a spotted player beats the one you have, and turning them down can win loyalty', () => {
+    let seen = 0; let better = 0; let loyal = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const s = { ...newGame({ ...input, seed }), fans: 3000 };
+      let f: GameState;
+      try { f = forceEvent(s, 'spotted'); } catch { continue; }
+      seen++;
+      const role = f.pending!.params.role as string;
+      const current = s.members.find((m) => m.role === role && !m.isPlayer);
+      const a = resolvePending(f, 0);
+      expect(a.candidates).toHaveLength(1);
+      expect(a.candidateRole).toBe(role);
+      if (!current || overall(a.candidates[0]) > overall(current)) better++;
+      const b = resolvePending(f, 1);
+      if (current && b.members.find((m) => m.id === current.id)!.hidden.loyalty > current.hidden.loyalty) loyal++;
+    }
+    expect(seen).toBeGreaterThan(10);
+    expect(better).toBe(seen);
+    expect(loyal).toBeGreaterThan(3);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -578,6 +599,7 @@ describe('choice events', () => {
     last_chance: (s) => { s.flags.lastChanceOpen = 1; s.money = -300; },
     fan_club_start: (s) => { s.fans = 1500; },
     endorsement: (s) => { s.fans = 20000; },
+    spotted: (s) => { s.candidates = []; },
     dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },

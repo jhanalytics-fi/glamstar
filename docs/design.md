@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.34)
+## Prototype status (v0.35)
 
 Playable in the browser. Implemented:
 
@@ -488,3 +488,7 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 - **One member to the clinic:** Rest gains "Send one member to the clinic" (a third of the band fee) with a member picker above the choices. They are away two weeks (habit -45, energy +30, mood -8, loyalty +3); the rest carry on.
 - **Deps** (`src/game/subs.ts`): from 150 fans, a member who is away (any chair but the singer's) is covered by a session player, so gigs and tours go on. The dep for each role is the same person every time (a name from the Rat Pit house band, the West End pit, the music shop), costs £40 + fans x 0.01 a night, plays at their own skill (48-62, +1 every third call) with no stage presence to speak of and no chemistry, and counts in the performance average. Under 150 fans the chair stays empty, as before.
 - **Dep wants in:** after four nights, the dep asks for a seat on the bus. Make them a full member (they join at their dep skill +4, liked by everyone, the chair's owner a little put out) or keep them on call.
+
+## Someone better (v0.35)
+
+`src/game/spottedEvents.ts`. Every 16+ weeks, when no audition is open, the band may see a guitarist, bassist, drummer or keyboard player who makes the room go quiet: at a jam night, a support slot, a wedding, a hotel bar. The candidate is generated at the "good" tier with a fame boost (+10, and up to +22 more with fans), and the event only fires if they beat your current player by 6 overall (or the chair is empty), so the bar rises with the band. Audition them (they arrive as the one candidate, seen 50; the incumbent loses 8 mood) or buy them a drink and leave it. If you decline and it gets back to the band (60%), the incumbent gains mood +6, loyalty +4 and likes you 5 more.

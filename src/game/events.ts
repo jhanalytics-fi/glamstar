@@ -17,6 +17,7 @@ import { RUIN_EVENTS } from './ruinEvents';
 import { FANCLUB_EVENTS } from './fanclubEvents';
 import { KIT_EVENTS } from './kitEvents';
 import { SUB_EVENTS } from './subEvents';
+import { SPOTTED_EVENTS } from './spottedEvents';
 import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
@@ -2525,6 +2526,7 @@ const EVENTS: EventDef[] = [
   ...FANCLUB_EVENTS,
   ...KIT_EVENTS,
   ...SUB_EVENTS,
+  ...SPOTTED_EVENTS,
   WHEELS_EVENT,
   ...TOUR_EVENTS,
 ];
