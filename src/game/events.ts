@@ -1930,6 +1930,45 @@ const BASE_EVENTS: EventDef[] = [
   },
 
   {
+    id: 'album_title',
+    weight: 0,
+    when: (s) => {
+      const r = [...s.releases].reverse().find((x) => x.kind === 'album');
+      return r && s.week - r.week <= 1 && !s.flags[`titled_${r.id}`] ? { rel: r.id, t0: 'Gods of Thunder', w0: 'p', t1: 'Difficult Second Album', w1: 'p', t2: 'Live at the Kebab Shop', w2: 'p' } : null;
+    },
+    title: () => 'What shall we call it?',
+    text: (s, p) => {
+      const r = s.releases.find((x) => x.id === p.rel);
+      return `The album is mixed, the sleeve is at the printers, and the title on the tape box still says "${r?.title ?? 'Untitled'}". Everyone in the room has an idea. Pick one, or type your own below.`;
+    },
+    options: (s, p) => {
+      const r = s.releases.find((x) => x.id === p.rel);
+      const name = (id: string) => (id === 'p' ? 'You' : (s.members.find((m) => m.id === id) ? first(s.members.find((m) => m.id === id)!) : 'Somebody'));
+      const pick = (t: string, w: string) => ({
+        label: `"${t}"`,
+        hint: `${name(w)}'s idea. ${name(w) === 'You' ? 'Nobody argued.' : ['Said it like it was obvious.', 'Has had it written on a beer mat since Tuesday.', 'Will sulk if it loses.', 'Drew the sleeve already.'][t.length % 4]}`,
+        resolve: (st: GameState) => {
+          const rec = st.releases.find((x) => x.id === p.rel);
+          if (rec) rec.title = t;
+          st.flags[`titled_${p.rel}`] = 1;
+          const who = st.members.find((m) => m.id === w);
+          if (who && !who.isPlayer) adjust(who, 'mood', 6);
+          log(st, `The album is called "${t}". ${who && !who.isPlayer ? `${first(who)} is insufferable about it.` : 'Your call. The sleeve says so in letters a foot high.'}`, 'good');
+        },
+      });
+      return [
+        pick(String(p.t0), String(p.w0)),
+        pick(String(p.t1), String(p.w1)),
+        pick(String(p.t2), String(p.w2)),
+        {
+          label: `Keep "${r?.title ?? 'the song title'}"`,
+          hint: 'Named after the single. Nobody will remember which came first.',
+          resolve: (st: GameState) => { st.flags[`titled_${p.rel}`] = 1; log(st, `The album keeps its name: "${r?.title}".`, 'neutral'); },
+        },
+      ];
+    },
+  },
+  {
     id: 'the_comeback',
     weight: 0,
     when: (s) => (s.flags.reunionWeek !== undefined && s.flags.comebackDone === undefined ? { years: 2, gone: 0 } : null),
@@ -2956,6 +2995,21 @@ export function viewPending(s: GameState): PendingView | null {
     text: d.text(s, s.pending.params),
     options: optionsFor(s).map((o) => ({ label: o.label, hint: o.hint, cost: o.cost ?? 0, locked: o.locked })),
   };
+}
+
+/** The album_title event answered with a title of your own. */
+export function titleAlbum(state: GameState, title: string): GameState {
+  if (!state.pending || state.pending.def !== 'album_title') throw new Error('Nothing to name.');
+  const clean = title.replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!clean) throw new Error('A title needs letters in it.');
+  const rel = String(state.pending.params.rel);
+  return mutate(state, (s) => {
+    const rec = s.releases.find((x) => x.id === rel);
+    if (rec) rec.title = clean;
+    s.flags[`titled_${rel}`] = 1;
+    s.pending = null;
+    log(s, `The album is called "${clean}". Your title, your sleeve, your fault.`, 'good');
+  });
 }
 
 export function resolvePending(state: GameState, index: number): GameState {

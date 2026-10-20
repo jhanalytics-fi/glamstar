@@ -3,7 +3,7 @@ import { Rng, clamp } from './rng';
 import { mourningBoost } from './death';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
-import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
+import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, albumTitle, songTitle } from './names';
 import { addBuzz, adjust, beat, earn, first, grow, headline, log, merchTake, milestone, player, prospects, revealLog, signed, subj, verdict as setVerdict, wobble } from './helpers';
 import { hotGenres, trend } from './world';
 import { weeklyOffers } from './offers';
@@ -819,6 +819,12 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
   milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ` on ${labelName}`}.`);
   if (kind !== 'demo') masterpiecePress(s, rng, songs);
+  // An album needs a name. The band has ideas; so, probably, do you.
+  if (kind === 'album' && !s.pending) {
+    const who = available(s).filter((m) => !m.isPlayer);
+    const picks = Array.from({ length: 3 }, (_, i) => ({ by: who.length ? who[(i + s.week) % who.length].id : 'p', title: albumTitle(rng) }));
+    s.pending = { def: 'album_title', params: { rel: rec.id, t0: picks[0].title, w0: picks[0].by, t1: picks[1].title, w1: picks[1].by, t2: picks[2].title, w2: picks[2].by }, week: s.week };
+  }
   addBuzz(s, kind === 'demo' ? 3 : kind === 'single' ? 6 : 9);
   // Hearing yourself back on tape is humbling, and educational.
   if (!lift) {

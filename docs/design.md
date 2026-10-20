@@ -234,7 +234,9 @@ Records and songs can be renamed from the Records tab (`renameRelease`, `renameS
 
 Stage presence (v0.42.2): "Work on the stage show" still grows stage toward potential as before, and once there keeps climbing with odds 0.35 x (1 - over/12) per week, up to twelve points over potential. Showmanship is learned.
 
-## Prototype status (v0.42)
+Naming the album (v0.43): every album release opens the `album_title` event: three titles from the band's title generator, each attributed to a member (who is pleased if it wins), "keep the song's title", and a text field under the choices that resolves through `titleAlbum` with your own title.
+
+## Prototype status (v0.43)
 
 Playable in the browser. Implemented:
 

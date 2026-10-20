@@ -631,6 +631,23 @@ describe('action choices', () => {
     expect(Math.max(...gained)).toBeLessThanOrEqual(12);
   });
 
+  it('a new album asks for a name: the band suggests three, or you type your own', async () => {
+    const { titleAlbum } = await import('../src/game/events');
+    const s: GameState = { ...newGame(input), fans: 2000, money: 20000 };
+    s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `S${i}`, quality: 60, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    const r = act(s, A('release', 'album'));
+    expect(r.pending?.def).toBe('album_title');
+    const v = viewPending(r)!;
+    expect(v.title).toContain('call it');
+    expect(v.options).toHaveLength(4);
+    const picked = resolvePending(r, 0);
+    const alb = picked.releases.find((x) => x.kind === 'album')!;
+    expect(`"${alb.title}"`).toBe(v.options[0].label);
+    const mine = titleAlbum(r, ' Gods of  Thunder ');
+    expect(mine.releases.find((x) => x.kind === 'album')!.title).toBe('Gods of Thunder');
+    expect(mine.pending).toBeNull();
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -843,6 +860,7 @@ describe('choice events', () => {
     spotted: (s) => { s.candidates = []; },
     studio_offer: (s) => { s.fans = 1000; s.money = 10000; },
     the_comeback: (s) => { s.flags.reunionWeek = s.week; },
+    album_title: (s) => { s.releases.push({ id: 'alb9', kind: 'album', title: 'S1', quality: 60, appeal: 1, week: s.week, sold: 0, lastWeek: 0 }); },
     the_wake: (s) => { s.memorials = [{ name: 'Dave Tinker', role: 'bass', week: s.week, age: 27, cause: 'road' }]; s.flags.wake = s.week; },
     dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },

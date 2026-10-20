@@ -4,7 +4,7 @@ import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from 
 import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, renameRelease, renameSong, retire, canComeBack, comeBack, setSplit, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
-import { resolvePending, viewPending } from '../game/events';
+import { resolvePending, titleAlbum, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerCard } from '../game/managers';
@@ -196,6 +196,11 @@ function onClick(e: Event, root: HTMLElement): void {
         openAction = null;
         break;
       case 'respond': state = resolvePending(state!, Number(arg)); break;
+      case 'titleAlbum': {
+        const input = document.getElementById('album-title') as HTMLInputElement | null;
+        if (input && input.value.trim()) state = titleAlbum(state!, input.value);
+        break;
+      }
       case 'hire': state = hire(state!, arg!, arg2 || undefined); break;
       case 'renameOpen': renaming = arg!; break;
       case 'renameCancel': renaming = null; break;
@@ -1108,6 +1113,7 @@ function eventCard(s: GameState): string {
       <h3 id="event-title">${esc(v.title)}</h3>
       <p>${esc(v.text)}</p>
       <div class="choices">${v.options.map((o, i) => choiceBtn('respond', String(i), '', o.label, o.cost, o.hint, o.locked)).join('')}</div>
+      ${s.pending?.def === 'album_title' ? `<form class="rename title-form"><input id="album-title" type="text" maxlength="60" placeholder="Or call it..." aria-label="Album title" autocomplete="off"><button class="btn" type="submit" data-do="titleAlbum">Call it that</button></form>` : ''}
     </div>`;
 }
 
