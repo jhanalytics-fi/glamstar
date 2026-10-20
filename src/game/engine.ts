@@ -363,8 +363,10 @@ export function comeBack(state: GameState): GameState {
       adjust(m, 'skill', -2);
     }
     for (const a of s.members) for (const b of s.members) if (a.id < b.id) addAffinity(s, a.id, b.id, 10);
+    s.scene = null;
     milestone(s, 'career', `${s.bandName} came back after ${Math.round(gap / 52)} years. One more album, they said.`);
     log(s, `${Math.round(gap / 52)} years of golf, gardening and solo records nobody bought. Then the phone rang, and it was each other. ${s.bandName} are back: ${s.fans.toLocaleString('en-GB')} of the ${kept.toLocaleString('en-GB')} still care, the rest are waiting to be reminded. One more album. That is what everyone says.`, 'good');
+    s.pending = { def: 'the_comeback', params: { years: Math.round(gap / 52), gone: gone.length }, week: s.week };
   });
 }
 

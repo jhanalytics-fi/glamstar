@@ -598,6 +598,10 @@ describe('action choices', () => {
     expect(back.week).toBe(404);
     expect(back.fans).toBeLessThan(s.fans);
     expect(back.flags.reunions).toBe(1);
+    expect(back.pending?.def).toBe('the_comeback');
+    expect(viewPending(back)!.title).toContain('are back');
+    const announced = resolvePending(back, 0);
+    expect(announced.fans).toBeGreaterThan(back.fans);
     expect(() => retireAgain(back)).toThrow();
     expect(retireAgain.length).toBe(1);
     expect(canComeBack({ ...over, week: 480 })).toContain('decade');
@@ -828,6 +832,7 @@ describe('choice events', () => {
     endorsement: (s) => { s.fans = 20000; },
     spotted: (s) => { s.candidates = []; },
     studio_offer: (s) => { s.fans = 1000; s.money = 10000; },
+    the_comeback: (s) => { s.flags.reunionWeek = s.week; },
     the_wake: (s) => { s.memorials = [{ name: 'Dave Tinker', role: 'bass', week: s.week, age: 27, cause: 'road' }]; s.flags.wake = s.week; },
     dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },

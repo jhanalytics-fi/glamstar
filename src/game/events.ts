@@ -1929,6 +1929,48 @@ const BASE_EVENTS: EventDef[] = [
     ],
   },
 
+  {
+    id: 'the_comeback',
+    weight: 0,
+    when: (s) => (s.flags.reunionWeek !== undefined && s.flags.comebackDone === undefined ? { years: 2, gone: 0 } : null),
+    title: (s) => `${s.bandName} are back`,
+    text: (s, p) => `The rumour was in the papers before the band had agreed on a drummer. Now it is official: ${s.bandName}, ${p.years} years on, one more album. The fan club phone has not stopped. Outside the Rat Pit somebody has painted the old logo on the wall again. The letters page is split: "The best news since 1985" against "Pension time, lads." The record companies are circling with chequebooks. ${Number(p.gone) ? `${p.gone} of the old line-up said no, which the papers call "the first row".` : 'Everyone came back, which the papers find suspicious.'} How do you come back?`,
+    options: (s) => [
+      {
+        label: 'A press conference at the Odeum',
+        hint: 'Cameras, a speech, the old jackets. The skeptics have their column, the believers have their day.',
+        resolve: (st) => {
+          st.flags.comebackDone = 1;
+          const gain = Math.round(st.fans * 0.15);
+          st.fans += gain; addBuzz(st, 25);
+          for (const m of st.members) adjust(m, 'image', 2);
+          log(st, `The press conference ran an hour over. Two tabloids called it a cash-in; four fan letters arrived before you got home, one in crayon. ${gain.toLocaleString('en-GB')} people remembered why.`, 'good');
+        },
+      },
+      {
+        label: 'A secret warm-up at the Crown & Gutter',
+        hint: 'Eighty people, a false name, the old set from memory. Tightness first, talk later.',
+        resolve: (st) => {
+          st.flags.comebackDone = 1;
+          st.tightness = clamp(st.tightness + 25, 0, 100);
+          addBuzz(st, 12);
+          for (const m of st.members) { adjust(m, 'mood', 8); adjust(m, 'energy', -10); }
+          log(st, `Eighty people, a leaked rumour, a queue round the block by the second song. The bass player forgot the middle eight of the big one and nobody minded. "Still got it," said the barman, "most of it."`, 'good');
+        },
+      },
+      {
+        label: 'Say nothing. Go straight into the studio',
+        hint: 'Let the record answer. The skeptics wait, the fans wait, the label waits.',
+        resolve: (st) => {
+          st.flags.comebackDone = 1;
+          st.flags.comebackQuiet = 1;
+          addBuzz(st, 4);
+          for (const m of st.members) adjust(m, 'mood', 4);
+          log(st, `No statement. The van, the farmhouse, the tapes rolling. The papers ran a photograph of the gate. ${s.bandName} will be judged on the record, which is what the band wanted and what the band is afraid of.`, 'neutral');
+        },
+      },
+    ],
+  },
   // ================================================================ the record industry
   {
     id: 'manager_offer',
