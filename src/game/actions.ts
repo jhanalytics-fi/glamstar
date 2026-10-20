@@ -14,6 +14,7 @@ import { commission, feeBoost } from './managers';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
 import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
+import { callDeps, canDep, covered } from './subs';
 import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
 import type { Action, ActionType, GameState, Genre, IncomeKind, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
@@ -287,6 +288,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'dry', label: 'Lock the drinks cupboard', cost: 0, hint: 'Habits drop fast. Withdrawal is grim.' },
         { id: 'mum', label: famous(s) ? "Everyone goes home to their mum's, in a limo" : "Everyone goes home to their mum's", cost: 0, hint: famous(s) ? 'Sunday roast, clean laundry, the neighbours at the window. Mum still gives you a fiver.' : 'Full recovery and a fiver each. The scene forgets you a bit.' },
         ...(s.members.some((m) => m.habit >= 25) ? [{ id: 'clinic', label: 'A fortnight in a drying-out clinic', cost: clinicFee(s), hint: 'Doctors, locked doors, group sessions. Habits cut hard, moods take a knock.' }] : []),
+        ...(s.members.some((m) => m.habit >= 25 && !m.isPlayer) ? [{ id: 'clinicOne', label: 'Send one member to the clinic', cost: Math.round(clinicFee(s) / 3), hint: `Pick who above. Two weeks away, habit cut hard; the band carries on${canDep(s) ? ' with a dep' : ', without gigs'}.` }] : []),
         { id: 'yogi', label: 'A weekend with a yogi in Totnes', cost: 120, hint: 'Breathing, lentils, a man called Ravi. Calmer heads, smaller egos.' },
         ...luxury(s, [
           { id: 'shrink', label: 'A Harley Street psychiatrist for everyone', cost: 900, unlock: 3000, hint: 'Six sessions each. Moods mended, egos examined, secrets out.' },
@@ -330,7 +332,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
     case 'write': return write(s, rng, a.option, a.genre);
     case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : release(s, rng, a.option as ReleaseKind);
     case 'party': return party(s, rng, a.option);
-    case 'rest': return rest(s, rng, a.option);
+    case 'rest': return rest(s, rng, a.option, a.memberId);
     case 'advertise': return advertise(s, rng, a.role ?? 'guitar', a.option);
     case 'tour':
       if (a.option === 'abandon') return abandonTour(s);
@@ -349,6 +351,7 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
     const p = ((m.habit / 100) * 0.45 + ((100 - m.hidden.reliability) / 100) * 0.15) * (1.4 - m.hidden.stamina / 125);
     if (rng.chance(p * 0.6)) wasted.add(m.id);
   }
+  if (canDep(s)) callDeps(s, rng, covered(s));
   let perf = performance(s, wasted, g.capacity);
   const worn = wearKit(s, rng, 0.12);
   if (worn) log(s, `${first(worn)}'s ${worn.role === 'drums' ? 'snare skin split' : worn.role === 'vocals' ? 'microphone took a knock' : 'amp started crackling'} mid-set. Kit wears.`, 'neutral');
@@ -832,7 +835,22 @@ export function sanatoriumFee(s: GameState): number {
   return Math.round(clamp(4000 + s.fans * 0.4, 4000, 80000) / 100) * 100;
 }
 
-function rest(s: GameState, rng: Rng, option: string): void {
+/** One member away for treatment while the rest keep working. */
+function clinicOne(s: GameState, rng: Rng, memberId?: string): void {
+  const pick = s.members.find((m) => m.id === memberId && !m.isPlayer && m.outWeeks === 0) ?? [...s.members].filter((m) => !m.isPlayer && m.outWeeks === 0).sort((a, b) => b.habit - a.habit)[0];
+  if (!pick) throw new Error('Nobody to send.');
+  pick.outWeeks = Math.max(pick.outWeeks, 2);
+  adjust(pick, 'habit', wobble(rng, -45));
+  adjust(pick, 'energy', 30);
+  adjust(pick, 'mood', wobble(rng, -8));
+  pick.hidden.loyalty = clamp(pick.hidden.loyalty + 3, 1, 99);
+  for (const m of available(s)) if (m !== pick) adjust(m, 'mood', wobble(rng, 2));
+  restCommentary(s, 'clinicOne', rng);
+  log(s, `${first(pick)} has gone to a clinic in Surrey for a fortnight. The rest of the band ${canDep(s) ? 'rehearsed with a dep and carried on' : 'rehearsed without a rhythm section and waited'}.`, 'neutral');
+}
+
+function rest(s: GameState, rng: Rng, option: string, memberId?: string): void {
+  if (option === 'clinicOne') return clinicOne(s, rng, memberId);
   restCommentary(s, option, rng);
   for (const m of s.members) {
     switch (option) {

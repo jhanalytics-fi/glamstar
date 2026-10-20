@@ -350,6 +350,26 @@ describe('action choices', () => {
     expect(best).toBeGreaterThan(60);
   });
 
+  it('one member can go to the clinic while a dep covers the gigs', () => {
+    const s = { ...newGame(input), fans: 500, money: 3000 };
+    s.members.forEach((m, i) => { m.habit = i === 2 ? 70 : 10; });
+    const target = s.members[2];
+    expect(actionOptions(s, 'rest').some((o) => o.id === 'clinicOne')).toBe(true);
+    const r = act(s, { type: 'rest', option: 'clinicOne', memberId: target.id });
+    const x = r.members.find((m) => m.id === target.id)!;
+    expect(x.outWeeks).toBeGreaterThan(0);
+    expect(x.habit).toBeLessThan(40);
+    expect(r.members.filter((m) => m.id !== target.id).every((m) => m.outWeeks === 0)).toBe(true);
+    // With 500 fans a dep covers the chair: gigs stay open, and the dep gets paid and remembered.
+    expect(missingForGig(r)).toEqual([]);
+    const g = settle(act(settle(r), A('gig', 'venue1')));
+    expect(g.subs?.[target.role]?.times).toBe(1);
+    expect(g.log.some((l) => /depped on/.test(l.text))).toBe(true);
+    // A pub band cannot afford deps: the chair stays empty.
+    const poor = { ...r, fans: 50 };
+    expect(missingForGig(poor).length).toBe(1);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -558,6 +578,7 @@ describe('choice events', () => {
     last_chance: (s) => { s.flags.lastChanceOpen = 1; s.money = -300; },
     fan_club_start: (s) => { s.fans = 1500; },
     endorsement: (s) => { s.fans = 20000; },
+    dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },
   };

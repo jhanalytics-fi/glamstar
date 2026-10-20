@@ -1282,6 +1282,11 @@ const REST: Record<string, { mon: Line<MateCtx>[]; mid: Line<MateCtx>[]; end: Li
     mid: ['Day five. Shakes, soup and a counsellor who was in a band once and will not say which.', 'Table tennis, cold showers and a lot of honest conversations {mate2} would rather not have had.', 'A visiting day. Mums. {mate}\'s mum brought cake and a look.'],
     end: ['Discharged clean, thin and furious with everyone, including the doctor, who said that was normal.', 'Home with a folder of leaflets and a band that has not had a drink in a fortnight. The silence in the van is new.', 'Checked out on a Sunday. {mate} says it was the worst two weeks of their life and asks when the next one is.'],
   },
+  clinicOne: {
+    mon: ['One of the band packs a small bag and gets in a taxi to Surrey. The rest watch from the window.', 'A quiet drive to a clinic behind high hedges. One suitcase, one hug, one joke that does not land.'],
+    mid: ['The band rehearses as a three-piece and discovers which parts were covered by volume.', 'A dep learns the set from a tape in an afternoon and plays it better than expected, which annoys everyone.'],
+    end: ['A postcard from Surrey: "Food terrible. Doctor nice. Miss you idiots."', 'Visiting day. Cake, a walk round the grounds, and a promise nobody is sure about yet.'],
+  },
   sanatorium: {
     mon: ['A clinic above Lake Geneva with a famous doctor, white corridors and no telephone. The band\'s coats are taken away.', 'Arrival by lake steamer. Mountains, silence, and a nurse who confiscates {mate}\'s "vitamins" without comment.', 'Day one. Blood tests, a mountain walk, and bed at nine. Nobody has been in bed at nine since school.'],
     mid: ['Week two. Cold baths, long walks, a diet of things that grew on the mountain. {mate2} has started whistling.', 'The famous doctor explains the liver with diagrams. {mate} asks for a copy for the wall of the van.', 'Week three. A Swiss banker in the next room turns out to be a fan. He has every record and a chalet.'],

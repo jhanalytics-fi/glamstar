@@ -44,6 +44,7 @@ let draft: NewGameInput & { firstName: string; lastName: string } = {
 };
 let adRole: Role = 'guitar';
 let newSound: Genre | null = null;
+let restWho: string | null = null;
 let chartTab: ChartId = 'london';
 let chartAll = false;
 let openAction: ActionType | null = null;
@@ -155,6 +156,7 @@ function onClick(e: Event, root: HTMLElement): void {
         break;
       case 'adRole': adRole = arg as Role; break;
       case 'newSound': newSound = arg as Genre; break;
+      case 'restWho': restWho = arg!; break;
       case 'open':
         openAction = openAction === arg ? null : (arg as ActionType);
         // Hiring with a hole in the line-up: the ad is for the missing player by default.
@@ -185,7 +187,7 @@ function onClick(e: Event, root: HTMLElement): void {
         else armedAbandon = true;
         break;
       case 'choose':
-        state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole, genre: newSound ?? undefined });
+        state = act(state!, { type: arg as ActionType, option: arg2!, role: adRole, genre: newSound ?? undefined, memberId: restWho ?? undefined });
         openAction = null;
         break;
       case 'respond': state = resolvePending(state!, Number(arg)); break;
@@ -869,6 +871,8 @@ function nextBlock(s: GameState): string {
   const roleSelect =
     open === 'advertise'
       ? `<div class="role-pick"><span>Looking for</span><div class="chips">${(['guitar', 'bass', 'drums', 'keys'] as Role[]).map((r) => `<button class="chip ${gaps.includes(r) ? 'gap' : ''}" data-do="adRole" data-arg="${r}" aria-pressed="${r === adRole}">${ROLE_LABEL[r]}${gaps.includes(r) ? ' (missing)' : ''}</button>`).join('')}</div></div>`
+      : open === 'rest' && s.members.some((m) => !m.isPlayer && m.habit >= 25)
+        ? `<div class="role-pick"><span>Who goes, if one goes</span><div class="chips">${s.members.filter((m) => !m.isPlayer && m.outWeeks === 0).map((m) => `<button class="chip" data-do="restWho" data-arg="${m.id}" aria-pressed="${m.id === restWho}">${esc(first(m))} (habit ${m.habit})</button>`).join('')}</div></div>`
       : open === 'write'
         ? `<div class="role-pick"><span>New sound, if you change direction</span><div class="chips">${GENRES.filter((g) => g !== s.members[0].style).map((g) => `<button class="chip" data-do="newSound" data-arg="${g}" aria-pressed="${g === newSound}">${GENRE_LABEL[g]}</button>`).join('')}</div></div>`
         : '';

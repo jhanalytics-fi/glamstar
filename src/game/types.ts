@@ -289,6 +289,8 @@ export interface GameState {
   difficulty?: Difficulty;
   /** How the money is split on paper. */
   split?: Split;
+  /** Session players on call, by role. */
+  subs?: Partial<Record<Role, Sub>>;
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
@@ -339,6 +341,17 @@ export interface NewGameInput {
   lineup?: Lineup;
 }
 
+/** A session player who deps when someone is away. */
+export interface Sub {
+  name: string;
+  role: Role;
+  /** Times they have filled in. */
+  times: number;
+  skill: number;
+  /** Already asked to join. */
+  offered?: boolean;
+}
+
 export type BandGender = 'male' | 'female' | 'mixed';
 /** The band deal: equal shares, the writers keep the publishing, or the leader's band. */
 export type Split = 'equal' | 'writers' | 'leader';
@@ -360,6 +373,8 @@ export interface Action {
   lodging?: Lodging;
   /** For changing direction: the new sound. */
   genre?: Genre;
+  /** For sending one member away: who. */
+  memberId?: string;
 }
 
 export type TourPolicy = 'wild' | 'steady' | 'clean';

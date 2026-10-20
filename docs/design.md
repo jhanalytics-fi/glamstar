@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.33)
+## Prototype status (v0.34)
 
 Playable in the browser. Implemented:
 
@@ -482,3 +482,9 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 ## Around the band (v0.33)
 
 `src/game/entourage.ts`. The Business tab lists everyone around the band who is not in it: the roadie (gigs 20% and tour dates 15% lighter on energy), the doctor, the court (image, £150 a week), the fan club (spare room for a 30% cut, or an office on the weekly bill), the manager, the admirer, Big Tony, the gear sponsor, and Trevor or the pilot. Each row says what they do, what they cost, and what letting them go would cost. Roadie, doctor, court and admirer can be let go with a two-tap button; the rest have their own ways out (the manager above, Tony by paying him).
+
+## Deps (v0.34)
+
+- **One member to the clinic:** Rest gains "Send one member to the clinic" (a third of the band fee) with a member picker above the choices. They are away two weeks (habit -45, energy +30, mood -8, loyalty +3); the rest carry on.
+- **Deps** (`src/game/subs.ts`): from 150 fans, a member who is away (any chair but the singer's) is covered by a session player, so gigs and tours go on. The dep for each role is the same person every time (a name from the Rat Pit house band, the West End pit, the music shop), costs £40 + fans x 0.01 a night, plays at their own skill (48-62, +1 every third call) with no stage presence to speak of and no chemistry, and counts in the performance average. Under 150 fans the chair stays empty, as before.
+- **Dep wants in:** after four nights, the dep asks for a seat on the bus. Make them a full member (they join at their dep skill +4, liked by everyone, the chair's owner a little put out) or keep them on call.

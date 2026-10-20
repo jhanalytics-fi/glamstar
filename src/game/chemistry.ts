@@ -1,5 +1,7 @@
 import { clamp } from './rng';
 import { backlineBonus, kitFactor } from './kit';
+import { canDep, covered } from './subs';
+import type { Role } from './types';
 import type { GameState, Genre, Musician } from './types';
 
 const COMPAT: Record<Genre, Record<Genre, number>> = {
@@ -66,7 +68,9 @@ export function available(s: GameState): Musician[] {
 /** A gig needs a voice, a guitar (or keys), a bass and drums. */
 export function missingForGig(s: GameState): string[] {
   const here = available(s);
-  const has = (r: string) => here.some((m) => m.role === r || m.doubles === r);
+  // A member who is away can be covered by a dep, once the band can afford one. The singer cannot.
+  const deps = canDep(s) ? covered(s) : [];
+  const has = (r: string) => here.some((m) => m.role === r || m.doubles === r) || deps.includes(r as Role);
   const missing: string[] = [];
   if (!has('vocals')) missing.push('a singer');
   if (!has('guitar') && !has('keys')) missing.push('a guitarist');
@@ -79,14 +83,17 @@ export function missingForGig(s: GameState): string[] {
 export function performance(s: GameState, wasted: Set<string> = new Set(), capacity?: number): number {
   const here = available(s);
   if (here.length === 0) return 0;
+  // Deps play competently and know nobody: average skill, no stage presence to speak of, decent kit.
+  const deps = canDep(s) ? covered(s).map((r) => s.subs?.[r]?.skill ?? 55) : [];
+  const depSum = deps.reduce((a, k) => a + (k * 0.6 + 45 * 0.4) * kitFactor(55), 0);
   const indiv =
-    here.reduce((acc, m) => {
+    (depSum + here.reduce((acc, m) => {
       // The instrument caps the player: a plywood guitar through a practice amp sounds like one.
       let v = (m.skill * 0.6 + m.stage * 0.4) * kitFactor(m.kit ?? 30);
       if (m.energy < 30) v *= 0.75;
       if (wasted.has(m.id)) v *= 0.55;
       return acc + v;
-    }, 0) / here.length;
+    }, 0)) / (here.length + deps.length);
   const songBonus = topSongs(s).length ? (avgQuality(s) - 40) * 0.15 : -6; // covers only
   const chem = chemistry(s).total;
   const factor = 0.6 + (chem / 100) * 0.7;
