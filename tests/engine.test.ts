@@ -532,6 +532,26 @@ describe('action choices', () => {
     expect(any).toBe(0);
   });
 
+  it('a famous band still plays big one-offs: arenas, summer festivals and a beach in Rio', () => {
+    const winter: GameState = { ...newGame(input), fans: 80000, money: 500000, week: 104 + 5, buzz: 60 };
+    const w = actionOptions(winter, 'gig');
+    expect(w.find((o) => o.id === 'big_arena')!.locked).toBeUndefined();
+    expect(w.find((o) => o.id === 'big_mudfield')!.locked).toContain('June to August');
+    expect(w.some((o) => o.id === 'big_beach')).toBe(false);
+    const summer: GameState = { ...winter, week: 104 + 28 };
+    expect(actionOptions(summer, 'gig').find((o) => o.id === 'big_mudfield')!.locked).toBeUndefined();
+    const r = act(summer, A('gig', 'big_mudfield'));
+    expect(r.fans - summer.fans).toBeGreaterThan(5000);
+    expect(r.flags.big_mudfield).toBe(summer.week);
+    expect(actionOptions({ ...r, week: r.week + 1 }, 'gig').find((o) => o.id === 'big_mudfield')!.locked).toContain('Next summer');
+    const huge: GameState = { ...summer, fans: 1000000 };
+    const beach = actionOptions(huge, 'gig').find((o) => o.id === 'big_beach')!;
+    expect(beach.cost).toBe(180000);
+    const b = act(huge, A('gig', 'big_beach'));
+    expect(b.money).toBeLessThan(huge.money);
+    expect(b.log.some((l) => l.text.includes('Rio'))).toBe(true);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

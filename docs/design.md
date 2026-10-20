@@ -210,7 +210,13 @@ Care: every week each member's habit drifts down with probability care/150; a me
 
 Offers were too rare at weight 3 among a hundred eligible events. `managerKnock` now guarantees an approach the first week the band passes 300, 3,000 and 30,000 fans (not on tour, not with something pending, not within 20 weeks of the last pitch). With a manager already, only a newcomer with clout 20 above comes calling, from 3,000 fans; the offer then reads "Switch. Pay off X" at the sack price. The offer text is the card.
 
-## Prototype status (v0.39)
+## Big nights and festivals (v0.40)
+
+A famous band's "Play a gig" used to shrink to a secret pub gig and two London rooms. bigShows.ts adds one-off big nights: the Empire Arena (12,000, from 20,000 fans, every ten weeks), Kingsmeadow Stadium (60,000, from 150,000 fans, £25,000 staging), and from 300,000 and 900,000 fans a free concert in the park and a free show on the beach in Rio (up to 600,000 people, £180,000 staging, once in three years). Festivals are summer only (weeks 24 to 35) and once a year: Mudfield's Other Stage from 4,000 fans, the Iron Monument at Castle Dunnington from 30,000 (a crowd that bottles anyone not heavy enough), Nordvik in Denmark from 40,000, and the Pyramid at Mudfield from 60,000. Each shows up as a tease at half its fan threshold.
+
+Festival crowds are not yours, so the gig's novelty factor has a floor of 0.5 for big shows (`fresh`) and they make fans in the tens of thousands; London overexposure does not apply to them. Merch per head is cut by mud and sand (`merchMult`). Staging cost is charged as the option cost; the fee and door come in as usual. Weather is rolled at every festival: rain and a bog, or the sun down behind the stage.
+
+## Prototype status (v0.40)
 
 Playable in the browser. Implemented:
 

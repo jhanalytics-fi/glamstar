@@ -12,6 +12,7 @@ import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, 
 import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost, nousSaving } from './managers';
+import { bigShowLocked, bigShowsFor } from './bigShows';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
 import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
@@ -56,6 +57,10 @@ interface GigSpec {
   crowd: (s: GameState, rng: Rng) => number;
   /** One-off bookings have their own aftermath. */
   after?: (s: GameState, rng: Rng, perf: number, crowd: number) => void;
+  /** A crowd that is not yours: the floor under the novelty factor, so a festival field still makes fans. */
+  fresh?: number;
+  /** Merch per head, relative: nobody carries money on a beach. */
+  merchMult?: number;
 }
 
 /** Album tracks that could still be lifted as singles: from the latest album, under a year old, best first. */
@@ -125,6 +130,13 @@ function gigSpecs(s: GameState): Record<string, GigSpec> {
     specs.support = {
       venue: `support slot for ${sup.name}`, capacity: 600, fee: 15, door: 0, cost: 0, fanMult: 1.3, energyMult: 0.9, buzzBonus: 1,
       crowd: (st, rng) => Math.round(sup.fans * 0.35 + st.fans * 0.3 + rng.int(-10, 10)),
+    };
+  }
+  for (const b of bigShowsFor(s)) {
+    specs[`big_${b.id}`] = {
+      venue: b.venue, capacity: b.capacity, fee: b.fee, door: b.door, cost: 0, fanMult: b.fanMult, energyMult: b.energyMult, buzzBonus: b.buzzBonus,
+      crowd: b.crowd, fresh: 0.5, merchMult: b.merchMult,
+      after: (st, rng, perf, crowd) => { st.flags[`big_${b.id}`] = st.week; b.after?.(st, rng, perf, crowd); },
     };
   }
   specs.paytoplay = {
@@ -213,6 +225,10 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         });
       }
       if (!big) opts.push({ id: 'paytoplay', label: 'Pay to play at The Velvet Cellar', cost: 60, hint: 'You keep nothing. A proper Soho stage looks good.' });
+      for (const b of bigShowsFor(s)) {
+        const why = bigShowLocked(s, b);
+        opts.push({ id: `big_${b.id}`, label: b.label, cost: b.cost, hint: `${b.hint}${b.fee ? ` £${b.fee.toLocaleString('en-GB')}${b.door ? ' plus a cut of the door' : ''}.` : ''}`, locked: why ?? undefined });
+      }
       const miss = missingForGig(s);
       if (miss.length) for (const o of opts) o.locked = `You need ${miss.join(' and ')} to gig.`;
       return opts;
@@ -362,9 +378,10 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   let crowdMult = 1;
   if (fate?.kind === 'disaster') { perf = Math.round(perf * fate.perfMult); crowdMult = fate.crowdMult; }
   // Play the same London rooms every week and people stop coming: they saw you last Friday.
-  const overexposed = 1 / (1 + (s.flags.homeHeat ?? 0) * 0.15);
+  const local = g.capacity < 5000;
+  const overexposed = local ? 1 / (1 + (s.flags.homeHeat ?? 0) * 0.15) : 1;
   const crowd = clamp(Math.round(g.crowd(s, rng) * overexposed * crowdMult), 6, g.capacity);
-  s.flags.homeHeat = (s.flags.homeHeat ?? 0) + 1;
+  if (local) s.flags.homeHeat = (s.flags.homeHeat ?? 0) + 1;
   if (overexposed < 0.6 && rng.chance(0.3)) log(s, 'Half the regulars stayed home. "We saw you last week," says the barman. "And the week before."', 'neutral');
   const wastedMembers = available(s).filter((m) => wasted.has(m.id));
   gigCommentary(s, rng, { venue: g.venue, crowd, capacity: g.capacity, perf, wasted: wastedMembers });
@@ -380,13 +397,13 @@ function gig(s: GameState, rng: Rng, g: GigSpec): void {
   const pay = Math.round((g.fee + Math.round(crowd * 2 * g.door)) * feeBoost(s));
   const fashion = 0.75 + trend(player(s).style, s.week) * 0.4;
   // Playing the same London rooms mostly reaches people who already know you.
-  const novelty = clamp(1 - s.fans / (g.capacity * 8), 0.05, 1);
+  const novelty = clamp(1 - s.fans / (g.capacity * 8), g.fresh ?? 0.05, 1);
   const raw = ((crowd * (perf - 42)) / 90) * g.fanMult * (perf > 42 ? novelty : 1);
   const fanDelta = Math.max(Math.round(raw > 0 ? raw * fashion : raw), -Math.round(crowd * 0.1));
   s.money += pay;
   earn(s, 'gigs', pay);
   commission(s, pay);
-  const merch = g.fee > 0 || crowd >= 40 ? merchTake(s, crowd) : 0;
+  const merch = g.fee > 0 || crowd >= 40 ? Math.round(merchTake(s, crowd) * (g.merchMult ?? 1)) : 0;
   if (merch > 0) { s.money += merch; earn(s, 'merch', merch); }
   s.fans = Math.max(0, s.fans + fanDelta);
   addBuzz(s, Math.max(0, (perf - 45) / 5) + crowd / 60 + g.buzzBonus);
