@@ -160,6 +160,10 @@ button, input, select { font: inherit; color: inherit; }
 .stats dt { font-family: var(--cond); color: var(--muted); font-size: 0.95rem; }
 .stats dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 1.35rem; }
 .stats dd.neg { color: var(--bad); }
+.toy-kind { margin: 14px 0 4px; font-family: var(--cond); text-transform: uppercase; letter-spacing: 0.06em; }
+.choice.owned { border-color: #ffb36b; }
+.owns { font-family: var(--cond); color: var(--muted); margin: 4px 0; }
+.owns .lbl { margin-right: 6px; }
 .mgr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 18px; margin: 10px 0; }
 .mgr-stat .lbl { font-family: var(--cond); }
 .mgr-stat strong { font-family: var(--display); font-size: 1.15rem; }

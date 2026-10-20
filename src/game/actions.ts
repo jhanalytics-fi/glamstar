@@ -13,6 +13,7 @@ import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
 import { commission, feeBoost, nousSaving } from './managers';
 import { bigShowLocked, bigShowsFor } from './bigShows';
+import { bestHome, homeRest, owned, toySpec } from './toys';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
 import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
@@ -896,10 +897,14 @@ function clinicOne(s: GameState, rng: Rng, memberId?: string): void {
 function rest(s: GameState, rng: Rng, option: string, memberId?: string): void {
   if (option === 'clinicOne') return clinicOne(s, rng, memberId);
   restCommentary(s, option, rng);
+  // A home of your own rests you better than a flat above a kebab shop; a big one rests the band.
+  const home = homeRest(s);
+  const bandHome = owned(s).some((t) => toySpec(t.id).band);
+  if (home && option === 'sleep') log(s, `A week at ${bestHome(s)}. ${bandHome ? 'The band came too.' : 'Nobody else was invited.'}`, 'neutral');
   for (const m of s.members) {
     switch (option) {
       case 'sleep':
-        adjust(m, 'energy', wobble(rng, m.habit > 50 ? 20 : 35));
+        adjust(m, 'energy', wobble(rng, m.habit > 50 ? 20 : 35) + (m.isPlayer || bandHome ? home : 0));
         adjust(m, 'mood', wobble(rng, 4));
         adjust(m, 'habit', wobble(rng, -8));
         break;

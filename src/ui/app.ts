@@ -12,6 +12,7 @@ import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, 
 import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
+import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
@@ -58,6 +59,7 @@ let collapsedScene: number | null = null;
 let armedFire: string | null = null;
 let armedRetire = false;
 let armedHanger: string | null = null;
+let armedSell: string | null = null;
 let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
@@ -209,6 +211,11 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'sackHanger':
         if (armedHanger === arg) { state = sackHanger(state!, arg!); armedHanger = null; }
         else armedHanger = arg!;
+        break;
+      case 'buyToy': state = buyToy(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
+      case 'sellToy':
+        if (armedSell === arg) { state = sellToy(state!, arg!); armedSell = null; labelNote = state.log.at(-1)?.text ?? ''; }
+        else armedSell = arg!;
         break;
       case 'offerRead': state = readSmallPrint(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerDecline': state = declineOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
@@ -605,6 +612,26 @@ function managerBlock(s: GameState): string {
 
 const MOOD_WORD = (g: number) => (g >= 75 ? 'They love you' : g >= 50 ? 'Warm' : g >= 30 ? 'Cooling' : 'Frosty: one more flop and you are out');
 
+/** The good life: what a rock star buys, and what it costs to keep. */
+function goodLifeBlock(s: GameState): string {
+  const list = shopWindow(s);
+  if (!list.length) return '';
+  const kinds = (['home', 'car', 'bling', 'folly', 'company'] as ToyKind[]).filter((k) => list.some((t) => t.kind === k));
+  const own = new Set((s.toys ?? []).map((t) => t.id));
+  const groups = kinds.map((k) => `<p class="lbl toy-kind">${TOY_KIND[k]}</p><div class="choices">${list.filter((t) => t.kind === k).map((t) => {
+    const has = own.has(t.id);
+    const why = has ? null : toyLocked(s, t);
+    const back = Math.round(t.price * t.resale);
+    const btn = has
+      ? `<button class="choice owned" data-do="sellToy" data-arg="${t.id}"><span class="choice-head"><strong>${esc(t.name)}</strong><span class="cost free">${t.weekly ? `${money(t.weekly)} / wk` : 'yours'}</span></span><span class="choice-hint">${esc(t.word)} ${armedSell === t.id ? `Really ${t.kind === 'company' ? 'end it' : `sell for ${money(back)}`}?` : t.resale ? `Tap to sell: ${money(back)}.` : 'Tap to end it.'}</span></button>`
+      : `<button class="choice" data-do="buyToy" data-arg="${t.id}" ${why ? 'disabled' : ''}><span class="choice-head"><strong>${esc(t.name)}</strong><span class="cost">${t.price ? money(t.price) : 'no fee'}${t.weekly ? ` + ${money(t.weekly)} / wk` : ''}</span></span><span class="choice-hint">${esc(why ?? t.word)}</span></button>`;
+    return btn;
+  }).join('')}</div>`).join('');
+  return `<h3 class="sub">The good life</h3>
+    <p class="hint">What the money is for. Everything here goes on your card, costs something every week, and makes the others wonder why it is not theirs. Homes rest you; the big ones rest the band.</p>
+    ${groups}`;
+}
+
 /** Where the money goes: the weekly bill, line by line, so the player sees what fame costs. */
 function moneyBlock(s: GameState): string {
   const base = 10 + s.members.length * 6;
@@ -613,6 +640,7 @@ function moneyBlock(s: GameState): string {
     ['Wages, crew and flats', Math.round(s.fans * 0.02), 'Grows with the fan base. Fame has staff.'],
     ['Habits', viceBill(s), 'What the band puts up its nose and down its neck.'],
     ['Living like a star', splurge(s), 'Two per cent of everything over £20,000, every week.'],
+    ['The good life', toyUpkeep(s), toyLine(s) || 'Nothing yet.'],
   ];
   const rows = all.filter((r) => r[1] > 0);
   const total = upkeep(s);
@@ -640,7 +668,7 @@ function moneyBlock(s: GameState): string {
 }
 
 function labelSection(s: GameState): string {
-  return labelDeals(s) + managerBlock(s) + splitBlock(s) + crewBlock(s) + moneyBlock(s) + incomeBlock(s);
+  return labelDeals(s) + managerBlock(s) + splitBlock(s) + crewBlock(s) + goodLifeBlock(s) + moneyBlock(s) + incomeBlock(s);
 }
 
 /** Crew, hangers-on and the payroll. */
@@ -1191,6 +1219,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
         ${candidate ? '' : `<div class="meters">${meter('Energy', m.energy)}${meter('Mood', m.mood)}${meter('Habit', m.habit, 'habit')}</div>`}
         ${out ? `<p class="status">Out for ${m.outWeeks} more week${m.outWeeks === 1 ? '' : 's'}</p>` : ''}
         ${candidate ? '' : relLine(s, m)}
+        ${m.isPlayer && toyLine(s) ? `<p class="owns"><span class="lbl">Owns</span> ${esc(toyLine(s))}</p>` : ''}
         <p class="blurb">${esc(m.blurb)}</p>
         ${foot ? `<div class="card-foot">${foot}</div>` : ''}
       </div>

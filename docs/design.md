@@ -216,7 +216,13 @@ A famous band's "Play a gig" used to shrink to a secret pub gig and two London r
 
 Festival crowds are not yours, so the gig's novelty factor has a floor of 0.5 for big shows (`fresh`) and they make fans in the tens of thousands; London overexposure does not apply to them. Merch per head is cut by mud and sand (`merchMult`). Staging cost is charged as the option cost; the fee and door come in as usual. Weather is rolled at every festival: rain and a bog, or the sun down behind the stage.
 
-## Prototype status (v0.40)
+## The good life (v0.41)
+
+What the money is for. toys.ts lists twenty things a rock star buys, in five kinds: homes (a Chelsea flat through a Kensington mews, a Cotswolds manor, an Ibiza villa, a New York loft, a Montana ranch and a Highland castle), cars (Jaguar, Porsche, Rolls with a driver, Lamborghini), gold (a watch, a diamond tooth, a dead legend's guitar), follies (a yacht, a racehorse called Feedback, a vineyard, a small island) and company (a model on your arm, an astrologer, a guru). Each has a price, a fan threshold (shown as a tease from half), a weekly bill added to `upkeep`, a one-off image and mood for the player, and a resale share. Homes add `rest` energy to a rest week for you, or for the whole band if the place is big enough (`band`). The others notice: a home the band can use lifts their mood, company and gold-tooth purchases cost it with the egos.
+
+Bought and sold from the Business tab ("The good life"), no week spent; owned things show on the player's card as an "Owns" line and in the weekly bill. `toyWeek` rolls one trouble a week across the lot: the Lamborghini in a field, the yacht in a harbour wall, the model's story in a Sunday paper (and gone), the castle's boiler. Selling back pays the resale share; company just ends.
+
+## Prototype status (v0.41)
 
 Playable in the browser. Implemented:
 

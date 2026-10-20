@@ -552,6 +552,28 @@ describe('action choices', () => {
     expect(b.log.some((l) => l.text.includes('Rio'))).toBe(true);
   });
 
+  it('the good life: a flat rests you, costs every week, shows on your card and sells back', async () => {
+    const { buyToy, sellToy, shopWindow, toyLine, toyUpkeep, homeRest } = await import('../src/game/toys');
+    const { upkeep } = await import('../src/game/engine');
+    const small = newGame(input);
+    expect(shopWindow(small)).toHaveLength(0);
+    const s: GameState = { ...newGame(input), fans: 20000, money: 200000 };
+    expect(shopWindow(s).some((t) => t.id === 'flat')).toBe(true);
+    expect(() => buyToy(s, 'castle')).toThrow();
+    const r = buyToy(s, 'flat');
+    expect(r.money).toBe(200000 - 90000);
+    expect(toyLine(r)).toContain('flat in Chelsea');
+    expect(toyUpkeep(r)).toBe(150);
+    expect(upkeep(r)).toBe(upkeep({ ...r, toys: [] }) + 150);
+    expect(homeRest(r)).toBe(6);
+    expect(() => buyToy(r, 'flat')).toThrow();
+    const rested = act(r, A('rest', 'sleep'));
+    expect(rested.log.some((l) => l.text.includes('A week at the flat in Chelsea'))).toBe(true);
+    const sold = sellToy(r, 'flat');
+    expect(sold.money).toBe(r.money + 81000);
+    expect(toyLine(sold)).toBe('');
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

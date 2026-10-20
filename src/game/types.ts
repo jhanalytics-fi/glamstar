@@ -126,6 +126,12 @@ export interface Alumnus {
   how: 'fired' | 'quit' | 'poached' | 'died';
 }
 
+/** Something bought with the money: a house, a car, a horse. */
+export interface Toy {
+  id: string;
+  week: number;
+}
+
 /** A member who died in the band. Remembered every year on the day. */
 export interface Memorial {
   name: string;
@@ -323,6 +329,8 @@ export interface GameState {
   alumni: Alumnus[];
   /** Members who died in the band. */
   memorials?: Memorial[];
+  /** The good life: what you own. */
+  toys?: Toy[];
   awards: Award[];
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;

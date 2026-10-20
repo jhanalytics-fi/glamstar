@@ -9,6 +9,7 @@ import { fanClubWeek } from './fanclub';
 import { splitWeek, shares } from './split';
 import { studioRent } from './studio';
 import { deathWeek, remembranceWeek } from './death';
+import { toyUpkeep, toyWeek } from './toys';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
@@ -369,7 +370,7 @@ export function reach(s: GameState): { us: number; europe: number; world: number
 
 /** Weekly cost of keeping the band alive. Fame brings wages, crew, flats and hangers-on. */
 export function upkeep(s: GameState): number {
-  return 10 + s.members.length * 6 + (s.flags.rentUp ?? 0) + Math.round(s.fans * 0.02) + viceBill(s) + splurge(s);
+  return 10 + s.members.length * 6 + (s.flags.rentUp ?? 0) + Math.round(s.fans * 0.02) + viceBill(s) + splurge(s) + toyUpkeep(s);
 }
 
 /** Habits cost money, and famous habits cost more. */
@@ -447,6 +448,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
   remembranceWeek(s);
+  toyWeek(s, rng);
   deathWeek(s, rng);
   if (s.money < SKINT) {
     // Skint: everyone picks up shifts somewhere.
