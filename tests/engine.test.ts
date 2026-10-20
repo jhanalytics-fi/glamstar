@@ -492,6 +492,46 @@ describe('action choices', () => {
     expect(small.over?.reason).toContain('Rat Pit');
   });
 
+  it('managers come knocking at 300 fans with a card, and a minder keeps habits down', async () => {
+    const { KNOCKS, MANAGER_KINDS, managerCard, newManager, managerWeek } = await import('../src/game/managers');
+    expect(KNOCKS[0]).toBe(300);
+    const s: GameState = { ...newGame(input), fans: 400, buzz: 30, week: 30 };
+    const r = step(s, REST);
+    expect(r.flags.managerKnock300).toBeDefined();
+    const after = settle(r);
+    // settle resolves the pending offer; either way the knock fired and the offer was seen.
+    expect(after.flags.managerPitch !== undefined || after.manager !== null).toBe(true);
+    const m = newManager(s, new Rng(7));
+    expect(Object.keys(MANAGER_KINDS)).toContain(m.kind);
+    const card = managerCard(m);
+    expect(card.kind.length).toBeGreaterThan(20);
+    expect(card.past).toContain('Managed');
+    // A minder with care 90 pulls habits down over a year; a hustler with care 15 does not.
+    const run = (care: number) => {
+      const st: GameState = structuredClone(s);
+      st.manager = { name: 'X', kind: 'nanny', care, nous: 30, honesty: 80, clout: 40, cut: 0.2, signed: 0, read: true, taken: 0 };
+      for (const x of st.members) x.habit = 50;
+      const rng = new Rng(3);
+      for (let i = 0; i < 52; i++) managerWeek(st, rng);
+      return st.members.reduce((a, x) => a + x.habit, 0);
+    };
+    expect(run(90)).toBeLessThan(run(15) - 20);
+  });
+
+  it('a bigger manager only calls on a band that has outgrown the one it has', () => {
+    const s: GameState = { ...newGame(input), fans: 5000, buzz: 40, week: 60 };
+    s.manager = { name: 'Clive', kind: 'hustler', care: 20, nous: 30, honesty: 60, clout: 20, cut: 0.2, signed: 0, read: true, taken: 0 };
+    let seen = 0;
+    for (let seed = 1; seed < 40; seed++) {
+      try { const f = forceEvent({ ...s, rng: seed }, 'manager_offer'); const v = viewPending(f)!; expect(v.options[0].label).toContain('Switch'); expect(v.text).toContain('paid off'); seen++; } catch { /* not bigger */ }
+    }
+    expect(seen).toBeGreaterThan(0);
+    const big = { ...s, manager: { ...s.manager, clout: 95 } };
+    let any = 0;
+    for (let seed = 1; seed < 40; seed++) { try { forceEvent({ ...big, rng: seed }, 'manager_offer'); any++; } catch { /* fine */ } }
+    expect(any).toBe(0);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -676,6 +716,7 @@ describe('choice events', () => {
     venue_burned: (s) => { s.fans = 200; },
     xmas_single: (s) => later(s, 95),
     manager_clause: (s) => { s.manager = { name: 'Clive', honesty: 20, clout: 30, cut: 0.2, signed: 40, read: false, taken: 0 }; },
+    manager_offer: (s) => { s.fans = 300; s.buzz = 30; },
     ar_single: (s) => { signed(s); },
     ar_image: (s) => { signed(s); },
     ar_session: (s) => { signed(s); s.members.forEach((m) => { m.skill = 50; }); },

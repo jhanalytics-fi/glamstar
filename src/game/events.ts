@@ -4,7 +4,8 @@ import { addAffinity, available, forEachPair, getAffinity, performance } from '.
 import { PRESS, songTitle } from './names';
 import { addBuzz, adjust, beat, first, grow, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, setVibe, snapshot, subj } from './helpers';
 import { pickRivalName } from './world';
-import { managerWord, newManager } from './managers';
+import { managerCard, newManager, sackCost } from './managers';
+const first0 = (n: string) => n.split(' ')[0];
 import type { GameState, HiddenTrait, Musician } from './types';
 import { TOUR_EVENTS } from './tourEvents';
 import { ROMANCE_EVENTS } from './romanceEvents';
@@ -1932,48 +1933,73 @@ const BASE_EVENTS: EventDef[] = [
   {
     id: 'manager_offer',
     weight: 3,
-    when: (s, rng) => (s.fans >= 80 && s.buzz >= 15 && !s.manager && since(s, 'managerPitch', 20) ? { seed: rng.int(1, 1e9) } : null),
+    when: (s, rng) => {
+      if (s.fans < 80 || s.buzz < 15 || !since(s, 'managerPitch', 20)) return null;
+      const seed = rng.int(1, 1e9);
+      if (s.manager) {
+        // A bigger name only comes calling for a band that has outgrown the one it has.
+        const m = newManager(s, new Rng(seed));
+        if (m.clout < s.manager.clout + 20 || s.fans < 3000) return null;
+      }
+      return { seed };
+    },
     title: (s, p) => `${newManager(s, new Rng(Number(p.seed))).name} wants to manage you`,
     text: (s, p) => {
       const m = newManager(s, new Rng(Number(p.seed)));
-      return `${m.name} has a sheepskin coat, a car phone and a contract: ${Math.round(m.cut * 100)}% of everything you earn. Word is that ${managerWord(m).replace(`${m.name} `, '')} "Sign tonight and there is £250 in it for you. It's all standard, sweetheart. Nobody reads these."`;
+      const c = managerCard(m);
+      return `${c.kind} ${c.past} ${c.clout}; ${c.care.toLowerCase()}; ${c.nous.toLowerCase()}. The contract: ${Math.round(m.cut * 100)}% of everything you earn. "Sign tonight and there is £250 in it for you. It's all standard, sweetheart. Nobody reads these."${s.manager ? ` ${s.manager.name} would have to be paid off: £${sackCost(s).toLocaleString('en-GB')}.` : ''}`;
     },
-    options: (_s, p) => [
-      {
-        label: 'Sign on the spot',
-        hint: 'Cash now, connections, and a contract nobody read.',
-        resolve: (st) => {
-          const m = newManager(st, new Rng(Number(p.seed)));
-          st.manager = m; st.flags.managerPitch = st.week;
-          st.money += 250; addBuzz(st, 5);
-          milestone(st, 'career', `${m.name} became the band's manager.`);
-          log(st, `You signed with ${m.name} on the bonnet of a car. "The next big thing," they said, and drove off fast.`, 'good');
+    options: (s, p) => {
+      const old = s.manager;
+      const payoff = old ? sackCost(s) : 0;
+      const drop = (st: GameState) => {
+        const o = st.manager;
+        if (!o) return;
+        st.money -= payoff;
+        milestone(st, 'career', `Sacked ${o.name} as manager.`);
+        log(st, `${o.name} was paid off with £${payoff.toLocaleString('en-GB')}. ${o.kind === 'godfather' ? 'The handshake lasted a long time.' : 'A handshake, no hard feelings. Mostly.'}`, 'neutral');
+      };
+      return [
+        {
+          label: old ? `Switch. Pay off ${first0(old.name)}` : 'Sign on the spot',
+          hint: old ? `£${payoff.toLocaleString('en-GB')} to leave. Cash now, bigger doors, a contract nobody read.` : 'Cash now, connections, and a contract nobody read.',
+          locked: old && s.money < payoff ? `Paying ${old.name} off costs £${payoff.toLocaleString('en-GB')}.` : undefined,
+          resolve: (st) => {
+            drop(st);
+            const m = newManager(st, new Rng(Number(p.seed)));
+            st.manager = m; st.flags.managerPitch = st.week;
+            st.money += 250; addBuzz(st, 5);
+            milestone(st, 'career', `${m.name} became the band's manager.`);
+            log(st, `You signed with ${m.name} on the bonnet of a car. "The next big thing," they said, and drove off fast.`, 'good');
+          },
         },
-      },
-      {
-        label: 'Get a solicitor to read it first',
-        hint: 'Smaller signing fee, fewer surprises.',
-        cost: 60,
-        resolve: (st) => {
-          const m = { ...newManager(st, new Rng(Number(p.seed))), read: true };
-          st.manager = m; st.flags.managerPitch = st.week;
-          st.money += 100; addBuzz(st, 4);
-          milestone(st, 'career', `${m.name} became the band's manager.`);
-          log(st, m.honesty < 40
-            ? `The solicitor found clause 14(b): ${m.name} would have owned half your songs, forever. Crossed out. You signed the rest.`
-            : `The solicitor read all forty pages and found nothing worse than ${Math.round(m.cut * 100)}%. You signed.`, 'good');
+        {
+          label: 'Get a solicitor to read it first',
+          hint: old ? 'Smaller signing fee, fewer surprises, same pay-off.' : 'Smaller signing fee, fewer surprises.',
+          cost: 60,
+          locked: old && s.money < payoff + 60 ? `Paying ${old.name} off costs £${payoff.toLocaleString('en-GB')}.` : undefined,
+          resolve: (st) => {
+            drop(st);
+            const m = { ...newManager(st, new Rng(Number(p.seed))), read: true };
+            st.manager = m; st.flags.managerPitch = st.week;
+            st.money += 100; addBuzz(st, 4);
+            milestone(st, 'career', `${m.name} became the band's manager.`);
+            log(st, m.honesty < 40
+              ? `The solicitor found clause 14(b): ${m.name} would have owned half your songs, forever. Crossed out. You signed the rest.`
+              : `The solicitor read all forty pages and found nothing worse than ${Math.round(m.cut * 100)}%. You signed.`, 'good');
+          },
         },
-      },
-      {
-        label: 'Show them the door',
-        hint: 'You manage yourselves. Harder, but yours.',
-        resolve: (st) => {
-          st.flags.managerPitch = st.week;
-          adjust(player(st), 'mood', 4); addBuzz(st, -1);
-          log(st, 'They left a card. It has three phone numbers on it, all crossed out.', 'neutral');
+        {
+          label: 'Show them the door',
+          hint: old ? `${old.name} stays. Loyalty, of a sort.` : 'You manage yourselves. Harder, but yours.',
+          resolve: (st) => {
+            st.flags.managerPitch = st.week;
+            adjust(player(st), 'mood', 4); addBuzz(st, -1);
+            log(st, old ? `${old.name} heard about it, and bought you a drink without saying why.` : 'They left a card. It has three phone numbers on it, all crossed out.', 'neutral');
+          },
         },
-      },
-    ],
+      ];
+    },
   },
   {
     id: 'manager_clause',

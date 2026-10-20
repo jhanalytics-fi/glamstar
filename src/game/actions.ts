@@ -11,7 +11,7 @@ import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierBy
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease } from './labels';
-import { commission, feeBoost } from './managers';
+import { commission, feeBoost, nousSaving } from './managers';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
 import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
@@ -573,7 +573,9 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
 /** Your own studio takes most of the studio bill off a self-financed record. */
 function selfCost(s: GameState, base: number): number {
   const st = studioOf(s);
-  return st ? Math.round((base * (1 - st.saving * 0.6)) / 10) * 10 : base;
+  const own = st ? base * (1 - st.saving * 0.6) : base;
+  // The accountant rings three studios and plays them off against each other.
+  return Math.round((own * nousSaving(s)) / 10) * 10;
 }
 function studioNote(s: GameState): string {
   const st = studioOf(s);

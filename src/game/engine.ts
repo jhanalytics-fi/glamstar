@@ -15,7 +15,7 @@ import { rollEvents } from './events';
 import { tierById } from './tour';
 import { addBuzz, adjust, beat, earn, first, grow, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
-import { managerWeek } from './managers';
+import { managerKnock, managerWeek } from './managers';
 import { catalogueWeek } from './catalogue';
 import { ruinWeek } from './ruinEvents';
 import { SPLIT_LABEL } from './split';
@@ -147,6 +147,7 @@ export function upgradeSave(s: GameState): GameState {
   s.offers ??= [];
   s.contract ??= null;
   if (s.contract) { s.contract.goodwill ??= 60; s.contract.shaved ??= 0; s.contract.statements ??= 0; }
+  if (s.manager && !s.manager.kind) { s.manager.kind = s.manager.honesty < 30 ? 'hustler' : 'suit'; s.manager.care = 30; s.manager.nous = s.manager.honesty < 30 ? 35 : 60; }
   if (s.manager === undefined) {
     // Managers used to be flags: 1 = read contract, 2 and 5 = the sheepskin-coat type.
     const f = s.flags.manager;
@@ -505,6 +506,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   const sold = records.reduce((a, r) => a + r.units, 0);
   if (sold > 0) log(s, `Record sales this week: ${sold} copies.`, 'good');
 
+  managerKnock(s, rng);
   rollEvents(s, rng);
 
   for (const n of advanceWorld(s.world, rng, s.week, { bandName: s.bandName, fans: s.fans, buzz: s.buzz, records, reach: reach(s), label: s.contract ? labelById(s.contract.label).name : 'Unsigned' })) {

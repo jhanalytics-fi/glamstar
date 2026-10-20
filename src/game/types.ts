@@ -178,8 +178,18 @@ export interface Offer {
   buyout?: number;
 }
 
+export type ManagerKind = 'hustler' | 'suit' | 'nanny' | 'godfather' | 'visionary';
+
 export interface Manager {
   name: string;
+  /** What sort of manager: sets the card, the strengths and the trouble. */
+  kind?: ManagerKind;
+  /** Looks after the band: habits kept down, moods steadier, the drummer put to bed. */
+  care?: number;
+  /** Business sense: cheaper studios, sharper haggling, small print caught. */
+  nous?: number;
+  /** Acts they managed before, for the card. */
+  past?: string;
   /** Hidden. Low means skimming and nasty clauses. */
   honesty: number;
   /** Connections: better gigs, better deals, labels listen. */

@@ -7,7 +7,7 @@ import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
-import { sackCost, sackManager, managerWord } from '../game/managers';
+import { sackCost, sackManager, managerCard } from '../game/managers';
 import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type Ask, type LabelTier } from '../game/labels';
 import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
@@ -590,13 +590,14 @@ function managerBlock(s: GameState): string {
   return `<h3 class="sub">Manager</h3>
     <article class="deal-card">
       <h3>${esc(m.name)}</h3>
-      <p class="hint">${esc(managerWord(m))}</p>
+      <p class="hint">${esc(managerCard(m).kind)} ${esc(managerCard(m).past)}</p>
+      <div class="mgr-stats">${([['Clout', m.clout, managerCard(m).clout], ['Care', m.care ?? 30, managerCard(m).care], ['Nous', m.nous ?? 40, managerCard(m).nous]] as [string, number, string][]).map(([k, v, w]) => `<div class="mgr-stat"><span class="lbl">${k} <strong>${v}</strong></span><div class="bar"><i style="width:${v}%"></i></div><small class="lbl">${esc(w)}</small></div>`).join('')}</div>
       <dl class="deal">
         <div><dt>Commission</dt><dd>${Math.round(m.cut * 100)}% of everything</dd></div>
         <div><dt>Taken so far</dt><dd>${money(m.taken)}</dd></div>
         <div><dt>Contract</dt><dd>${m.read ? 'Read by a solicitor' : 'Nobody read it'}</dd></div>
       </dl>
-      <p class="hint">A manager squeezes promoters for bigger fees (+${Math.round(m.clout / 1.5)}% on gig money), gets labels to listen, helps you haggle, and does jobs. Then takes their cut.</p>
+      <p class="hint">Clout: +${Math.round(m.clout / 1.5)}% on gig money, labels listen, haggling helps. Care: habits drift down, rows headed off, the dangerous one sent home. Nous: ${Math.round((m.nous ?? 40) / 4)}% off studio bills, sharper haggling.${m.kind === 'godfather' ? ' Leaving costs three times the usual.' : ''}${m.kind === 'visionary' ? ' Spends on the concept now and then.' : ''}</p>
       <div class="choices">${(['tv', 'private', 'label', 'press'] as ManagerJob[]).map((j) => { const why = jobLocked(s, j); return `<button class="choice" data-do="managerJob" data-arg="${j}" ${why ? 'disabled' : ''}><span class="choice-head"><strong>${JOB_LABEL[j]}</strong><span class="cost free">${why ? '' : 'no week spent'}</span></span><span class="choice-hint">${esc(why ?? jobHint(s, j))}</span></button>`; }).join('')}</div>
       <div class="card-foot"><button class="btn ghost" data-do="sackManager" ${s.money < cost ? 'disabled' : ''}>${armedSack ? `Really pay ${money(cost)} to sack them?` : `Sack: ${money(cost)} pay-off`}</button></div>
     </article>`;

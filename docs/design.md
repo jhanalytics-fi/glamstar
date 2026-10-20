@@ -202,7 +202,15 @@ A member who dies leaves the line-up as `died`, joins `memorials`, and the band'
 
 The player dying ends the game with `over.died`: rock godhood sealed (won) at 30,000 fans or with the ladder done, a cult at 1,500 fans, and below that a plaque by the toilets at the Rat Pit and a tape somebody swears by.
 
-## Prototype status (v0.38)
+## Managers with a card (v0.39)
+
+Managers now have a kind and a card. Five kinds in managers.ts (`MANAGER_KINDS`): the hustler (gigs and fees, beer-mat paperwork), the accountant (cheap records, small print read, no fun), the minder (habits down, rows headed off, the drummer put to bed, no use with labels), the heavy (fees nobody else gets, three times the pay-off to leave, no receipts) and the visionary (press and image, spends your money on a swan). Each has clout as before plus `care` and `nous`, visible on the Business tab as bars with a pub-talk line (`managerCard`), and a track record. Honesty stays hidden.
+
+Care: every week each member's habit drifts down with probability care/150; a member at habit 75+ is driven to their mother's for a week (care/250); the lowest mood gets a fry-up and +6 now and then. Nous: studio bills cut by nous/400 (`nousSaving`, stacks with your own studio) and sharper haggling. The visionary skims for photographers, the heavy triples `sackCost`.
+
+Offers were too rare at weight 3 among a hundred eligible events. `managerKnock` now guarantees an approach the first week the band passes 300, 3,000 and 30,000 fans (not on tour, not with something pending, not within 20 weeks of the last pitch). With a manager already, only a newcomer with clout 20 above comes calling, from 3,000 fans; the offer then reads "Switch. Pay off X" at the sack price. The offer text is the card.
+
+## Prototype status (v0.39)
 
 Playable in the browser. Implemented:
 

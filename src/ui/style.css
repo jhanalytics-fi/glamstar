@@ -160,6 +160,10 @@ button, input, select { font: inherit; color: inherit; }
 .stats dt { font-family: var(--cond); color: var(--muted); font-size: 0.95rem; }
 .stats dd { margin: 0; font-family: var(--display); font-weight: 600; font-size: 1.35rem; }
 .stats dd.neg { color: var(--bad); }
+.mgr-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 18px; margin: 10px 0; }
+.mgr-stat .lbl { font-family: var(--cond); }
+.mgr-stat strong { font-family: var(--display); font-size: 1.15rem; }
+.mgr-stat .bar { margin: 4px 0; }
 .chem-detail { font-family: var(--cond); color: var(--muted); font-size: 0.95rem; margin: 2px 0 0; }
 
 /* ---------------------------------------------------------------- layout */
