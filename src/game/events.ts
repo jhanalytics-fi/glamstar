@@ -759,18 +759,20 @@ const BASE_EVENTS: EventDef[] = [
     id: 'poach',
     weight: 2,
     when: (s, rng) => {
-      const c = mates(s).filter((m) => m.skill >= 50).sort((a, b) => a.hidden.loyalty - b.hidden.loyalty)[0];
-      return c && s.fans >= 40 ? { m: c.id, rival: pickRivalName(s.world, rng) } : null;
+      // The one with a solo record behind them is the one the phone rings for.
+      const c = mates(s).filter((m) => m.skill >= 50 && m.outWeeks === 0).sort((a, b) => (a.hidden.loyalty - (a.solos ?? 0) * 12) - (b.hidden.loyalty - (b.solos ?? 0) * 12))[0];
+      return c && s.fans >= 40 ? { m: c.id, rival: pickRivalName(s.world, rng), again: c.solos ?? 0 } : null;
     },
-    title: (s, p) => (s.fans >= 50000 ? `${nm(s, p.m)} has been offered a solo deal` : `${p.rival} want ${nm(s, p.m)}`),
-    text: (s, p) => (s.fans >= 50000 ? `A label has offered ${nm(s, p.m)} a solo record: their own name on the sleeve, their own producer, their own tour. ${p.rival}'s manager is handling it. ${nm(s, p.m)} has not said no.` : `${p.rival} have offered ${nm(s, p.m)} a place. They have a manager and a proper van.`),
+    title: (s, p) => (s.fans >= 50000 ? `${nm(s, p.m)} has been offered a ${Number(p.again) >= 1 ? (Number(p.again) >= 2 ? 'third' : 'second') : ''} solo deal`.replace('a  solo', 'a solo') : `${p.rival} want ${nm(s, p.m)}`),
+    text: (s, p) => (s.fans >= 50000 ? `A label has offered ${nm(s, p.m)} a solo record: their own name on the sleeve, their own producer, their own tour. ${p.rival}'s manager is handling it. ${nm(s, p.m)} has not said no.${Number(p.again) >= 1 ? ` This would be solo record number ${Number(p.again) + 1}. The others have started calling it "the day job" and not meaning the band.` : ''}` : `${p.rival} have offered ${nm(s, p.m)} a place. They have a manager and a proper van.`),
     options: (s, p) => {
       const m = mem(s, p.m);
+      const big = s.fans >= 50000;
       return [
         {
           label: 'Offer a bigger cut',
-          hint: s.fans >= 50000 ? 'Money talks, but less loudly than it used to.' : 'Money talks.',
-          cost: 40,
+          hint: big ? 'A real figure, in writing. Money talks, but less loudly than it used to.' : 'Money talks.',
+          cost: big ? 400 : 40,
           resolve: (st, rng) => {
             const x = mem(st, m.id);
             if (st.fans >= 50000 && x.hidden.loyalty < 40 && rng.chance(0.4)) {
@@ -782,6 +784,20 @@ const BASE_EVENTS: EventDef[] = [
             log(st, `${first(x)} took the money and stayed.`, 'good');
           },
         },
+        ...(big ? [{
+          label: 'Let them make it. Back in a few months',
+          hint: `Three months away with a dep in the chair. ${first(m)} comes back happier, better, and a little less yours.`,
+          resolve: (st: GameState, rng: Rng) => {
+            const x = mem(st, m.id);
+            x.outWeeks = Math.max(x.outWeeks, rng.int(10, 15));
+            x.solos = (x.solos ?? 0) + 1;
+            x.soloOut = 1;
+            adjust(x, 'mood', 15);
+            for (const o of mates(st)) if (o.id !== x.id) { adjust(o, 'mood', -3); addAffinity(st, o.id, x.id, -3); }
+            milestone(st, 'lineup', `${x.name} went off to make a solo record.`);
+            log(st, `${first(x)} has gone to make the record. A studio in the country, a producer with a ponytail, a budget the band never saw. The dep learns the set.`, 'neutral');
+          },
+        }] : []),
         ...(s.fans >= 20000 ? [{
           label: 'One more album together, then decide',
           hint: 'Loyalty, not money. The record had better be good.',
@@ -813,9 +829,9 @@ const BASE_EVENTS: EventDef[] = [
           },
         },
         {
-          label: 'Let them go',
-          hint: 'Nobody is bigger than the band.',
-          resolve: (st) => { removeMember(st, m.id, 'poached'); log(st, `${m.name} left for ${p.rival} with your blessing.`, 'neutral'); },
+          label: Number(p.again) >= 1 ? 'Show them the door' : 'Let them go',
+          hint: Number(p.again) >= 1 ? 'Twice is a pattern. Nobody is bigger than the band.' : 'Nobody is bigger than the band.',
+          resolve: (st) => { removeMember(st, m.id, 'poached'); log(st, Number(p.again) >= 1 ? `${m.name} was shown the door with a handshake and a copy of the press release. The solo career starts here, and so does the gap in the sound.` : `${m.name} left for ${p.rival} with your blessing.`, 'neutral'); },
         },
       ];
     },

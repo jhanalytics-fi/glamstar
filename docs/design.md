@@ -188,7 +188,13 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.36)
+## Solo records and the dep's chair (v0.37)
+
+A solo deal at 50,000 fans no longer has to mean leaving. "Let them make it" sends the member away for 10 to 15 weeks with a dep in the chair (`solos` counts, `soloOut` marks the leave); `soloReturn` in engine.ts fires the week they come back: skill and writing grow, and the record either charts (image and buzz up, loyalty -10) or sells to relatives (loyalty +6). The poach event prefers a member with solo records behind them (loyalty minus 12 per record when ranking), titles the second and third offer as such, and turns "Let them go" into "Show them the door". "Offer a bigger cut" costs 400 base (price-scaled) at solo-deal size, not 40.
+
+The dep who wants in is now measured against the member whose chair it is: the event text gives the dep's skill, the member's skill as the range you believe in (`seenRange`), a verdict, and whether the member brings songs or a show the dep does not. A third option swaps the dep in and sacks the member; the band's mood drops, twice as much if they liked them.
+
+## Prototype status (v0.37)
 
 Playable in the browser. Implemented:
 

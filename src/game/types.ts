@@ -43,6 +43,10 @@ export interface Musician {
   earned?: number;
   /** The week they joined, for the line-up history. */
   joined?: number;
+  /** Solo records made on leave from the band. Each one loosens the knot a little. */
+  solos?: number;
+  /** Set while they are away making a solo record; resolved the week they come back. */
+  soloOut?: 1;
   blurb: string;
   /** How well you know their visible stats, 0-100. Low = wide, misleading ranges. */
   seen: number;

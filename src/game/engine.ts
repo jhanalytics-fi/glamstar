@@ -12,7 +12,7 @@ import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
-import { adjust, beat, earn, first, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
+import { addBuzz, adjust, beat, earn, first, grow, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
 import { catalogueWeek } from './catalogue';
@@ -464,6 +464,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
     m.weeksInBand++;
     getToKnow(m, 2);
     if (m.outWeeks > 0) m.outWeeks--;
+    if (m.outWeeks === 0 && m.soloOut) soloReturn(s, m, rng);
     adjust(m, 'energy', 8);
     m.mood = clamp(Math.round(m.mood + (55 - m.mood) * 0.15), 0, 100);
     if (m.habit > 30) adjust(m, 'habit', 1);
@@ -581,4 +582,23 @@ function checkOver(s: GameState): void {
     s.tour = null;
     log(s, s.over.reason, s.over.won ? 'good' : 'bad');
   }
+}
+
+/** Back from making a solo record: better at the job, and a little less sure whose job it is. */
+export function soloReturn(s: GameState, m: Musician, rng: Rng): void {
+  delete m.soloOut;
+  const hit = rng.chance(clamp(0.25 + m.writing / 200 + s.fans / 2000000, 0.2, 0.7));
+  grow(m, 'skill', 2, rng);
+  grow(m, 'writing', 2, rng);
+  if (hit) {
+    adjust(m, 'image', 4); adjust(m, 'mood', 6);
+    m.hidden.loyalty = clamp(m.hidden.loyalty - 10, 1, 99);
+    addBuzz(s, 6);
+    log(s, `${first(m)} is back. The solo record went in at number twelve, the reviews used the word "liberated", and ${first(m)} has a new way of standing in photographs.`, 'neutral');
+  } else {
+    adjust(m, 'mood', -4);
+    m.hidden.loyalty = clamp(m.hidden.loyalty + 6, 1, 99);
+    log(s, `${first(m)} is back. The solo record sold to relatives. ${first(m)} is quieter, better, and has not mentioned it once.`, 'neutral');
+  }
+  milestone(s, 'lineup', `${m.name} came back from a solo record${hit ? ' that charted' : ' that did not'}.`);
 }

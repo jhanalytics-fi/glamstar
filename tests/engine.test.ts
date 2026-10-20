@@ -410,6 +410,45 @@ describe('action choices', () => {
     expect(idle.ledger['1982']?.other ?? 0).toBeGreaterThanOrEqual(900);
   });
 
+  it('a solo deal can mean a few months away, and a second one is a pattern', () => {
+    const s: GameState = { ...newGame(input), fans: 80000, money: 2000000 };
+    const f = forceEvent(s, 'poach');
+    const v = viewPending(f)!;
+    const i = v.options.findIndex((o) => o.label.startsWith('Let them make it'));
+    expect(i).toBeGreaterThan(0);
+    expect(v.options[0].cost).toBeGreaterThan(5000);
+    const away = resolvePending(f, i);
+    const gone = away.members.find((m) => m.solos === 1)!;
+    expect(gone.outWeeks).toBeGreaterThanOrEqual(10);
+    expect(gone.soloOut).toBe(1);
+    let r = away;
+    for (let k = 0; k < 20 && r.members.find((m) => m.id === gone.id)!.soloOut; k++) r = step(r, REST);
+    const back = r.members.find((m) => m.id === gone.id)!;
+    expect(back.outWeeks).toBe(0);
+    expect(back.soloOut).toBeUndefined();
+    expect(r.log.some((l) => l.text.includes('is back.'))).toBe(true);
+    const again = forceEvent({ ...r, fans: 80000 }, 'poach');
+    const v2 = viewPending(again)!;
+    expect(v2.title).toContain('second solo deal');
+    expect(v2.options.some((o) => o.label === 'Show them the door')).toBe(true);
+  });
+
+  it('a dep who wants in is measured against the chair they would take, and can swap in', () => {
+    const s: GameState = { ...newGame(input), fans: 2000 };
+    s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 90 } };
+    const f = forceEvent(s, 'dep_wants_in');
+    const v = viewPending(f)!;
+    expect(v.text).toContain('Gaz plays at about 90');
+    expect(v.text).toContain('better player');
+    const i = v.options.findIndex((o) => o.label.startsWith('Swap them in'));
+    expect(i).toBeGreaterThan(0);
+    const bassist = s.members.find((m) => m.role === 'bass')!;
+    const r = resolvePending(f, i);
+    expect(r.members.some((m) => m.id === bassist.id)).toBe(false);
+    expect(r.members.some((m) => m.name.startsWith('Gaz'))).toBe(true);
+    expect(r.members.length).toBe(s.members.length);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
