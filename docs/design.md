@@ -236,7 +236,9 @@ Stage presence (v0.42.2): "Work on the stage show" still grows stage toward pote
 
 Naming the album (v0.43): every album release opens the `album_title` event: three titles from the band's title generator, each attributed to a member (who is pleased if it wins), "keep the song's title", and a text field under the choices that resolves through `titleAlbum` with your own title.
 
-## Prototype status (v0.43)
+Album pages (v0.44): the Songs & records tab opens with one card per album: a generated sleeve (colour from the title, LP mark, title and band name; artwork can replace it later), label, month, certification, sales and albums-chart peak, then the tracklist split into side A and side B in writing order with running times (`runningTime`: fixed by title and kind, ballads long, chart chasers short) and the rating, singles and masterpieces marked. `sides` in catalogue.ts does the split.
+
+## Prototype status (v0.44)
 
 Playable in the browser. Implemented:
 

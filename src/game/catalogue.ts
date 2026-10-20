@@ -4,7 +4,7 @@ import { Rng, clamp } from './rng';
 import { liftable, OUTSIDE_CUT, liftFatigue } from './actions';
 import { addBuzz, adjust, log, milestone } from './helpers';
 import { labelById, royaltyPerCopy } from './labels';
-import type { GameState, Release, ReleaseKind } from './types';
+import type { GameState, Release, ReleaseKind, Song } from './types';
 
 const since = (s: GameState, flag: string, weeks: number) => s.flags[flag] === undefined || s.week - s.flags[flag] >= weeks;
 
@@ -53,4 +53,21 @@ export function catalogueWeek(s: GameState, rng: Rng): void {
   if (c.goodwill < 60) for (const m of s.members) adjust(m, 'mood', -3);
   milestone(s, 'release', `${l.name} lifted "${rec.title}" as a single without asking.`);
   log(s, `${l.name} have put out "${rec.title}" as a single. Nobody asked the band. The sleeve has a photo from ${rng.pick(['two haircuts ago', 'the wrong gig', 'a session the drummer missed', 'the school play, apparently'])}.`, 'neutral');
+}
+
+/** A song's running time, fixed by its title and kind: ballads run long, chart chasers short. */
+export function runningTime(song: { title: string; kind: string; quality: number }): string {
+  let h = 7;
+  for (const c of song.title) h = (h * 31 + c.charCodeAt(0)) % 100003;
+  const base = song.kind === 'ballad' ? 250 : song.kind === 'trend' ? 185 : song.kind === 'cover' ? 195 : 205;
+  const secs = base + (h % 95) + (song.quality >= 90 ? 40 : 0);
+  return `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+/** Side A and side B of an album, in running order: the strong opener, a single to close side one, the best song opening side two. */
+export function sides(s: GameState, albumId: string): { a: Song[]; b: Song[] } {
+  const tracks = s.songs.filter((x) => x.album === albumId);
+  if (!tracks.length) return { a: [], b: [] };
+  const half = Math.ceil(tracks.length / 2);
+  return { a: tracks.slice(0, half), b: tracks.slice(half) };
 }

@@ -15,11 +15,12 @@ import { entourage, sackHanger } from '../game/entourage';
 import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
+import { runningTime, sides } from '../game/catalogue';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
 import { CERT_LABEL } from '../game/certs';
 import { KIT_WORD, bandKit } from '../game/kit';
-import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role } from '../game/types';
+import type { ActionType, Background, Beat, DealTerms, EffectChip, GameState, Gender, IncomeKind, Scene, Genre, Musician, NewGameInput, PlayerInstrument, Role, Song } from '../game/types';
 
 import { tip } from './glossary';
 import { ladderDone, nextGoal } from '../game/goals';
@@ -1131,8 +1132,25 @@ function recordsSection(s: GameState): string {
       <td>${r.sold.toLocaleString('en-GB')}${r.lastWeek ? `<br><small class="lbl">+${r.lastWeek.toLocaleString('en-GB')}/wk</small>` : ''}</td>
       <td>${r.kind === 'album' ? peak(r, 'albums') : peak(r, 'uk')}</td><td>${peak(r, 'us')}</td><td>${peak(r, 'europe')}</td><td>${peak(r, 'world')}</td>
     </tr>`);
+  const albums = [...s.releases].reverse().filter((r) => r.kind === 'album');
+  const hue = (t: string) => { let h = 0; for (const c of t) h = (h * 17 + c.charCodeAt(0)) % 360; return h; };
+  const track = (x: Song, n: number) => `<tr><td class="pos">${n}</td><td><strong>${esc(x.title)}</strong>${x.lifted || (s.releases.some((r) => r.kind === 'single' && r.title === x.title)) ? '<small class="lbl"> single</small>' : ''}${x.quality >= 92 ? '<small class="cert platinum"> the one</small>' : ''}</td><td class="lbl">${runningTime(x)}</td><td>${x.quality}</td></tr>`;
+  const sleeves = albums.map((r) => {
+    const { a, b } = sides(s, r.id);
+    const lbl = r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : 'Kebab Shop Records';
+    const side = (name: string, list: Song[], from: number) => (list.length ? `<p class="side">${name}</p><table class="chart ledger tracks"><tbody>${list.map((x, i) => track(x, from + i + 1)).join('')}</tbody></table>` : '');
+    return `<article class="album">
+      <div class="sleeve" style="--h:${hue(r.title)}"><span class="lp">LP</span><strong>${esc(r.title)}</strong><em>${esc(s.bandName)}</em></div>
+      <div class="album-in">
+        <h4>${esc(r.title)}</h4>
+        <p class="lbl">${esc(lbl)}<br>${dateLabel(r.week)}${r.cert ? ` <span class="cert ${r.cert}">${CERT_LABEL[r.cert]}</span>` : ''}<br>${r.sold.toLocaleString('en-GB')} sold${r.peaks?.albums ? `, albums chart #${r.peaks.albums}` : ''}</p>
+        ${a.length ? side('Side A', a, 0) + side('Side B', b, a.length) : '<p class="hint">The tape box says nothing about what is on it.</p>'}
+      </div>
+    </article>`;
+  });
   return `
     <section class="records">
+      ${albums.length ? `<h3 class="sub">Albums</h3><div class="albums">${sleeves.join('')}</div>` : ''}
       ${s.releases.length ? `<h3 class="sub">Discography</h3>
       <div class="chart-wrap"><table class="chart ledger disco">
         <thead><tr><th>Title</th><th>Format</th><th>Released</th><th>Label</th><th>Rating</th><th>Sold</th><th>UK</th><th>US</th><th>Euro</th><th>World</th></tr></thead>
