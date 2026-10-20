@@ -222,7 +222,17 @@ What the money is for. toys.ts lists twenty things a rock star buys, in five kin
 
 Bought and sold from the Business tab ("The good life"), no week spent; owned things show on the player's card as an "Owns" line and in the weekly bill. `toyWeek` rolls one trouble a week across the lot: the Lamborghini in a field, the yacht in a harbour wall, the model's story in a Sunday paper (and gone), the castle's boiler. Selling back pays the resale share; company just ends.
 
-## Prototype status (v0.41)
+## Worn singles, the one anywhere, the comeback, your own titles (v0.42)
+
+Six singles off one album all going to number one was the saturation the save showed. `liftFatigue(n)` in actions.ts multiplies a lifted single's appeal by 0.72 for every lift after the second, for your lifts and the label's. A label with goodwill 60+ now works the album itself: 14% a week it lifts the next single (half that from the fourth), without the mood hit, so the band can leave singles to the label and get on with the next record.
+
+Masterpiece odds never depended on the studio, but the studio's writing bonus made it look that way. Writing alone ("Write it yourself", at home with the door shut) now strikes the one 1.6 times as often, and two of the origin stories are a flat with the curtains shut and a bath.
+
+The comeback: from the retired screen, `comeBack` brings the band back two years on (or less, if the decade is nearly over; not at all with under a year left). Fans at 55%, buzz 70, money at 70%, tightness 35, everyone older and slower with habits mostly gone, affinity up from absence; anyone with loyalty under 40 may say no and go back to the garden centre. `flags.reunions` counts comebacks in the career summary, and retiring again needs one album released since the reunion ("One more album first. You promised.").
+
+Records and songs can be renamed from the Records tab (`renameRelease`, `renameSong`); renaming a song renames the single that carries it.
+
+## Prototype status (v0.42)
 
 Playable in the browser. Implemented:
 

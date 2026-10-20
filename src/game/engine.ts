@@ -307,6 +307,7 @@ export function careerSummary(s: GameState): string {
     (s.awards ?? []).length ? `${s.awards.length} award${s.awards.length === 1 ? '' : 's'}` : null,
     (s.alumni ?? []).length ? `${s.alumni.length} former member${s.alumni.length === 1 ? '' : 's'}` : null,
     (s.memorials ?? []).length ? `${s.memorials!.length} lost on the way` : null,
+    s.flags.reunions ? `${s.flags.reunions} comeback${s.flags.reunions === 1 ? '' : 's'}` : null,
     `£${Math.max(0, s.money).toLocaleString('en-GB')} in the bank`,
   ].filter(Boolean);
   return bits.join(', ') + '.';
@@ -318,11 +319,78 @@ export function retire(state: GameState): GameState {
   if (state.pending) throw new Error('Deal with the situation first.');
   if (state.tour) throw new Error('Finish the tour first.');
   if (!ladderDone(state)) throw new Error('There is still a rung to climb.');
+  if (state.flags.reunionWeek !== undefined && !state.releases.some((r) => r.kind === 'album' && r.week >= state.flags.reunionWeek)) throw new Error('One more album first. You promised.');
   return mutate(state, (s) => {
     milestone(s, 'career', `${s.bandName} retired at the top.`);
     s.over = { won: true, reason: `${s.bandName} walked away at the top. A farewell show, a long speech, a longer party, and then the phone stopped ringing on purpose. ${careerSummary(s)} Legends.` };
     s.pending = null;
     log(s, s.over.reason, 'good');
+  });
+}
+
+/** Two years later, the phone rings. One more album. Everybody does it. */
+export function canComeBack(s: GameState): string | null {
+  if (!s.over || !s.over.won || !s.over.reason.includes('walked away')) return 'Only a band that walked away can walk back.';
+  if (s.week + 52 >= DEADLINE_WEEK) return 'The decade is over. The reunion will have to wait for another game.';
+  return null;
+}
+
+export function comeBack(state: GameState): GameState {
+  const why = canComeBack(state);
+  if (why) throw new Error(why);
+  return mutate(state, (s, rng) => {
+    const gap = Math.min(104, DEADLINE_WEEK - 52 - s.week);
+    s.over = null;
+    s.week += gap;
+    s.flags.reunions = (s.flags.reunions ?? 0) + 1;
+    s.flags.reunionWeek = s.week;
+    s.flags.oneMoreAlbum = s.week;
+    const kept = s.fans;
+    s.fans = Math.round(s.fans * 0.55);
+    s.buzz = 70;
+    s.money = Math.round(s.money * 0.7);
+    s.tightness = 35;
+    s.tour = null;
+    s.pending = null;
+    s.offers = [];
+    // Who comes back: anyone whose loyalty survived two years of not being asked.
+    const gone = s.members.filter((m) => !m.isPlayer && m.hidden.loyalty < 40 && rng.chance(0.6));
+    for (const m of gone) { removeMember(s, m.id, 'quit'); log(s, `${m.name} said no. "I have a garden centre now." ${first(m)} meant it.`, 'bad'); }
+    for (const m of s.members) {
+      m.age += Math.round(gap / 52);
+      m.energy = 100; m.habit = Math.round(m.habit * 0.3); m.mood = 75;
+      m.hidden.stamina = clamp(m.hidden.stamina - 3, 1, 99);
+      adjust(m, 'skill', -2);
+    }
+    for (const a of s.members) for (const b of s.members) if (a.id < b.id) addAffinity(s, a.id, b.id, 10);
+    milestone(s, 'career', `${s.bandName} came back after ${Math.round(gap / 52)} years. One more album, they said.`);
+    log(s, `${Math.round(gap / 52)} years of golf, gardening and solo records nobody bought. Then the phone rang, and it was each other. ${s.bandName} are back: ${s.fans.toLocaleString('en-GB')} of the ${kept.toLocaleString('en-GB')} still care, the rest are waiting to be reminded. One more album. That is what everyone says.`, 'good');
+  });
+}
+
+/** Call a record something else. Yours to name; the sleeves are already printed, but nobody reads sleeves. */
+export function renameRelease(state: GameState, id: string, title: string): GameState {
+  const clean = title.replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!clean) throw new Error('A title needs letters in it.');
+  return mutate(state, (s) => {
+    const r = s.releases.find((x) => x.id === id);
+    if (!r) throw new Error('No such record.');
+    const was = r.title;
+    r.title = clean;
+    log(s, `"${was}" is now called "${clean}". The sleeves are reprinted; the first pressing is worth something to collectors already.`, 'neutral');
+  });
+}
+
+export function renameSong(state: GameState, oldTitle: string, title: string): GameState {
+  const clean = title.replace(/\s+/g, ' ').trim().slice(0, 60);
+  if (!clean) throw new Error('A title needs letters in it.');
+  if (state.songs.some((x) => x.title === clean)) throw new Error('There is already a song called that.');
+  return mutate(state, (s) => {
+    const x = s.songs.find((y) => y.title === oldTitle);
+    if (!x) throw new Error('No such song.');
+    x.title = clean;
+    for (const r of s.releases) if (r.title === oldTitle && r.kind !== 'album') r.title = clean;
+    log(s, `"${oldTitle}" is now "${clean}". It was always "${clean}", the band says.`, 'neutral');
   });
 }
 

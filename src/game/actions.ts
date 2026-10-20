@@ -72,6 +72,9 @@ function liftOption(s: GameState, cost: number): ActionOption[] {
   return [{ id: 'lift', label: `Lift "${songs[0].title}" from the album as a single`, cost, hint: `${n ? `Single ${n + 1} from the album. ` : ''}No new songs needed: the album track, a B-side and a sleeve.` }];
 }
 
+/** Appeal multiplier for the (n+1)th single lifted from one album: the first two sell, the rest are for the fans. */
+export const liftFatigue = (n: number) => Math.pow(0.72, Math.max(0, n - 1));
+
 export function liftable(s: GameState): Song[] {
   const album = [...s.releases].reverse().find((r) => r.kind === 'album' && s.week - r.week <= 52);
   if (!album) return [];
@@ -249,7 +252,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
       const mood = insp.label ? ` Band: ${insp.label.toLowerCase()} (${insp.bonus >= 0 ? '+' : ''}${insp.bonus}).` : '';
       return [
         { id: 'jam', label: 'Jam it out together', cost: 0, hint: `Best writers lead. Good for the band, may produce nothing.${mood}` },
-        { id: 'solo', label: 'Write it yourself', cost: 0, hint: 'Your song, your way. The others may sulk.' },
+        { id: 'solo', label: 'Write it yourself', cost: 0, hint: 'Alone in the flat, door shut. Your song, your way; the others may sulk. The one comes most often this way.' },
         { id: 'trend', label: `Chase the trend: ${GENRE_LABEL[hot].toLowerCase()}`, cost: 0, hint: 'Sells better right now. Purists in the band will hate it.' },
         { id: 'ballad', label: 'Write a power ballad', cost: 0, hint: 'Hit or embarrassment. Lighters up, credibility down.' },
         { id: 'cover', label: 'Work up a cover of an old hit', cost: 0, hint: 'A sure thing, if a borrowed one. The publishing goes to whoever wrote it.' },
@@ -579,7 +582,8 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
   if (kind !== 'cover' && kind !== 'hired') grow(writer, 'writing', 1, rng, 0.5);
   const song: Song = { title: songTitle(rng), quality: clamp(Math.round(quality), 1, 99), writer: writer.id, kind, genre, released: false };
   s.songs.push(song);
-  if (kind !== 'cover' && kind !== 'hired' && rng.chance(masterpieceOdds(s, writer))) strikeMasterpiece(s, rng, song, writer);
+  // The one can come anywhere. Alone in the flat with the door shut is where it comes most often.
+  if (kind !== 'cover' && kind !== 'hired' && rng.chance(masterpieceOdds(s, writer) * (kind === 'solo' ? 1.6 : 1))) strikeMasterpiece(s, rng, song, writer);
   const kindText = kind === 'ballad' ? 'power ballad' : kind === 'trend' ? `${GENRE_LABEL[genre].toLowerCase()} song` : kind === 'cover' ? 'cover' : kind === 'hired' ? 'song' : 'song';
   const whose = kind === 'cover' ? 'somebody else\'s, once' : kind === 'hired' ? 'not yours, on paper' : `mostly ${writer.isPlayer ? 'yours' : `${first(writer)}'s`}`;
   log(s, `New ${kindText}: "${song.title}" (${song.quality}), ${whose}.`, song.quality >= 55 ? 'good' : 'neutral');
@@ -802,6 +806,8 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
   } else {
     for (const x of songs) x.released = true;
   }
+  // The fourth single off an album is a B-side with a budget: every lift after the second sells less.
+  if (lift) { const n = s.songs.filter((x) => x.album === songs[0].album && x.lifted).length - songs.length; appeal *= liftFatigue(n); }
   const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 };
   if (kind === 'album') for (const x of songs) x.album = rec.id;
   tagRelease(s, rec);

@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, retire, setSplit, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, renameRelease, renameSong, retire, canComeBack, comeBack, setSplit, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, viewPending } from '../game/events';
@@ -60,6 +60,7 @@ let armedFire: string | null = null;
 let armedRetire = false;
 let armedHanger: string | null = null;
 let armedSell: string | null = null;
+let armedComeback = false;
 let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
@@ -136,6 +137,7 @@ function onClick(e: Event, root: HTMLElement): void {
   playedScene = state?.scene?.id ?? null;
   if (what !== 'fire') armedFire = null;
   if (what !== 'retire') armedRetire = false;
+  if (what !== 'comeBack') armedComeback = false;
   if (what !== 'sackHanger') armedHanger = null;
   if (what !== 'buyOut') armedBuyout = false;
   if (what !== 'sackManager') armedSack = false;
@@ -232,6 +234,21 @@ function onClick(e: Event, root: HTMLElement): void {
         if (armedRetire) { state = retire(state!); armedRetire = false; }
         else armedRetire = true;
         break;
+      case 'comeBack':
+        if (armedComeback) { state = comeBack(state!); armedComeback = false; }
+        else armedComeback = true;
+        break;
+      case 'renameRelease': {
+        const r = state!.releases.find((x) => x.id === arg);
+        const t = r ? window.prompt('Call it:', r.title) : null;
+        if (t !== null && r && t.trim() && t.trim() !== r.title) state = renameRelease(state!, arg!, t);
+        break;
+      }
+      case 'renameSong': {
+        const t = window.prompt('Call it:', arg!);
+        if (t !== null && t.trim() && t.trim() !== arg) state = renameSong(state!, arg!, t);
+        break;
+      }
       case 'fire':
         // Two-step button instead of a browser dialog.
         if (armedFire === arg) { state = fire(state!, arg!); armedFire = null; }
@@ -878,7 +895,7 @@ function effectChips(fx: EffectChip[]): string {
 
 function nextBlock(s: GameState): string {
   if (s.over) {
-    return `<div class="over"><h2>${s.over.died ? (s.over.won ? 'Gone, and immortal' : 'Gone too soon') : s.over.won ? (s.over.reason.includes('walked away') ? 'Rock gods. Retired.' : 'You made it. Sort of.') : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
+    return `<div class="over"><h2>${s.over.died ? (s.over.won ? 'Gone, and immortal' : 'Gone too soon') : s.over.won ? (s.over.reason.includes('walked away') ? 'Rock gods. Retired.' : 'You made it. Sort of.') : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button>${canComeBack(s) ? '' : `<button class="btn ghost" data-do="comeBack">${armedComeback ? 'Really? Two years on, one more album.' : 'The comeback'}</button>`}</div>`;
   }
   const ev = eventCard(s);
   if (ev) return ev;
@@ -1100,7 +1117,7 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   const peak = (r: (typeof s.releases)[number], c: string) => (r.peaks?.[c] ? `#${r.peaks[c]}` : '');
   const rows = [...s.releases].reverse().map((r) => `<tr>
-      <td><strong>"${esc(r.title)}"</strong>${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
+      <td><strong>"${esc(r.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameRelease" data-arg="${r.id}" title="Rename">✎</button>`}${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
       <td>${r.comp === 'hits' ? 'Compilation' : r.comp === 'live' ? 'Live' : r.comp === 'bootleg' ? 'Bootleg' : kind[r.kind]}</td>
       <td>${dateLabel(r.week)}</td>
       <td class="lbl">${esc(r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : r.kind === 'demo' ? 'Merch table' : 'Kebab Shop Records')}</td>
@@ -1119,7 +1136,7 @@ function recordsSection(s: GameState): string {
       ${songs.length ? `<h3 class="sub">Songs</h3>
       <div class="chart-wrap"><table class="chart ledger songs">
         <thead><tr><th>Title</th><th>Rating</th><th>Type</th><th>Writer</th><th>Status</th></tr></thead>
-        <tbody>${songs.map((x) => { const w = s.members.find((m) => m.id === x.writer); return `<tr class="${x.released ? 'out' : ''}"><td><strong>"${esc(x.title)}"</strong></td><td>${x.quality}</td><td>${GENRE_LABEL[x.genre]} ${x.kind === 'ballad' ? 'ballad' : x.kind === 'trend' ? 'chart chaser' : x.kind === 'cover' ? 'cover' : x.kind === 'hired' ? 'song, outside writer' : x.kind === 'solo' ? 'solo song' : 'song'}</td><td class="lbl">${x.kind === 'cover' ? 'Somebody else' : x.kind === 'hired' ? 'Hired pen' : w ? esc(w.isPlayer ? 'You' : first(w)) : 'An old member'}</td><td class="lbl">${x.released ? (x.album ? 'On the album' : 'Released') : x.lifted ? 'Single' : 'Unreleased'}${x.outside ? ', publishing outside' : ''}</td></tr>`; }).join('')}</tbody>
+        <tbody>${songs.map((x) => { const w = s.members.find((m) => m.id === x.writer); return `<tr class="${x.released ? 'out' : ''}"><td><strong>"${esc(x.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameSong" data-arg="${esc(x.title)}" title="Rename">✎</button>`}</td><td>${x.quality}</td><td>${GENRE_LABEL[x.genre]} ${x.kind === 'ballad' ? 'ballad' : x.kind === 'trend' ? 'chart chaser' : x.kind === 'cover' ? 'cover' : x.kind === 'hired' ? 'song, outside writer' : x.kind === 'solo' ? 'solo song' : 'song'}</td><td class="lbl">${x.kind === 'cover' ? 'Somebody else' : x.kind === 'hired' ? 'Hired pen' : w ? esc(w.isPlayer ? 'You' : first(w)) : 'An old member'}</td><td class="lbl">${x.released ? (x.album ? 'On the album' : 'Released') : x.lifted ? 'Single' : 'Unreleased'}${x.outside ? ', publishing outside' : ''}</td></tr>`; }).join('')}</tbody>
       </table></div>
       <p class="hint">Sound right now: ${GENRE_LABEL[s.members[0].style]}. Change direction from the Write menu.</p>` : '<p class="hint">No songs yet. Write some.</p>'}
     </section>`;

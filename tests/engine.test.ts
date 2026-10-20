@@ -574,6 +574,49 @@ describe('action choices', () => {
     expect(toyLine(sold)).toBe('');
   });
 
+  it('singles lifted from one album wear out: the fourth sells far less than the first', async () => {
+    const { liftFatigue } = await import('../src/game/actions');
+    expect(liftFatigue(0)).toBe(1);
+    expect(liftFatigue(1)).toBe(1);
+    expect(liftFatigue(3)).toBeLessThan(0.6);
+    const s: GameState = { ...newGame(input), fans: 50000, money: 100000 };
+    s.songs = Array.from({ length: 10 }, (_, i) => ({ title: `S${i}`, quality: 80, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    let r = settle(act(s, A('release', 'album')));
+    const appeals: number[] = [];
+    for (let i = 0; i < 4; i++) { r = settle(act(r, A('release', 'lift'))); appeals.push(r.releases.filter((x) => x.kind === 'single').at(-1)!.appeal); }
+    expect(appeals[3]).toBeLessThan(appeals[0] * 0.7);
+  });
+
+  it('the comeback: two years on, fewer fans, one more album before retiring again', async () => {
+    const { canComeBack, comeBack, retire: retireAgain } = await import('../src/game/engine');
+    const s: GameState = { ...newGame(input), fans: 100000, money: 1000000, week: 300 };
+    expect(canComeBack(s)).toContain('walked away');
+    const over: GameState = { ...s, over: { won: true, reason: 'Stryker walked away at the top.' } };
+    expect(canComeBack(over)).toBeNull();
+    const back = comeBack(over);
+    expect(back.over).toBeNull();
+    expect(back.week).toBe(404);
+    expect(back.fans).toBeLessThan(s.fans);
+    expect(back.flags.reunions).toBe(1);
+    expect(() => retireAgain(back)).toThrow();
+    expect(retireAgain.length).toBe(1);
+    expect(canComeBack({ ...over, week: 480 })).toContain('decade');
+  });
+
+  it('records and songs can be renamed by the band', async () => {
+    const { renameRelease, renameSong } = await import('../src/game/engine');
+    const s: GameState = { ...newGame(input), fans: 500, money: 5000 };
+    s.songs = [{ title: 'Old Title', quality: 70, writer: 'p', kind: 'standard', genre: 'glam', released: false }, { title: 'B Side', quality: 50, writer: 'p', kind: 'standard', genre: 'glam', released: false }];
+    const r = act(s, A('release', 'single'));
+    const rel = r.releases.find((x) => x.kind === 'single')!;
+    const r2 = renameRelease(r, rel.id, '  New   Sleeve ');
+    expect(r2.releases.find((x) => x.id === rel.id)!.title).toBe('New Sleeve');
+    const r3 = renameSong(r, 'Old Title', 'Better Title');
+    expect(r3.songs[0].title).toBe('Better Title');
+    expect(r3.releases.find((x) => x.id === rel.id)!.title).toBe('Better Title');
+    expect(() => renameSong(r3, 'Better Title', 'Better Title')).toThrow();
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
