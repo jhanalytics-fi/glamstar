@@ -123,7 +123,16 @@ export interface Alumnus {
   role: Role;
   joined: number;
   left: number;
-  how: 'fired' | 'quit' | 'poached';
+  how: 'fired' | 'quit' | 'poached' | 'died';
+}
+
+/** A member who died in the band. Remembered every year on the day. */
+export interface Memorial {
+  name: string;
+  role: Role;
+  week: number;
+  age: number;
+  cause: 'misadventure' | 'road' | 'plane' | 'pool' | 'heart' | 'fall';
 }
 
 export interface Award {
@@ -220,7 +229,7 @@ export interface LogEntry {
   hidden?: string;
 }
 
-export type GameOver = { reason: string; won: boolean };
+export type GameOver = { reason: string; won: boolean; /** The player died. Whatever they were, they stay. */ died?: boolean };
 
 /** One line of the week's running commentary. */
 export interface Beat {
@@ -302,6 +311,8 @@ export interface GameState {
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;
   tours: TourRecord[];
   alumni: Alumnus[];
+  /** Members who died in the band. */
+  memorials?: Memorial[];
   awards: Award[];
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;

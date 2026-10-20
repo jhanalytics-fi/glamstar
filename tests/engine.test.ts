@@ -449,6 +449,49 @@ describe('action choices', () => {
     expect(r.members.length).toBe(s.members.length);
   });
 
+  it('a death in the band sells records, is buried, and is remembered every year', async () => {
+    const { die, deathOdds, mourningBoost } = await import('../src/game/death');
+    const base: GameState = { ...newGame(input), fans: 20000, week: 100 };
+    base.releases.push({ id: 'alb', kind: 'album', title: 'S1', quality: 60, appeal: 1, week: 90, sold: 5000, lastWeek: 0 });
+    expect(deathOdds({ ...base, week: 10 }, base.members[1])).toBe(0);
+    const clean = deathOdds(base, { ...base.members[1], habit: 10 });
+    const wrecked = deathOdds(base, { ...base.members[1], habit: 95 });
+    expect(clean).toBeLessThan(0.0001);
+    expect(wrecked).toBeGreaterThan(clean * 20);
+    const s = structuredClone(base);
+    const bassist = s.members.find((m) => m.role === 'bass')!;
+    die(s, new Rng(1), bassist.id, 'road');
+    expect(s.members.some((m) => m.id === bassist.id)).toBe(false);
+    expect(s.alumni.at(-1)!.how).toBe('died');
+    expect(s.memorials).toHaveLength(1);
+    expect(s.fans).toBeGreaterThan(base.fans * 1.1);
+    expect(mourningBoost(s)).toBeGreaterThan(3);
+    expect(mourningBoost({ ...s, week: s.week + 30 })).toBe(1);
+    expect(s.pending?.def).toBe('the_wake');
+    const v = viewPending(s)!;
+    expect(v.title).toContain('Burying');
+    const buried = resolvePending(s, 0);
+    expect(buried.members.every((m) => m.outWeeks >= 3)).toBe(true);
+    const year = structuredClone(buried);
+    year.week = s.week + 52;
+    year.flags.wake = undefined as unknown as number; delete year.flags.wake;
+    const later = step(year, REST);
+    expect(later.log.some((l) => l.text.includes('1 year today'))).toBe(true);
+  });
+
+  it('the player dying ends the game, as a god if they had got there', async () => {
+    const { die } = await import('../src/game/death');
+    const god: GameState = { ...newGame(input), fans: 50000 };
+    die(god, new Rng(1), 'p', 'heart');
+    expect(god.over?.died).toBe(true);
+    expect(god.over?.won).toBe(true);
+    expect(god.over?.reason).toContain('godhood');
+    const small = newGame(input);
+    die(small, new Rng(1), 'p', 'fall');
+    expect(small.over?.won).toBe(false);
+    expect(small.over?.reason).toContain('Rat Pit');
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -659,6 +702,7 @@ describe('choice events', () => {
     endorsement: (s) => { s.fans = 20000; },
     spotted: (s) => { s.candidates = []; },
     studio_offer: (s) => { s.fans = 1000; s.money = 10000; },
+    the_wake: (s) => { s.memorials = [{ name: 'Dave Tinker', role: 'bass', week: s.week, age: 27, cause: 'road' }]; s.flags.wake = s.week; },
     dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },

@@ -194,7 +194,15 @@ A solo deal at 50,000 fans no longer has to mean leaving. "Let them make it" sen
 
 The dep who wants in is now measured against the member whose chair it is: the event text gives the dep's skill, the member's skill as the range you believe in (`seenRange`), a verdict, and whether the member brings songs or a show the dep does not. A third option swaps the dep in and sacks the member; the band's mood drops, twice as much if they liked them.
 
-## Prototype status (v0.37)
+## Death (v0.38)
+
+Rare, and the one thing money cannot undo. `deathWeek` in death.ts rolls every member each week from week 26: a floor of 0.00003, plus up to 0.002 a week for a habit near 100 (quadratic from 70), a little more on tour, more on a jet or in suites with a habit, and a little more past 40. The cause follows the context (misadventure, road, plane, pool at the villa, heart, hotel balcony).
+
+A member who dies leaves the line-up as `died`, joins `memorials`, and the band's records sell hard: `mourningBoost` multiplies demand by 1 + 2.5 x exp(-weeks/5) for twenty weeks. Fans +12% and 500, buzz +30, everyone's mood -30. The wake fires as a pending event with three answers: a month off (band closer, three weeks out), a tribute show (money to the family, fans and buzz), or the tour goes on (loyalty down, press says so). Every year on the day, `remembranceWeek` logs the candles and adds a few fans: small bands are remembered longest in proportion. The career summary counts those lost on the way, the History tab lists them in memoriam.
+
+The player dying ends the game with `over.died`: rock godhood sealed (won) at 30,000 fans or with the ladder done, a cult at 1,500 fans, and below that a plaque by the toilets at the Rat Pit and a tape somebody swears by.
+
+## Prototype status (v0.38)
 
 Playable in the browser. Implemented:
 

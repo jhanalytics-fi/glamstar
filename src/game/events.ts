@@ -18,6 +18,7 @@ import { FANCLUB_EVENTS } from './fanclubEvents';
 import { KIT_EVENTS } from './kitEvents';
 import { SUB_EVENTS } from './subEvents';
 import { SPOTTED_EVENTS } from './spottedEvents';
+import { DEATH_EVENTS } from './death';
 import { STUDIOS, nextStudio, type StudioId } from './studio';
 import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
@@ -2581,6 +2582,7 @@ const EVENTS: EventDef[] = [
   ...KIT_EVENTS,
   ...SUB_EVENTS,
   ...SPOTTED_EVENTS,
+  ...DEATH_EVENTS,
   WHEELS_EVENT,
   STUDIO_EVENT,
   ...TOUR_EVENTS,

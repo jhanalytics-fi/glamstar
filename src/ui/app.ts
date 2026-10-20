@@ -849,7 +849,7 @@ function effectChips(fx: EffectChip[]): string {
 
 function nextBlock(s: GameState): string {
   if (s.over) {
-    return `<div class="over"><h2>${s.over.won ? (s.over.reason.includes('walked away') ? 'Rock gods. Retired.' : 'You made it. Sort of.') : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
+    return `<div class="over"><h2>${s.over.died ? (s.over.won ? 'Gone, and immortal' : 'Gone too soon') : s.over.won ? (s.over.reason.includes('walked away') ? 'Rock gods. Retired.' : 'You made it. Sort of.') : 'The end of the road'}</h2><p>${esc(s.over.reason)}</p><button class="btn" data-do="newGame">Start again</button></div>`;
   }
   const ev = eventCard(s);
   if (ev) return ev;
@@ -1098,9 +1098,10 @@ function recordsSection(s: GameState): string {
 
 function lineupBlock(s: GameState): string {
   const cur = s.members.map((m) => `<tr><td><strong>${esc(m.name)}</strong>${m.name !== m.realName ? `<br><small class="lbl">${esc(m.realName)}</small>` : ''}</td><td>${ROLE_LABEL[m.role]}</td><td>${dateLabel(m.joined ?? 0)}</td><td class="lbl">now</td></tr>`);
-  const old = [...(s.alumni ?? [])].reverse().map((a) => `<tr class="out"><td><strong>${esc(a.name)}</strong>${a.name !== a.realName ? `<br><small class="lbl">${esc(a.realName)}</small>` : ''}</td><td>${ROLE_LABEL[a.role]}</td><td>${dateLabel(a.joined)}</td><td class="lbl">${dateLabel(a.left)}, ${a.how === 'fired' ? 'fired' : a.how === 'quit' ? 'quit' : 'poached'}</td></tr>`);
+  const old = [...(s.alumni ?? [])].reverse().map((a) => `<tr class="out"><td><strong>${esc(a.name)}</strong>${a.name !== a.realName ? `<br><small class="lbl">${esc(a.realName)}</small>` : ''}</td><td>${ROLE_LABEL[a.role]}</td><td>${dateLabel(a.joined)}</td><td class="lbl">${dateLabel(a.left)}, ${a.how === 'fired' ? 'fired' : a.how === 'quit' ? 'quit' : a.how === 'died' ? 'died' : 'poached'}</td></tr>`);
+  const lost = (s.memorials ?? []).map((r) => `<p class="lbl">In memoriam ${esc(r.name)}, ${ROLE_LABEL[r.role].toLowerCase()}, ${dateLabel(r.week)}, aged ${r.age}.</p>`).join('');
   return `<h3 class="sub">Line-up</h3>
-    <div class="chart-wrap"><table class="chart ledger lineup"><thead><tr><th>Name</th><th>Role</th><th>Joined</th><th>Left</th></tr></thead><tbody>${cur.join('')}${old.join('')}</tbody></table></div>`;
+    <div class="chart-wrap"><table class="chart ledger lineup"><thead><tr><th>Name</th><th>Role</th><th>Joined</th><th>Left</th></tr></thead><tbody>${cur.join('')}${old.join('')}</tbody></table></div>${lost}`;
 }
 
 function toursBlock(s: GameState): string {

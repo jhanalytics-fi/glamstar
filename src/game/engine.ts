@@ -8,6 +8,7 @@ import { ladderDone } from './goals';
 import { fanClubWeek } from './fanclub';
 import { splitWeek, shares } from './split';
 import { studioRent } from './studio';
+import { deathWeek, remembranceWeek } from './death';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
@@ -303,6 +304,7 @@ export function careerSummary(s: GameState): string {
     gigs ? `${gigs} tour dates` : null,
     (s.awards ?? []).length ? `${s.awards.length} award${s.awards.length === 1 ? '' : 's'}` : null,
     (s.alumni ?? []).length ? `${s.alumni.length} former member${s.alumni.length === 1 ? '' : 's'}` : null,
+    (s.memorials ?? []).length ? `${s.memorials!.length} lost on the way` : null,
     `£${Math.max(0, s.money).toLocaleString('en-GB')} in the bank`,
   ].filter(Boolean);
   return bits.join(', ') + '.';
@@ -443,6 +445,8 @@ function endOfWeek(s: GameState, rng: Rng): void {
   const ruin = ruinWeek(s, rng);
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
+  remembranceWeek(s);
+  deathWeek(s, rng);
   if (s.money < SKINT) {
     // Skint: everyone picks up shifts somewhere.
     // Enough to keep a roof overhead, not enough to get anywhere.

@@ -79,7 +79,7 @@ export function signed(n: number): string {
   return n >= 0 ? `+${n}` : String(n);
 }
 
-export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | 'poached'): void {
+export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | 'poached' | 'died'): void {
   const m = s.members.find((x) => x.id === id);
   if (!m || m.isPlayer) throw new Error('You cannot fire yourself. Yet.');
   s.members = s.members.filter((x) => x.id !== id);
@@ -92,7 +92,7 @@ export function removeMember(s: GameState, id: string, how: 'fired' | 'quit' | '
   }
   for (const k of Object.keys(s.affinity)) if (k.split('|').includes(id)) delete s.affinity[k];
   (s.alumni ??= []).push({ name: m.name, realName: m.realName, role: m.role, joined: m.joined ?? Math.max(0, s.week - m.weeksInBand), left: s.week, how, earned: m.earned ?? 0 });
-  milestone(s, 'lineup', how === 'fired' ? `${m.name} was fired.` : how === 'quit' ? `${m.name} quit the band.` : `${m.name} left for another band.`);
+  if (how !== 'died') milestone(s, 'lineup', how === 'fired' ? `${m.name} was fired.` : how === 'quit' ? `${m.name} quit the band.` : `${m.name} left for another band.`);
   if (how === 'fired') log(s, `You fired ${m.name}. ${m.hidden.ego >= 70 ? 'Took the good amp on the way out.' : 'Took it better than expected.'}`, 'bad');
 }
 

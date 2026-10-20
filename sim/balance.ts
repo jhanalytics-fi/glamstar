@@ -19,6 +19,7 @@ const peaks = { uk: 0, uk10: 0, europe: 0, world: 0, world10: 0 };
 const lastLogs: string[][] = [];
 const brokeSigned: number[] = [];
 const signings: number[] = [];
+const deaths: number[] = [];
 const results: { won: boolean; reason: string; week: number; fans: number; charted: boolean; releases: number; events: number; tours: number; label: number | undefined; maxTier: string }[] = [];
 
 const RUNS = Number(process.env.RUNS ?? 300);
@@ -100,6 +101,7 @@ for (let seed = 1; seed <= RUNS; seed++) {
   const pk = s.world.peaks; if (pk.uk !== undefined) peaks.uk++; if ((pk.uk ?? 99) <= 10) peaks.uk10++; if (pk.europe !== undefined) peaks.europe++; if (pk.world !== undefined) peaks.world++; if ((pk.world ?? 99) <= 10) peaks.world10++;
   if (!s.over!.won && /landlord/.test(s.over!.reason)) { lastLogs.push([`week ${s.week} fans ${s.fans} contract ${s.contract?.label ?? '-'} manager ${s.manager?.name ?? '-'}`, ...s.log.slice(-14).map((l) => l.text.slice(0, 130))]); brokeWeeks.push(s.week); brokeSigned.push(s.contract ? 1 : 0); }
   results.push({ won: s.over!.won, reason: s.over!.reason.split(':')[0].slice(0, 40), week: s.week, fans: s.fans, charted: s.world.peaks.uk !== undefined, releases: s.releases.length, events, tours, label: s.flags.labelCalling, maxTier });
+  deaths.push((s.memorials ?? []).length + (s.over!.died ? 1 : 0));
 }
 
 const avg = (xs: number[]) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : 0);
@@ -119,6 +121,7 @@ console.log('median money at', Object.fromEntries(checkpoints.map((w) => [w, med
 console.log('median fans at', Object.fromEntries(checkpoints.map((w) => [w, med(fansAt[w] ?? [])])));
 console.log('broke weeks', brokeWeeks.sort((a, b) => a - b).join(','), 'signed when broke', brokeSigned.reduce((a, b) => a + b, 0));
 console.log('money flow by action (incl. that week\'s upkeep and events)', Object.fromEntries(Object.entries(flow).map(([k, v]) => [k, Math.round(v / RUNS)])));
+console.log('deaths per game', avg(deaths), 'games with a death', deaths.filter((d) => d > 0).length, 'of', RUNS);
 for (const l of lastLogs.slice(0, 9)) console.log('---\n' + l.join('\n'));
 console.log('chart peaks reached (games)', peaks, 'of', RUNS);
 console.log('fan flow by action (incl. that week\'s record sales and events)', Object.fromEntries(Object.entries(fanFlow).map(([k, v]) => [k, Math.round(v / RUNS)])));

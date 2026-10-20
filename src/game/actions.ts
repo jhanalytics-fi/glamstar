@@ -1,5 +1,6 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
+import { mourningBoost } from './death';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, songTitle } from './names';
@@ -1056,7 +1057,7 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     const age = s.week - r.week;
     // Sales grow with the fan base, but a hit needs more than a loyal following and the market has a ceiling.
     const following = (s.fans * 0.25) / (1 + s.fans / 150000);
-    const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind];
+    const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind] * mourningBoost(s);
     const raw = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
     // Label records sell harder, but the money goes to the label's ledger first.
     const { units, cash } = r.comp === 'bootleg' ? { units: raw, cash: 0 } : labelSales(s, r, raw);
