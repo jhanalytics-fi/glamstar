@@ -391,6 +391,25 @@ describe('action choices', () => {
     expect(loyal).toBeGreaterThan(3);
   });
 
+  it('a studio of your own: better records, cheaper records, songs at home and rent when idle', async () => {
+    const { nextStudio } = await import('../src/game/studio');
+    const base = newGame(input);
+    expect(nextStudio({ ...base, fans: 1000, money: 10000 })).toBe('eighttrack');
+    expect(nextStudio({ ...base, fans: 50000, money: 1000000 })).toBe('riviera');
+    const s: GameState = { ...base, studio: 'country', money: 5000, fans: 2000 };
+    s.songs = Array.from({ length: 8 }, (_, i) => ({ title: `S${i}`, quality: 60, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false }));
+    const plain = act({ ...s, studio: undefined }, A('release', 'album'));
+    const own = act(s, A('release', 'album'));
+    expect(own.releases[0].quality).toBeGreaterThan(plain.releases[0].quality + 2);
+    expect(actionOptions(s, 'release').find((o) => o.id === 'album')!.cost).toBeLessThan(1500);
+    expect(actionOptions(s, 'write').some((o) => o.id === 'studioWeek')).toBe(true);
+    const w = act(s, A('write', 'studioWeek'));
+    expect(w.songs.length).toBeGreaterThan(8);
+    expect(w.ledger['1982']?.other ?? 0).toBe(0);
+    const idle = act(s, A('rest', 'sleep'));
+    expect(idle.ledger['1982']?.other ?? 0).toBeGreaterThanOrEqual(900);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -600,6 +619,7 @@ describe('choice events', () => {
     fan_club_start: (s) => { s.fans = 1500; },
     endorsement: (s) => { s.fans = 20000; },
     spotted: (s) => { s.candidates = []; },
+    studio_offer: (s) => { s.fans = 1000; s.money = 10000; },
     dep_wants_in: (s) => { s.subs = { bass: { name: 'Gaz from the music shop', role: 'bass', times: 5, skill: 60 } }; },
     fan_club_books: (s) => { s.fans = 4000; s.flags.fanClub = 0; s.week = 60; s.lastGigWeek = 59; s.flags.lastBigParty = 60; },
     shark_heavies: (s) => { s.flags.heaviesOpen = 1; s.flags.shark = 900; s.gear = 1; },

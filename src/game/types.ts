@@ -291,6 +291,8 @@ export interface GameState {
   split?: Split;
   /** Session players on call, by role. */
   subs?: Partial<Record<Role, Sub>>;
+  /** The band's own studio, if it has one. */
+  studio?: 'eighttrack' | 'country' | 'riviera';
   releases: Release[];
   /** Money in, by year and by stream, plus copies sold. Never spent from; the bank is `money`. */
   ledger: Record<string, Partial<Record<IncomeKind, number>>>;

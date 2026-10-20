@@ -7,11 +7,12 @@ import { awardsNight } from './awards';
 import { ladderDone } from './goals';
 import { fanClubWeek } from './fanclub';
 import { splitWeek, shares } from './split';
+import { studioRent } from './studio';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
 import { tierById } from './tour';
-import { adjust, beat, first, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
+import { adjust, beat, earn, first, log, logEffects, milestone, mutate, openScene, player, removeMember, revealLog, snapshot } from './helpers';
 import { labelById, labelWeek } from './labels';
 import { managerWeek } from './managers';
 import { catalogueWeek } from './catalogue';
@@ -437,6 +438,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   labelWeek(s, rng);
   catalogueWeek(s, rng);
   fanClubWeek(s);
+  { const rent = studioRent(s); if (rent) { s.money += rent; earn(s, 'other', rent); if (s.week % 13 === 0) log(s, `Studio hire this quarter: other bands paid £${(rent * 13).toLocaleString('en-GB')} to record where you record.`, 'good'); } }
   splitWeek(s, rng);
   const ruin = ruinWeek(s, rng);
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }

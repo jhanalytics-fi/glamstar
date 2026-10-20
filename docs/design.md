@@ -188,7 +188,7 @@ Band, song, album, stage and real names are generated from large word pools and 
 
 The version lives in `package.json` (semver) and is shown on the title screen and in the game header, so a player can see which build they run. Bump the minor version for each player-visible feature batch, the patch for fixes.
 
-## Prototype status (v0.35)
+## Prototype status (v0.36)
 
 Playable in the browser. Implemented:
 
@@ -492,3 +492,7 @@ The fan ceiling sat around 450,000 because records stopped winning fans past a f
 ## Someone better (v0.35)
 
 `src/game/spottedEvents.ts`. Every 16+ weeks, when no audition is open, the band may see a guitarist, bassist, drummer or keyboard player who makes the room go quiet: at a jam night, a support slot, a wedding, a hotel bar. The candidate is generated at the "good" tier with a fame boost (+10, and up to +22 more with fans), and the event only fires if they beat your current player by 6 overall (or the chair is empty), so the bar rises with the band. Audition them (they arrive as the one candidate, seen 50; the incumbent loses 8 mood) or buy them a drink and leave it. If you decline and it gets back to the band (60%), the incumbent gains mood +6, loyalty +4 and likes you 5 more.
+
+## A studio of your own (v0.36)
+
+`src/game/studio.ts`. Three tiers, offered as a choice event (fixed price, every 26+ weeks) when the fans and 1.3x the money are there: a room with an eight-track (£4,000, 500 fans; +2 on records, 25% off the studio bill, £60 a week hire, +3 on a writing week), a residential studio in the country (£60,000, 8,000 fans; +5, 60%, £900, +6), a villa studio on the Riviera (£600,000, 40,000 fans; +8, 85%, £5,000, +10). Records made there take the quality bonus; self-financed releases cost less (60% of the saving) and on a label the same share comes off the tab. Write gains "A week in <your studio>": one or two songs at base plus the writing bonus, tightness +2, no cost. In any week the band did not record or write there, other bands hire it (booked as other income, a line every quarter). Shown on the Business tab.

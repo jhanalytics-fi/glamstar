@@ -12,6 +12,7 @@ import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, 
 import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
+import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
@@ -621,6 +622,7 @@ function moneyBlock(s: GameState): string {
       <dl class="deal">
         ${rows.map(([k, v, why]) => `<div title="${esc(why)}"><dt>${esc(k)}</dt><dd>${money(v)} / week</dd></div>`).join('')}
         <div title="${esc(WHEELS[wheelsOf(s)].word)}"><dt>Wheels</dt><dd>${esc(WHEELS[wheelsOf(s)].name)}</dd></div>
+        ${s.studio ? `<div title="${esc(STUDIOS[s.studio].word)}"><dt>Studio</dt><dd>${esc(STUDIOS[s.studio].name)}, +${STUDIOS[s.studio].quality} on records, £${STUDIOS[s.studio].rent.toLocaleString('en-GB')}/wk hire when idle</dd></div>` : ''}
         <div title="Average of everyone's instruments. Better gear from the Rehearse menu, or when someone asks."><dt>The band's kit</dt><dd>${bandKit(s)}, ${esc(KIT_WORD(bandKit(s)))}</dd></div>
         <div title="PA, amps and lights of your own. Big venues supply their own; pubs do not."><dt>Backline</dt><dd>${['Borrowed', 'A PA and a stack', 'Decent backline', 'A proper rig', 'A lorry of lights', 'Stadium rig'][Math.min(5, s.gear ?? 0)]}</dd></div>
         ${s.flags.fanClub !== undefined ? `<div title="${s.flags.fanClubInHouse ? 'Run from your own office: every penny is yours.' : 'Run from a spare room for a 30% cut.'}"><dt>Fan club</dt><dd>${clubMembers(s).toLocaleString('en-GB')} members, ${money(Math.round(clubIncome(s) * (s.flags.fanClubInHouse ? 1 : 0.7)))} / week</dd></div>` : ''}

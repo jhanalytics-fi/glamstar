@@ -18,6 +18,7 @@ import { FANCLUB_EVENTS } from './fanclubEvents';
 import { KIT_EVENTS } from './kitEvents';
 import { SUB_EVENTS } from './subEvents';
 import { SPOTTED_EVENTS } from './spottedEvents';
+import { STUDIOS, nextStudio, type StudioId } from './studio';
 import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
 type Params = Record<string, string | number>;
@@ -75,6 +76,43 @@ const song = (s: GameState, title: string | number) => s.songs.find((x) => x.tit
 const loudest = (s: GameState) => [...mates(s)].sort((a, b) => b.hidden.ego - a.hidden.ego)[0];
 
 /** Bigger wheels for a bigger band: offered when the money and the fan base say so. */
+/** A studio of your own, when the money and the fans say so. */
+const STUDIO_EVENT: EventDef = {
+  id: 'studio_offer',
+  weight: 3,
+  where: 'home',
+  when: (s) => {
+    const id = nextStudio(s);
+    return id && since(s, 'studioOffer', 26) ? { id } : null;
+  },
+  title: (_s, p) => (p.id === 'riviera' ? 'A villa on the Riviera, with a control room' : p.id === 'country' ? 'A farmhouse with a studio in the barn' : 'An eight-track and a room to put it in'),
+  text: (s, p) => {
+    const st = STUDIOS[p.id as StudioId];
+    return `${st.word} £${st.price.toLocaleString('en-GB')}. Records made there come out ${st.quality} better, the studio bill mostly disappears, a writing week there is worth ${st.writing} on a song, and other bands pay about £${st.rent.toLocaleString('en-GB')} a week to use it when you do not.${s.studio ? ` It would replace ${STUDIOS[s.studio].name.toLowerCase()}.` : ''}`;
+  },
+  options: (_s, p) => {
+    const id = p.id as StudioId;
+    const st = STUDIOS[id];
+    return [
+      {
+        label: `Buy it: £${st.price.toLocaleString('en-GB')}`,
+        hint: 'Your own desk, your own hours, and a line in the Business tab.',
+        cost: st.price,
+        fixed: true,
+        resolve: (s) => {
+          s.flags.studioOffer = s.week;
+          s.studio = id;
+          for (const m of s.members) adjust(m, 'mood', 8);
+          addBuzz(s, id === 'riviera' ? 10 : id === 'country' ? 4 : 1);
+          milestone(s, 'career', `Bought ${st.name.toLowerCase()}.`);
+          log(s, id === 'riviera' ? `${s.bandName} owns a villa above the sea with a mixing desk in it. ${PRESS} sent a photographer. The photographer stayed a week.` : id === 'country' ? 'The band owns a farmhouse with a desk in the barn. The cows have heard the new album before the label has.' : 'The rehearsal room has an eight-track now, and egg boxes on every wall. It smells of eggs.', 'good');
+        },
+      },
+      { label: 'Not now', hint: 'The money stays in the bank.', resolve: (s) => { s.flags.studioOffer = s.week; log(s, 'You let it go. Somebody else will buy it and make a worse record there.', 'neutral'); } },
+    ];
+  },
+};
+
 const WHEELS_EVENT: EventDef = {
   id: 'wheels_upgrade',
   weight: 3,
@@ -2528,6 +2566,7 @@ const EVENTS: EventDef[] = [
   ...SUB_EVENTS,
   ...SPOTTED_EVENTS,
   WHEELS_EVENT,
+  STUDIO_EVENT,
   ...TOUR_EVENTS,
 ];
 

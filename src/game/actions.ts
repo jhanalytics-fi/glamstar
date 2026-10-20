@@ -15,6 +15,7 @@ import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
 import { KIT_WORD, bandKit, kitGain, wearKit } from './kit';
 import { callDeps, canDep, covered } from './subs';
+import { STUDIOS, studioOf } from './studio';
 import { applyLegend, gigFate, masterpieceOdds, masterpiecePress, strikeMasterpiece } from './fate';
 import type { Action, ActionType, GameState, Genre, IncomeKind, Musician, Release, ReleaseKind, Role, Song, SongKind } from './types';
 
@@ -237,6 +238,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         ...(s.contract ? [{ id: 'publisher', label: `Listen to the tapes ${labelById(s.contract.label).name}'s publishers keep sending`, cost: 0, hint: 'A song by a proper songwriter, free, and not yours. The label is thrilled; your writers are not.' }] : []),
         ...(s.fans >= 2000 || s.money >= hiredFee(s) * 2 ? [{ id: 'hired', label: 'Bring in a hit songwriter', cost: hiredFee(s), hint: `A week with someone who has written for everybody. Big song, big ego bruise, publishing split.` }] : []),
         ...(s.money >= retreatCost(s) ? [{ id: 'retreat', label: 'Rent a house in the country', cost: retreatCost(s), hint: 'Two or three songs, a rested band, and a farmer who wants a word about the noise.' }] : []),
+        ...(s.studio ? [{ id: 'studioWeek', label: `A week in ${STUDIOS[s.studio].name.toLowerCase()}`, cost: 0, hint: `Your own desk, your own hours. Songs come out ${STUDIOS[s.studio].writing} better, and the tape is rolling when the good take happens.` }] : []),
         {
           id: 'direction',
           label: 'Change direction',
@@ -262,9 +264,9 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
       }
       return [
         { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'Sell tapes at gigs, send one to the radio.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
-        { id: 'single', label: 'Self-financed 7" single', cost: 300, hint: 'A real record in real shops. Can chart if enough people buy it.', locked: need(2) },
-        { id: 'ep', label: 'Self-financed 12" EP', cost: 650, hint: 'Four songs. Sells slower, earns more per copy.', locked: need(4) },
-        { id: 'album', label: 'Self-financed album', cost: 1500, hint: `Eight songs. Huge risk without a label behind you.${producerNote(s)}`, locked: need(8) },
+        { id: 'single', label: 'Self-financed 7" single', cost: selfCost(s, 300), hint: `A real record in real shops. Can chart if enough people buy it.${studioNote(s)}`, locked: need(2) },
+        { id: 'ep', label: 'Self-financed 12" EP', cost: selfCost(s, 650), hint: `Four songs. Sells slower, earns more per copy.${studioNote(s)}`, locked: need(4) },
+        { id: 'album', label: 'Self-financed album', cost: selfCost(s, 1500), hint: `Eight songs. Huge risk without a label behind you.${producerNote(s)}${studioNote(s)}`, locked: need(8) },
         ...liftOption(s, 150),
       ];
     }
@@ -567,6 +569,16 @@ function newSong(s: GameState, rng: Rng, quality: number, writer: Musician, kind
   return song;
 }
 
+/** Your own studio takes most of the studio bill off a self-financed record. */
+function selfCost(s: GameState, base: number): number {
+  const st = studioOf(s);
+  return st ? Math.round((base * (1 - st.saving * 0.6)) / 10) * 10 : base;
+}
+function studioNote(s: GameState): string {
+  const st = studioOf(s);
+  return st ? ` Recorded at ${st.name.toLowerCase()}: +${st.quality} quality.` : '';
+}
+
 /** Who is booked to produce the next album: the producer is chosen beforehand and waits for the session. */
 function producerNote(s: GameState): string {
   const p = s.flags.nextProducer ?? 0;
@@ -681,6 +693,16 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
     for (const m of here) if (!m.isPlayer && m.writing >= 45 && m.hidden.ego >= 60) { adjust(m, 'mood', wobble(rng, -8)); addAffinity(s, m.id, me.id, -4); log(s, `${first(m)} sat in the corner saying "I could have written that". ${first(m)} could not have.`, 'bad'); revealLog(s, m, 'ego', 1); }
     return;
   }
+  if (option === 'studioWeek') {
+    const st = STUDIOS[s.studio!];
+    s.flags.studioUsed = s.week;
+    for (const m of here) { adjust(m, 'energy', wobble(rng, -4)); adjust(m, 'mood', wobble(rng, 4)); }
+    const n = rng.chance(0.45) ? 2 : 1;
+    for (let i = 0; i < n; i++) newSong(s, rng, base + st.writing + rng.int(-8, 12), i === 0 ? best : second, 'standard', me.style);
+    s.tightness = clamp(s.tightness + 2, 0, 100);
+    log(s, `A week at ${st.name.toLowerCase()}: nobody watching the clock, the tape rolling all day, and the good take caught the first time it happened.`, 'good');
+    return;
+  }
   if (option === 'retreat') {
     for (const m of here) { adjust(m, 'energy', wobble(rng, 12)); adjust(m, 'mood', wobble(rng, 8)); }
     forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, 3));
@@ -737,7 +759,9 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
   if (!songs.length) throw new Error('Nothing to release.');
   const deal = labelRelease(s, kind);
   const prod = kind === 'album' ? takeProducer(s) : { quality: 0, tight: 0 };
-  const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0);
+  const own = kind === 'demo' ? null : studioOf(s);
+  if (own) { s.flags.studioUsed = s.week; if (s.contract) s.contract.unrecouped -= Math.round(s.contract.terms.budget * (kind === 'single' ? 0.15 : kind === 'ep' ? 0.35 : 1) * own.saving * 0.6); }
+  const studio = (kind === 'demo' ? -8 : kind === 'single' ? 0 : 3) + (deal?.studio ?? 0) + (own?.quality ?? 0);
   let appeal =
     songs.reduce((a, x) => a + (x.kind === 'ballad' ? 1.25 : 1) * (0.7 + trend(x.genre, s.week) * 0.5), 0) / songs.length;
   let polish = 0;
