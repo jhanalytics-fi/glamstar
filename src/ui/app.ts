@@ -1117,7 +1117,7 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   const peak = (r: (typeof s.releases)[number], c: string) => (r.peaks?.[c] ? `#${r.peaks[c]}` : '');
   const rows = [...s.releases].reverse().map((r) => `<tr>
-      <td><strong>"${esc(r.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameRelease" data-arg="${r.id}" title="Rename">✎</button>`}${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
+      <td><strong>"${esc(r.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameRelease" data-arg="${r.id}" >Rename</button>`}${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
       <td>${r.comp === 'hits' ? 'Compilation' : r.comp === 'live' ? 'Live' : r.comp === 'bootleg' ? 'Bootleg' : kind[r.kind]}</td>
       <td>${dateLabel(r.week)}</td>
       <td class="lbl">${esc(r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : r.kind === 'demo' ? 'Merch table' : 'Kebab Shop Records')}</td>
@@ -1136,7 +1136,7 @@ function recordsSection(s: GameState): string {
       ${songs.length ? `<h3 class="sub">Songs</h3>
       <div class="chart-wrap"><table class="chart ledger songs">
         <thead><tr><th>Title</th><th>Rating</th><th>Type</th><th>Writer</th><th>Status</th></tr></thead>
-        <tbody>${songs.map((x) => { const w = s.members.find((m) => m.id === x.writer); return `<tr class="${x.released ? 'out' : ''}"><td><strong>"${esc(x.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameSong" data-arg="${esc(x.title)}" title="Rename">✎</button>`}</td><td>${x.quality}</td><td>${GENRE_LABEL[x.genre]} ${x.kind === 'ballad' ? 'ballad' : x.kind === 'trend' ? 'chart chaser' : x.kind === 'cover' ? 'cover' : x.kind === 'hired' ? 'song, outside writer' : x.kind === 'solo' ? 'solo song' : 'song'}</td><td class="lbl">${x.kind === 'cover' ? 'Somebody else' : x.kind === 'hired' ? 'Hired pen' : w ? esc(w.isPlayer ? 'You' : first(w)) : 'An old member'}</td><td class="lbl">${x.released ? (x.album ? 'On the album' : 'Released') : x.lifted ? 'Single' : 'Unreleased'}${x.outside ? ', publishing outside' : ''}</td></tr>`; }).join('')}</tbody>
+        <tbody>${songs.map((x) => { const w = s.members.find((m) => m.id === x.writer); return `<tr class="${x.released ? 'out' : ''}"><td><strong>"${esc(x.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameSong" data-arg="${esc(x.title)}" >Rename</button>`}</td><td>${x.quality}</td><td>${GENRE_LABEL[x.genre]} ${x.kind === 'ballad' ? 'ballad' : x.kind === 'trend' ? 'chart chaser' : x.kind === 'cover' ? 'cover' : x.kind === 'hired' ? 'song, outside writer' : x.kind === 'solo' ? 'solo song' : 'song'}</td><td class="lbl">${x.kind === 'cover' ? 'Somebody else' : x.kind === 'hired' ? 'Hired pen' : w ? esc(w.isPlayer ? 'You' : first(w)) : 'An old member'}</td><td class="lbl">${x.released ? (x.album ? 'On the album' : 'Released') : x.lifted ? 'Single' : 'Unreleased'}${x.outside ? ', publishing outside' : ''}</td></tr>`; }).join('')}</tbody>
       </table></div>
       <p class="hint">Sound right now: ${GENRE_LABEL[s.members[0].style]}. Change direction from the Write menu.</p>` : '<p class="hint">No songs yet. Write some.</p>'}
     </section>`;
