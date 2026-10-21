@@ -911,8 +911,8 @@ function nextBlock(s: GameState): string {
   const subs: Record<ActionType, string> = {
     gig: missing.length ? `Need ${missing.join(' and ')}` : bestVenue(s.fans).name.split(',')[0],
     rehearse: `Tightness ${s.tightness}`,
-    write: s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'}` : 'Covers only',
-    release: s.releases.length ? `${s.releases.length} out` : 'Tape or vinyl',
+    write: s.songs.length ? `${s.songs.length} original${s.songs.length === 1 ? '' : 's'}${unreleasedCount(s) < 8 ? `, ${8 - unreleasedCount(s)} more for an album` : `, ${unreleasedCount(s)} unreleased`}` : 'Covers only',
+    release: `${s.releases.length ? `${s.releases.length} out, ` : ''}${unreleasedCount(s)} unreleased song${unreleasedCount(s) === 1 ? '' : 's'}`,
     party: 'Morale up, livers down',
     rest: 'Recharge, dry out',
     advertise: missing.length ? `Find ${missing.join(' and ')}` : 'Replace or add a player',
@@ -1106,6 +1106,8 @@ function choiceBtn(what: string, arg: string, arg2: string, label: string, cost:
   </button>`;
 }
 
+const unreleasedCount = (s: GameState) => s.songs.filter((x) => !x.released).length;
+
 function eventCard(s: GameState): string {
   const v = viewPending(s);
   if (!v) return '';
@@ -1138,14 +1140,16 @@ function recordsSection(s: GameState): string {
   const track = (x: Song, n: number) => `<tr><td class="pos">${n}</td><td><strong>${esc(x.title)}</strong>${x.lifted || (s.releases.some((r) => r.kind === 'single' && r.title === x.title)) ? '<small class="lbl"> single</small>' : ''}${x.quality >= 92 ? '<small class="cert platinum"> the one</small>' : ''}</td><td class="lbl">${runningTime(x)}</td><td>${x.quality}</td></tr>`;
   const sleeves = albums.map((r) => {
     const { a, b } = sides(s, r.id);
+    const all = [...a, ...b];
+    const quarters = r.double && all.length >= 12 ? [0, 1, 2, 3].map((i) => all.slice(Math.round((i * all.length) / 4), Math.round(((i + 1) * all.length) / 4))) : null;
     const lbl = r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : 'Kebab Shop Records';
     const side = (name: string, list: Song[], from: number) => (list.length ? `<p class="side">${name}</p><table class="chart ledger tracks"><tbody>${list.map((x, i) => track(x, from + i + 1)).join('')}</tbody></table>` : '');
     return `<article class="album">
       <div class="sleeve" style="--h:${hue(r.title)}"><span class="lp">LP</span><strong>${esc(r.title)}</strong><em>${esc(s.bandName)}</em></div>
       <div class="album-in">
-        <h4>${esc(r.title)}</h4>
+        <h4>${esc(r.title)}${r.double ? ' <small class="lbl">double album</small>' : r.tracks && r.tracks > 8 ? ` <small class="lbl">${r.tracks} tracks</small>` : ''}</h4>
         <p class="lbl">${esc(lbl)}<br>${dateLabel(r.week)}${r.cert ? ` <span class="cert ${r.cert}">${CERT_LABEL[r.cert]}</span>` : ''}<br>${r.sold.toLocaleString('en-GB')} sold${r.peaks?.albums ? `, albums chart #${r.peaks.albums}` : ''}</p>
-        ${a.length ? side('Side A', a, 0) + side('Side B', b, a.length) : '<p class="hint">The tape box says nothing about what is on it.</p>'}
+        ${quarters ? quarters.map((q, i) => side(`Side ${'ABCD'[i]}`, q, quarters.slice(0, i).reduce((n, x) => n + x.length, 0))).join('') : a.length ? side('Side A', a, 0) + side('Side B', b, a.length) : '<p class="hint">The tape box says nothing about what is on it.</p>'}
       </div>
     </article>`;
   });

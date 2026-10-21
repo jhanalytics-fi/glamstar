@@ -279,7 +279,9 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
           { id: 'demo', label: 'Demo tape on a four-track', cost: 30, hint: 'For the merch table. The label does not care.', locked: s.songs.length < 3 ? `Needs 3 songs. You have ${s.songs.length}.` : undefined },
           { id: 'single', label: `Single on ${l.name}`, cost: 0, hint: `Proper studio, proper promotion. ${bill(0.15)}.`, locked: need(2) },
           { id: 'ep', label: `EP on ${l.name}`, cost: 0, hint: `Four songs, label muscle. ${bill(0.35)}.`, locked: need(4) },
-          { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.${producerNote(s)}`, locked: need(8) },
+          { id: 'album', label: `Album on ${l.name}`, cost: 0, hint: `Eight songs. ${s.contract.albumsDelivered + 1} of ${t.albums} owed. ${bill(1)}. They will judge it on sales.${producerNote(s)}`, locked: need(8) },
+          ...(unreleased >= 10 ? [{ id: 'album12', label: `Twelve-track album on ${l.name}`, cost: 0, hint: `Twelve songs: the four weakest drag the rating, but there are more singles to lift and more to love. ${bill(1.25)}.`, locked: need(12) }] : []),
+          ...(unreleased >= 14 && s.fans >= 5000 ? [{ id: 'double', label: `Double album on ${l.name}`, cost: 0, hint: `Sixteen songs, a gatefold, a statement. Dearer in the shops, sells slower, pays more per copy, and the papers call it a masterpiece or a mess. ${bill(1.8)}.`, locked: need(16) }] : []),
           ...liftOption(s, 0),
         ];
       }
@@ -288,6 +290,8 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         { id: 'single', label: 'Self-financed 7" single', cost: selfCost(s, 300), hint: `A real record in real shops. Can chart if enough people buy it.${studioNote(s)}`, locked: need(2) },
         { id: 'ep', label: 'Self-financed 12" EP', cost: selfCost(s, 650), hint: `Four songs. Sells slower, earns more per copy.${studioNote(s)}`, locked: need(4) },
         { id: 'album', label: 'Self-financed album', cost: selfCost(s, 1500), hint: `Eight songs. Huge risk without a label behind you.${producerNote(s)}${studioNote(s)}`, locked: need(8) },
+        ...(unreleased >= 10 ? [{ id: 'album12', label: 'Self-financed twelve-track album', cost: selfCost(s, 1900), hint: `Twelve songs: the weakest drag the rating, but more singles to lift.${studioNote(s)}`, locked: need(12) }] : []),
+        ...(unreleased >= 14 && s.fans >= 5000 ? [{ id: 'double', label: 'Self-financed double album', cost: selfCost(s, 2800), hint: `Sixteen songs in a gatefold. Dearer, slower, more per copy, and a statement.${studioNote(s)}`, locked: need(16) }] : []),
         ...liftOption(s, 150),
       ];
     }
@@ -353,7 +357,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
     case 'gig': return gig(s, rng, gigSpecs(s)[a.option]);
     case 'rehearse': return rehearse(s, rng, a.option);
     case 'write': return write(s, rng, a.option, a.genre);
-    case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : release(s, rng, a.option as ReleaseKind);
+    case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : a.option === 'album12' ? release(s, rng, 'album', false, 12) : a.option === 'double' ? release(s, rng, 'album', false, 16) : release(s, rng, a.option as ReleaseKind);
     case 'party': return party(s, rng, a.option);
     case 'rest': return rest(s, rng, a.option, a.memberId);
     case 'advertise': return advertise(s, rng, a.role ?? 'guitar', a.option);
@@ -780,12 +784,13 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
 export const RELEASE_SONGS: Record<ReleaseKind, number> = { demo: 3, single: 2, ep: 4, album: 8 };
 const RELEASE_LABEL: Record<ReleaseKind, string> = { demo: 'demo tape', single: '7" single', ep: '12" EP', album: 'album' };
 
-function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void {
+function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false, tracks = RELEASE_SONGS[kind]): void {
   releaseCommentary(s, kind, rng);
   const pool = lift ? liftable(s).slice(0, 1) : kind === 'demo' ? [...s.songs] : s.songs.filter((x) => !x.released);
-  const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, RELEASE_SONGS[kind]);
+  const songs = pool.sort((a, b) => b.quality - a.quality).slice(0, tracks);
+  const double = kind === 'album' && tracks >= 16;
   if (!songs.length) throw new Error('Nothing to release.');
-  const deal = labelRelease(s, kind);
+  const deal = labelRelease(s, kind, kind === 'album' && tracks >= 16 ? 1.8 : kind === 'album' && tracks >= 12 ? 1.25 : 1);
   const prod = kind === 'album' ? takeProducer(s) : { quality: 0, tight: 0 };
   const own = kind === 'demo' ? null : studioOf(s);
   if (own) { s.flags.studioUsed = s.week; if (s.contract) s.contract.unrecouped -= Math.round(s.contract.terms.budget * (kind === 'single' ? 0.15 : kind === 'ep' ? 0.35 : 1) * own.saving * 0.6); }
@@ -810,10 +815,13 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false): void 
     for (const x of songs) x.released = true;
   }
   // The fourth single off an album is a B-side with a budget: every lift after the second sells less.
-  if (lift) { const n = s.songs.filter((x) => x.album === songs[0].album && x.lifted).length - songs.length; appeal *= liftFatigue(n); }
-  const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0 };
+  if (lift) { const alb = s.releases.find((r) => r.id === songs[0].album); const slack = (alb?.tracks ?? 8) >= 16 ? 2 : (alb?.tracks ?? 8) >= 12 ? 1 : 0; const n = s.songs.filter((x) => x.album === songs[0].album && x.lifted).length - songs.length - slack; appeal *= liftFatigue(n); }
+  // A long record: more to love, more to lift, and a sprawl the critics either forgive or do not.
+  if (kind === 'album' && tracks > 8) { appeal *= tracks >= 16 ? 0.78 : 1.04; addBuzz(s, tracks >= 16 ? 10 : 3); }
+  const rec: Release = { id: `rel${s.nextId++}`, kind, title, quality, appeal, week: s.week, sold: 0, lastWeek: 0, tracks: kind === 'album' ? tracks : undefined, double: double || undefined };
   if (kind === 'album') for (const x of songs) x.album = rec.id;
   tagRelease(s, rec);
+  if (double) { if (rec.royalty) rec.royalty = Math.round(rec.royalty * 1.6 * 1000) / 1000; milestone(s, 'release', `A double album: "${title}", sixteen songs in a gatefold.`); }
   if (songs[0].outside) { rec.outside = true; if (rec.royalty) rec.royalty *= OUTSIDE_CUT; }
   s.releases.push(rec);
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
@@ -1103,7 +1111,7 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     r.lastWeek = units;
     r.sold += units;
     if (units > 0) {
-      if (cash < 0) { const take = Math.round(units * MARGIN[r.kind] * (r.outside ? OUTSIDE_CUT : 1)); s.money += take; earn(s, STREAM[r.kind], take); }
+      if (cash < 0) { const take = Math.round(units * MARGIN[r.kind] * (r.double ? 1.6 : 1) * (r.outside ? OUTSIDE_CUT : 1)); s.money += take; earn(s, STREAM[r.kind], take); }
       earn(s, UNITS[r.kind], units);
       // Records win new listeners, but each extra fan is harder to find than the last.
       // Records win new listeners at home and, as far as the band's reach goes, abroad.

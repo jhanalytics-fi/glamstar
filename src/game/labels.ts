@@ -200,12 +200,12 @@ function drop(s: GameState, l: Label, text: string): void {
 // ---------------------------------------------------------------- releases and money
 
 /** Turns a release into a label release: budget charged to the band, quality from a real studio. */
-export function labelRelease(s: GameState, kind: ReleaseKind): { studio: number; promo: number } | null {
+export function labelRelease(s: GameState, kind: ReleaseKind, scale = 1): { studio: number; promo: number } | null {
   const c = s.contract;
   if (!c || kind === 'demo') return null;
   const l = labelById(c.label);
-  c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind]);
-  if (c.terms.smallPrint.promoRecoup) c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind] * 0.4);
+  c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind] * scale);
+  if (c.terms.smallPrint.promoRecoup) c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind] * scale * 0.4);
   if (kind === 'album') { c.albumsDelivered++; c.reviewWeek = s.week + REVIEW_AFTER; }
   return { studio: l.tier === 'major' ? 9 : l.tier === 'indie' ? 5 : 3, promo: l.promo };
 }

@@ -91,6 +91,10 @@ export interface Release {
   royalty?: number;
   /** Put together from the back catalogue by the label, or by a bootlegger, rather than recorded by the band. */
   comp?: 'hits' | 'live' | 'bootleg';
+  /** How many songs on it: 8 by default, 12 for a full-length, 16 for a double. */
+  tracks?: number;
+  /** A double album: twice the sleeve, two thirds again the price, a shelf of its own. */
+  double?: boolean;
   /** Lead song owned outside the band: a slice of every copy goes to its publisher. */
   outside?: boolean;
   /** Best chart positions reached, by chart. */

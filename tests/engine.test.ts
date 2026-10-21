@@ -655,6 +655,29 @@ describe('action choices', () => {
     expect(mine.pending).toBeNull();
   });
 
+  it('albums come in eight, twelve and sixteen: longer records sell differently and lift more singles', async () => {
+    const { liftFatigue } = await import('../src/game/actions');
+    const mk = (n: number): GameState => { const s: GameState = { ...newGame(input), fans: 8000, money: 50000 }; s.songs = Array.from({ length: n }, (_, i) => ({ title: `S${i}`, quality: 90 - i * 3, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false })); return s; };
+    expect(actionOptions(mk(9), 'release').some((o) => o.id === 'album12')).toBe(false);
+    expect(actionOptions(mk(12), 'release').find((o) => o.id === 'album12')!.locked).toBeUndefined();
+    expect(actionOptions(mk(16), 'release').find((o) => o.id === 'double')!.locked).toBeUndefined();
+    const eight = settle(act(mk(16), A('release', 'album')));
+    const twelve = settle(act(mk(16), A('release', 'album12')));
+    const dbl = settle(act(mk(16), A('release', 'double')));
+    const alb = (g: GameState) => g.releases.find((r) => r.kind === 'album')!;
+    expect(alb(eight).tracks).toBe(8);
+    expect(alb(twelve).tracks).toBe(12);
+    expect(alb(dbl).double).toBe(true);
+    expect(alb(dbl).appeal).toBeLessThan(alb(eight).appeal);
+    expect(alb(twelve).quality).toBeLessThan(alb(eight).quality);
+    expect(twelve.songs.filter((x) => x.released).length).toBe(12);
+    expect(dbl.milestones.some((m) => m.text.includes('double album'))).toBe(true);
+    // Slack: the third single off a twelve-track album is as fresh as the second off an eight.
+    let r = twelve; const appeals: number[] = [];
+    for (let i = 0; i < 3; i++) { r = settle(act(r, A('release', 'lift'))); appeals.push(r.releases.filter((x) => x.kind === 'single').at(-1)!.appeal); }
+    expect(appeals[2] / appeals[0]).toBeGreaterThan(liftFatigue(2) * 0.99);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

@@ -248,7 +248,11 @@ Typed names (v0.45.2) are never refused: it is the player's own game and their o
 
 legendEvents.ts, lifted in shape from the rock biographies and bent to fiction: `hitch_abroad` (a broke pub band hitches to a car-park festival in Stockholm or Hamburg: energy gone, affinity up, a hundred fans in a city that remembers, someone arrives a week late from the wrong lorry), `big_abroad` (once, between 1,500 and 60,000 fans: a sack of letters from Japan or Finland or Brazil, fly out for +35% fans and a permanent reach bonus, or sign photographs at the kitchen table), `famous_friend_drives` (a rival band's singer with a glass in his hand and a car outside, after a party or on tour: let them go and it is 10% a death on the road and 30% four weeks in plaster with the other label's cheque; take the keys; or drive yourself), `falling_apart` (8 to 30 weeks after a death: the least loyal member does not want the job any more; let them go, promise a record for the lost one, or rename the band and start again on half the fans), and `torchbearers` (once, after four years with two albums: the biggest band in the world says it was you; reissue everything for a catalogue surge, join their encore if the band is tight enough, or say you have never heard of them).
 
-## Prototype status (v0.46)
+## Album lengths (v0.47)
+
+Historically a vinyl LP held about 45 minutes, so nine to twelve tracks was the norm and eight was a short record; a double album was a prestige object, dearer in the shops, slower to sell and divisive. The game now offers three: the album (8 songs, as before), the twelve-track album (from 10 unreleased, needs 12: the weakest four drag the average rating, appeal x1.04, buzz +3, the label bill x1.25, and one more single can be lifted before fatigue sets in) and the double album (from 14 unreleased and 5,000 fans, needs 16: appeal x0.78, buzz +10, royalty and self-release margin x1.6 per copy, label bill x1.8, a milestone, two singles' slack, four sides on the album page). `Release.tracks` and `Release.double` record it. The Write and Release tiles now say how many unreleased songs there are and how many more an album needs.
+
+## Prototype status (v0.47)
 
 Playable in the browser. Implemented:
 
