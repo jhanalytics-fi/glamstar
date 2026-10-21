@@ -45,7 +45,7 @@ export const SUB_EVENTS: EventDef[] = [
           resolve: (st, rng) => {
             const sub = st.subs![role]!;
             sub.offered = true;
-            const m = generateMusician(rng, `m${st.nextId++}`, role, 'average', st.members[0].style, st.members.flatMap((x) => [x.name, x.realName]), 0);
+            const m = generateMusician(rng, `m${st.nextId++}`, role, 'average', st.members[0].style, st.members.flatMap((x) => [x.name, x.realName]), 0, undefined, st.fans);
             m.name = sub.name.split(' ').slice(0, 1).concat(m.realName.split(' ').slice(1)).join(' ');
             m.realName = m.name;
             m.skill = clamp(sub.skill + 4, 1, 99);
@@ -68,7 +68,7 @@ export const SUB_EVENTS: EventDef[] = [
             const old = st.members.find((y) => y.id === owner.id)!;
             const liked = old.mood >= 60 ? 2 : 1;
             removeMember(st, old.id, 'fired');
-            const m = generateMusician(rng, `m${st.nextId++}`, role, 'average', st.members[0].style, st.members.flatMap((x) => [x.name, x.realName]), 0);
+            const m = generateMusician(rng, `m${st.nextId++}`, role, 'average', st.members[0].style, st.members.flatMap((x) => [x.name, x.realName]), 0, undefined, st.fans);
             m.name = sub.name.split(' ').slice(0, 1).concat(m.realName.split(' ').slice(1)).join(' ');
             m.realName = m.name;
             m.skill = clamp(sub.skill + 4, 1, 99);

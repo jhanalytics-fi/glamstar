@@ -22,7 +22,7 @@ export const SPOTTED_EVENTS: EventDef[] = [
       // Word of mouth scales with fame; so does the bar. Six tries, then nobody worth the trouble this time.
       const boost = Math.round(clamp(5 * Math.log10(Math.max(1, s.fans) / 100), 0, 22)) + 10;
       for (let i = 0; i < 6; i++) {
-        const c = generateMusician(rng, 'probe', role, 'good', s.members[0].style, s.members.flatMap((m) => [m.name, m.realName]), boost, s.bandGender && s.bandGender !== 'mixed' ? s.bandGender : undefined);
+        const c = generateMusician(rng, 'probe', role, 'good', s.members[0].style, s.members.flatMap((m) => [m.name, m.realName]), boost, s.bandGender && s.bandGender !== 'mixed' ? s.bandGender : undefined, s.fans);
         if (overall(c) >= bar) return { role, seed: rng.int(1, 1e9), where: rng.pick(['a jam night in Camden', 'the support band at your own gig', 'a wedding you were playing', 'a session you were not supposed to hear', 'a busking pitch at Tottenham Court Road', 'the house band at a hotel bar in Soho', 'a rival band whose singer has just quit']) };
       }
       return null;
@@ -44,8 +44,8 @@ export const SPOTTED_EVENTS: EventDef[] = [
             st.flags.spotted = st.week;
             const boost = Math.round(clamp(5 * Math.log10(Math.max(1, st.fans) / 100), 0, 22)) + 10;
             const bar = current ? overall(current) + 6 : 40;
-            let c = generateMusician(rng, `m${st.nextId++}`, role, 'good', st.members[0].style, st.members.flatMap((m) => [m.name, m.realName]), boost, st.bandGender && st.bandGender !== 'mixed' ? st.bandGender : undefined);
-            for (let i = 0; i < 8 && overall(c) < bar; i++) c = generateMusician(rng, `m${st.nextId++}`, role, 'good', st.members[0].style, st.members.flatMap((m) => [m.name, m.realName]), boost + 2, st.bandGender && st.bandGender !== 'mixed' ? st.bandGender : undefined);
+            let c = generateMusician(rng, `m${st.nextId++}`, role, 'good', st.members[0].style, st.members.flatMap((m) => [m.name, m.realName]), boost, st.bandGender && st.bandGender !== 'mixed' ? st.bandGender : undefined, st.fans);
+            for (let i = 0; i < 8 && overall(c) < bar; i++) c = generateMusician(rng, `m${st.nextId++}`, role, 'good', st.members[0].style, st.members.flatMap((m) => [m.name, m.realName]), boost + 2, st.bandGender && st.bandGender !== 'mixed' ? st.bandGender : undefined, st.fans);
             c.seen = 50;
             st.candidates = [c];
             st.candidateRole = role;

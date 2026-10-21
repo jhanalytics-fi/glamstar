@@ -240,7 +240,9 @@ Album pages (v0.44): the Songs & records tab opens with one card per album: a ge
 
 Renaming a member (v0.44.1) takes both the real name and the "known as"; a blank known-as means they go by the real name. For a real band with real names.
 
-## Prototype status (v0.44)
+Where the players come from (v0.45): `pickOrigin(rng, fans)` in names.ts decides whether a new face is British or from abroad: 6% at the start, rising with log10 of the fan count to about 50% at half a million. Six pools (`ABROAD`): Nordic, German/Dutch/Central European, Latin (Italy, Spain, France, Portugal), American/Canadian, Australian/New Zealand and the wider world (Japan, West Africa, South Africa, Eastern Europe, Turkey, India, Brazil, Greece), each with first names, surnames and home towns. Small bands only draw from the first four. Applies to the starting band, adverts, spotted players and deps who join.
+
+## Prototype status (v0.45)
 
 Playable in the browser. Implemented:
 

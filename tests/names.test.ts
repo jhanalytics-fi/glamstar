@@ -149,3 +149,19 @@ describe('player gender', () => {
     }
   });
 });
+
+describe('the world comes to London', () => {
+  it('a pub band is nearly all British; a stadium band hears from everywhere', async () => {
+    const { pickOrigin, personName, hometown, ABROAD } = await import('../src/game/names');
+    const { Rng } = await import('../src/game/rng');
+    const count = (fans: number) => { const rng = new Rng(9); let far = 0; for (let i = 0; i < 2000; i++) if (pickOrigin(rng, fans) !== 'uk') far++; return far / 2000; };
+    expect(count(0)).toBeLessThan(0.12);
+    expect(count(500000)).toBeGreaterThan(0.4);
+    expect(count(500000)).toBeLessThan(0.65);
+    const rng = new Rng(3);
+    const n = personName(rng, [], 'male', 'nordic');
+    expect(ABROAD.nordic.m).toContain(n.split(' ')[0]);
+    expect(ABROAD.nordic.last).toContain(n.split(' ').slice(1).join(' '));
+    expect(ABROAD.latin.towns).toContain(hometown(rng, 'latin'));
+  });
+});

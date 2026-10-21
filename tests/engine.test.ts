@@ -1375,19 +1375,19 @@ describe('touring', () => {
   });
 
   it('long tours wear the band down even in suites', () => {
-    const run = (weeks: number, lodging: 'suites' | 'floors') => {
-      let s: GameState = { ...ready(80000, 5000000), buzz: 70, wheels: 'coach' };
+    const run = (weeks: number, lodging: 'suites' | 'floors', seed = 1) => {
+      let s: GameState = { ...ready(80000, 5000000), buzz: 70, wheels: 'coach', rng: seed };
       s.world.peaks.uk = 1; s.world.peaks.world = 1;
       s.members.forEach((m) => { m.energy = 100; m.mood = 90; });
       s = settle(act(s, A('tour', 'stadiums', { weeks, policy: 'steady', lodging })));
       for (let i = 0; i < weeks + 2 && s.tour; i++) s = settle(act(s, A('tour', 'continue:steady')));
       return s;
     };
-    const long = run(16, 'suites');
-    const short = run(10, 'suites');
     const avgMood = (g: GameState) => g.members.reduce((a, m) => a + m.mood, 0) / g.members.length;
-    expect(avgMood(long)).toBeLessThan(avgMood(short));
-    expect(long.log.some((l) => /Tour over/.test(l.text))).toBe(true);
+    let longSum = 0; let shortSum = 0;
+    for (let seed = 1; seed <= 4; seed++) { longSum += avgMood(run(16, 'suites', seed)); shortSum += avgMood(run(10, 'suites', seed)); }
+    expect(longSum).toBeLessThan(shortSum);
+    expect(run(16, 'suites').log.some((l) => /Tour over/.test(l.text))).toBe(true);
   });
 
   it('arena tours come with a hired bus, and the van only dies now and then', async () => {

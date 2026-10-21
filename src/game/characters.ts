@@ -1,5 +1,5 @@
 import { Rng, clamp } from './rng';
-import { hometown, knownAs, personName } from './names';
+import { hometown, knownAs, personName, pickOrigin } from './names';
 import { startingKit } from './kit';
 import type { Background, Gender, Genre, HiddenTrait, Knowledge, Musician, NewGameInput, Role } from './types';
 
@@ -136,10 +136,11 @@ function genreNear(rng: Rng, base: Genre): Genre {
   return rng.pick(GENRES);
 }
 
-export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = [], boost = 0, gender?: Gender): Musician {
+export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, styleBase?: Genre, takenNames: string[] = [], boost = 0, gender?: Gender, fans = 0): Musician {
   const mean = Math.min(88, TIER_MEAN[tier] + boost);
   const g: Gender = gender ?? (rng.chance(0.5) ? 'male' : 'female');
-  const real = personName(rng, takenNames, g);
+  const origin = pickOrigin(rng, fans);
+  const real = personName(rng, takenNames, g, origin);
   const age = rng.int(18, 29);
   const skill = rng.around(mean, 14);
   const hidden = {
@@ -157,7 +158,7 @@ export function generateMusician(rng: Rng, id: string, role: Role, tier: Tier, s
     name: knownAs(rng, real, takenNames, g),
     realName: real,
     gender: g,
-    from: hometown(rng),
+    from: hometown(rng, origin),
     age,
     role,
     isPlayer: false,

@@ -1045,7 +1045,7 @@ function advertise(s: GameState, rng: Rng, role: Role, option: string): void {
   s.candidates = Array.from({ length: spec.n }, () => {
     const r = rng.next();
     const tier: Tier = r < spec.pGood ? 'good' : r < spec.pGood + spec.pAvg ? 'average' : 'weak';
-    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, style, taken, boost, s.bandGender && s.bandGender !== 'mixed' ? s.bandGender : undefined);
+    const c = generateMusician(rng, `m${s.nextId++}`, role, tier, style, taken, boost, s.bandGender && s.bandGender !== 'mixed' ? s.bandGender : undefined, s.fans);
     taken.push(c.name, c.realName);
     c.seen = option === 'poach' ? 60 : option === 'bar' ? 40 : 35;
     if (option === 'poach') {

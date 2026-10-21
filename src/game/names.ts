@@ -1,4 +1,4 @@
-import type { Rng } from './rng';
+import { clamp, type Rng } from './rng';
 
 // ---------------------------------------------------------------------------
 // Real people: British names for musicians born roughly 1955-1966.
@@ -795,8 +795,63 @@ const GLAM_SINGLE = [
   'Sable', 'Nyx', 'Flint', 'Topaz', 'Dagger', 'Rebel', 'Saffron', 'Mink', 'Zed', 'Tabasco',
 ];
 
-export function hometown(rng: Rng): string {
-  return rng.pick(TOWNS);
+export function hometown(rng: Rng, origin: Origin = 'uk'): string {
+  return origin === 'uk' ? rng.pick(TOWNS) : rng.pick(ABROAD[origin].towns);
+}
+
+// ---------------------------------------------------------------------------
+// The world comes to London: the bigger the band, the further the players come from
+// ---------------------------------------------------------------------------
+
+export type Origin = 'uk' | 'nordic' | 'german' | 'latin' | 'american' | 'australian' | 'world';
+
+interface Abroad { m: string[]; f: string[]; last: string[]; towns: string[] }
+export const ABROAD: Record<Exclude<Origin, 'uk'>, Abroad> = {
+  nordic: {
+    m: ['Lars', 'Magnus', 'Jesper', 'Bjorn', 'Anders', 'Mikko', 'Jukka', 'Petri', 'Olli', 'Henrik', 'Sven', 'Nils', 'Kjell', 'Rune', 'Torben', 'Kasper', 'Eero', 'Janne'],
+    f: ['Anja', 'Lena', 'Ingrid', 'Sanna', 'Maja', 'Tove', 'Siri', 'Elin', 'Hanne', 'Kirsi', 'Mette', 'Linnea', 'Pia', 'Astrid', 'Katja', 'Marit'],
+    last: ['Lindqvist', 'Berg', 'Sorensen', 'Nyberg', 'Virtanen', 'Hagen', 'Holm', 'Lehtinen', 'Dahl', 'Eriksen', 'Koskinen', 'Strand', 'Lund', 'Bakke', 'Salo', 'Thorsen', 'Rantanen', 'Ahlgren'],
+    towns: ['Gothenburg', 'Malmo', 'Bergen', 'Aarhus', 'Tampere', 'Turku', 'Helsinki', 'Uppsala', 'Trondheim', 'Odense', 'Reykjavik', 'Oulu'],
+  },
+  german: {
+    m: ['Jurgen', 'Klaus', 'Dieter', 'Wolfgang', 'Stefan', 'Matthias', 'Ralf', 'Udo', 'Pieter', 'Joost', 'Bram', 'Lukas', 'Tomas', 'Marek', 'Jan', 'Axel'],
+    f: ['Ute', 'Sabine', 'Katrin', 'Anke', 'Petra', 'Heike', 'Birgit', 'Femke', 'Saskia', 'Marieke', 'Lotte', 'Eva', 'Zuzana', 'Renate'],
+    last: ['Schreiber', 'Vogel', 'Brandt', 'Kessler', 'Hartmann', 'de Vries', 'Jansen', 'van Dijk', 'Bakker', 'Novak', 'Kowalski', 'Fischer', 'Weber', 'Krause', 'Mertens', 'Lindner'],
+    towns: ['Hamburg', 'Dusseldorf', 'Cologne', 'West Berlin', 'Rotterdam', 'Utrecht', 'Antwerp', 'Zurich', 'Vienna', 'Munich', 'Prague', 'Krakow'],
+  },
+  latin: {
+    m: ['Marco', 'Luca', 'Paolo', 'Fabio', 'Enzo', 'Rafael', 'Carlos', 'Javier', 'Sergio', 'Diego', 'Pascal', 'Thierry', 'Olivier', 'Luc', 'Joao', 'Tiago'],
+    f: ['Chiara', 'Giulia', 'Paola', 'Ines', 'Lucia', 'Pilar', 'Marisol', 'Celine', 'Sylvie', 'Nathalie', 'Amelie', 'Beatriz', 'Carla', 'Simone'],
+    last: ['Moretti', 'Ferrara', 'Castellano', 'Bianchi', 'Romero', 'Delgado', 'Ortega', 'Navarro', 'Lefevre', 'Marchand', 'Fontaine', 'Duarte', 'Almeida', 'Russo', 'Serrano', 'Vidal'],
+    towns: ['Milan', 'Turin', 'Naples', 'Barcelona', 'Madrid', 'Seville', 'Lyon', 'Marseille', 'Paris', 'Lisbon', 'Porto', 'Bologna'],
+  },
+  american: {
+    m: ['Brad', 'Chuck', 'Randy', 'Duane', 'Travis', 'Cody', 'Dwayne', 'Earl', 'Hank', 'Jimmy Ray', 'Troy', 'Wade', 'Curtis', 'Rocco', 'Vinnie', 'Shane'],
+    f: ['Tammy', 'Brandi', 'Cheryl', 'Misty', 'Darlene', 'Lorrie', 'Kristi', 'Dana', 'Shawna', 'Jolene', 'Kelly', 'Roxanne', 'Tanya', 'Nadine'],
+    last: ['Kowalczyk', 'Rizzo', 'Henderson', 'Beaumont', 'Garza', 'Castillo', 'Dubois', 'Boudreaux', 'Lindgren', 'McBride', 'Pruitt', 'Tanaka', 'Whitaker', 'Garrity', 'Oyelaran', 'Sandoval'],
+    towns: ['Detroit', 'Cleveland', 'Jersey', 'Tulsa', 'Baton Rouge', 'Pasadena', 'Tampa', 'Reno', 'Toronto', 'Montreal', 'Hoboken', 'Bakersfield'],
+  },
+  australian: {
+    m: ['Bruce', 'Craig', 'Wayne', 'Shane', 'Trent', 'Jarrod', 'Darryl', 'Brett', 'Kieran', 'Hemi', 'Rangi', 'Tane'],
+    f: ['Kylie', 'Narelle', 'Sheree', 'Jodie', 'Kerri', 'Leanne', 'Tegan', 'Rhonda', 'Moana', 'Aroha'],
+    last: ['Thorpe', 'Hogan', 'Bickford', 'Macready', 'Papadopoulos', 'Nguyen', 'Te Kanawa', 'Pukeroa', 'Spiteri', 'Whitlam', 'Kelleher', 'Brightwater'],
+    towns: ['Newcastle, New South Wales', 'Wollongong', 'Geelong', 'Fremantle', 'Darwin', 'Dunedin', 'Auckland', 'Hobart', 'Townsville', 'Christchurch'],
+  },
+  world: {
+    m: ['Kenji', 'Hiro', 'Takeshi', 'Yusuf', 'Kwame', 'Femi', 'Thabo', 'Andrei', 'Dmitri', 'Levent', 'Arjun', 'Vikram', 'Mateus', 'Joaquin', 'Nikos', 'Yannis'],
+    f: ['Yuki', 'Aiko', 'Amara', 'Zainab', 'Nadia', 'Leila', 'Priya', 'Anjali', 'Irina', 'Olga', 'Eleni', 'Thandi', 'Marisa', 'Ngozi'],
+    last: ['Sato', 'Nakamura', 'Okafor', 'Mensah', 'Dlamini', 'Volkov', 'Petrov', 'Demir', 'Kapoor', 'Mehta', 'Carvalho', 'Papadakis', 'Haddad', 'Osei', 'Yilmaz', 'Ivanova'],
+    towns: ['Osaka', 'Lagos', 'Accra', 'Johannesburg', 'Sao Paulo', 'Buenos Aires', 'Istanbul', 'Athens', 'Bombay', 'Nairobi', 'Kyoto', 'Rio'],
+  },
+};
+
+/** Where a new face comes from: London pubs at first, the world once the world has heard of you. */
+export function pickOrigin(rng: Rng, fans: number): Origin {
+  const far = clamp(0.06 + Math.log10(Math.max(1, fans)) * 0.08, 0.06, 0.55);
+  if (!rng.chance(far)) return 'uk';
+  const r = rng.next();
+  if (fans < 5000) return r < 0.4 ? 'nordic' : r < 0.7 ? 'german' : r < 0.9 ? 'latin' : 'american';
+  return r < 0.22 ? 'nordic' : r < 0.42 ? 'german' : r < 0.6 ? 'latin' : r < 0.8 ? 'american' : r < 0.9 ? 'australian' : 'world';
 }
 
 /** An invented showbiz name, e.g. "Nikki Valentine", or a one-word act. */
@@ -831,16 +886,18 @@ export function knownAs(rng: Rng, real: string, taken: string[] = [], gender?: '
 }
 
 /** Generates a real name whose first and last names are not in `taken`, so the log never mixes up two Daves. */
-export function personName(rng: Rng, taken: Iterable<string> = [], gender?: 'male' | 'female' | 'nonbinary'): string {
+export function personName(rng: Rng, taken: Iterable<string> = [], gender?: 'male' | 'female' | 'nonbinary', origin: Origin = 'uk'): string {
   const names = [...taken];
   const used = new Set(names.map((n) => n.split(' ')[0]));
   const usedLast = new Set(names.map((n) => n.split(' ').at(-1)));
-  const pool = gender === 'male' ? FIRST_M : gender === 'female' ? FIRST_F : FIRST;
+  const ab = origin === 'uk' ? null : ABROAD[origin];
+  const pool = ab ? (gender === 'male' ? ab.m : gender === 'female' ? ab.f : [...ab.m, ...ab.f]) : gender === 'male' ? FIRST_M : gender === 'female' ? FIRST_F : FIRST;
+  const lasts = ab ? ab.last : LAST;
   const free = pool.filter((f) => !used.has(f));
-  const freeLast = LAST.filter((l) => !usedLast.has(l));
+  const freeLast = lasts.filter((l) => !usedLast.has(l));
   let name = '';
   for (let i = 0; i < 10; i++) {
-    name = `${rng.pick(free.length ? free : pool)} ${rng.pick(freeLast.length ? freeLast : LAST)}`;
+    name = `${rng.pick(free.length ? free : pool)} ${rng.pick(freeLast.length ? freeLast : lasts)}`;
     if (!PEOPLE_BLOCK.has(name)) break;
   }
   return name;
