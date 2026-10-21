@@ -1,7 +1,7 @@
 import { Rng, clamp } from './rng';
 import { HIDDEN_TRAITS, ROLE_LABEL, createPlayer, introduce, generateStartingBand, getToKnow, rollPotential } from './characters';
 import { addAffinity, available, forEachPair } from './chemistry';
-import { bandName as genBandName, isBlockedPerson } from './names';
+import { bandName as genBandName, isFamousPerson } from './names';
 import { advanceWorld, ageCharts, createWorld, heatCurve, labelFor, type ChartId } from './world';
 import { awardsNight } from './awards';
 import { ladderDone } from './goals';
@@ -282,7 +282,7 @@ export function rename(state: GameState, memberId: string, name: string, realNam
   const clean = tidy(name);
   const real = realName === undefined ? undefined : tidy(realName);
   if (!clean && !real) throw new Error('A name needs letters in it.');
-  if ((clean && isBlockedPerson(clean)) || (real && isBlockedPerson(real))) throw new Error('That one is taken, by someone real.');
+  if ((clean && isFamousPerson(clean)) || (real && isFamousPerson(real))) throw new Error('That one is taken, by someone famous.');
   return mutate(state, (s) => {
     const m = s.members.find((x) => x.id === memberId);
     if (!m) throw new Error('No such member.');

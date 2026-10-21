@@ -703,6 +703,11 @@ class Blocklist {
     }
   }
 
+  /** Exact matches only: for names a person typed about real people they know. */
+  hasExactly(name: string): boolean {
+    return keysOf(name).some(({ norm }) => this.exact.has(norm));
+  }
+
   has(name: string): boolean {
     const cached = this.memo.get(name);
     if (cached !== undefined) return cached;
@@ -756,6 +761,11 @@ export function isBlocked(name: string): boolean {
 /** True if a stage or real name belongs to (or is too close to) a real musician. */
 export function isBlockedPerson(name: string): boolean {
   return isBlocked(name);
+}
+
+/** A name the player typed: only an exact famous name is refused, so a real friend called Dave Price gets in. */
+export function isFamousPerson(name: string): boolean {
+  return PEOPLE_BLOCK.hasExactly(name) || BAND_BLOCK.hasExactly(name);
 }
 
 /** True if a song or album title is (or is too close to) a famous real one. */
