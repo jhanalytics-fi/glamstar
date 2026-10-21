@@ -242,7 +242,7 @@ Renaming a member (v0.44.1) takes both the real name and the "known as"; a blank
 
 Where the players come from (v0.45): `pickOrigin(rng, fans)` in names.ts decides whether a new face is British or from abroad: 6% at the start, rising with log10 of the fan count to about 50% at half a million. Six pools (`ABROAD`): Nordic, German/Dutch/Central European, Latin (Italy, Spain, France, Portugal), American/Canadian, Australian/New Zealand and the wider world (Japan, West Africa, South Africa, Eastern Europe, Turkey, India, Brazil, Greece), each with first names, surnames and home towns. Small bands only draw from the first four. Applies to the starting band, adverts, spotted players and deps who join.
 
-Typed names (v0.45.1) are refused only on an exact match with a famous person or band (`isFamousPerson`); the near-miss blocklist stays for generated names. The refusal now shows inside the rename form, not under "What now?".
+Typed names (v0.45.2) are never refused: it is the player's own game and their own band. The blocklist applies only to names the game generates. The refusal now shows inside the rename form, not under "What now?".
 
 ## Prototype status (v0.45)
 
