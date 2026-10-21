@@ -177,6 +177,10 @@ button, input, select { font: inherit; color: inherit; }
 .ledger.tracks td:nth-child(3), .ledger.tracks td:nth-child(4) { text-align: right; white-space: nowrap; width: 3.2em; }
 .tracks td.pos { width: 1.6em; }
 @media (max-width: 480px) { .album { grid-template-columns: 96px 1fr; } }
+.rename-two { display: grid; grid-template-columns: 1fr; gap: 6px; width: 100%; }
+.rename-two label { display: grid; gap: 2px; font-family: var(--cond); }
+.rename-two input { width: 100%; box-sizing: border-box; }
+.rename-btns { display: flex; gap: 8px; }
 .toy-kind { margin: 14px 0 4px; font-family: var(--cond); text-transform: uppercase; letter-spacing: 0.06em; }
 .choice.owned { border-color: #ffb36b; }
 .owns { font-family: var(--cond); color: var(--muted); margin: 4px 0; }

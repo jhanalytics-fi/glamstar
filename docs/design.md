@@ -238,6 +238,8 @@ Naming the album (v0.43): every album release opens the `album_title` event: thr
 
 Album pages (v0.44): the Songs & records tab opens with one card per album: a generated sleeve (colour from the title, LP mark, title and band name; artwork can replace it later), label, month, certification, sales and albums-chart peak, then the tracklist split into side A and side B in writing order with running times (`runningTime`: fixed by title and kind, ballads long, chart chasers short) and the rating, singles and masterpieces marked. `sides` in catalogue.ts does the split.
 
+Renaming a member (v0.44.1) takes both the real name and the "known as"; a blank known-as means they go by the real name. For a real band with real names.
+
 ## Prototype status (v0.44)
 
 Playable in the browser. Implemented:

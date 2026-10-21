@@ -251,6 +251,13 @@ describe('action choices', () => {
     expect(first(r.members[1])).toBe('Hammer');
     expect(r.log.at(-1)!.text).toMatch(/now known as Dave "Hammer" Price/);
     expect(() => rename(s, s.members[1].id, '   ')).toThrow();
+    // The whole name: real name and a blank "known as" means they go by the real one.
+    const whole = rename(s, s.members[2].id, '', 'Ville Virtanen');
+    expect(whole.members[2].realName).toBe('Ville Virtanen');
+    expect(whole.members[2].name).toBe('Ville Virtanen');
+    const both = rename(whole, s.members[2].id, 'Vile', 'Ville Virtanen');
+    expect(both.members[2].name).toBe('Vile');
+    expect(both.members[2].realName).toBe('Ville Virtanen');
     let dup = 0;
     for (let seed = 1; seed <= 60; seed++) {
       const g = newGame({ ...input, seed });

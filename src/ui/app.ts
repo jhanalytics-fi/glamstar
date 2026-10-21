@@ -207,7 +207,8 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'renameCancel': renaming = null; break;
       case 'renameSave': {
         const input = root.querySelector<HTMLInputElement>(`#rename-${arg}`);
-        state = rename(state!, arg!, input?.value ?? '');
+        const real = root.querySelector<HTMLInputElement>(`#realname-${arg}`);
+        state = rename(state!, arg!, input?.value ?? '', real?.value);
         renaming = null;
         break;
       }
@@ -1237,7 +1238,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
     foot = btns.join('');
   } else if (!s.over) {
     const nameBtn = renaming === m.id
-      ? `<form class="rename"><input id="rename-${m.id}" type="text" maxlength="40" value="${esc(m.name)}" aria-label="Known as" autocomplete="off"><button class="btn" type="submit" data-do="renameSave" data-arg="${m.id}">Save</button><button class="btn ghost" type="button" data-do="renameCancel">Cancel</button></form>`
+      ? `<form class="rename rename-two"><label class="lbl">Real name<input id="realname-${m.id}" type="text" maxlength="40" value="${esc(m.realName)}" aria-label="Real name" autocomplete="off"></label><label class="lbl">Known as<input id="rename-${m.id}" type="text" maxlength="40" value="${esc(m.name === m.realName ? '' : m.name)}" placeholder="Same as real name" aria-label="Known as" autocomplete="off"></label><span class="rename-btns"><button class="btn" type="submit" data-do="renameSave" data-arg="${m.id}">Save</button><button class="btn ghost" type="button" data-do="renameCancel">Cancel</button></span></form>`
       : `<button class="btn ghost" data-do="renameOpen" data-arg="${m.id}">Rename</button>`;
     foot = `${nameBtn}${m.isPlayer ? '' : `<button class="btn ghost" data-do="fire" data-arg="${m.id}">${armedFire === m.id ? `Really fire ${esc(first(m))}?` : 'Fire'}</button>`}`;
   }

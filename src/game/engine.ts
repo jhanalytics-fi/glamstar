@@ -277,16 +277,21 @@ export function dismissCandidates(state: GameState): GameState {
 }
 
 /** Give a band member a new known-as name: a nickname in quotes, a stage name, or just their real name. */
-export function rename(state: GameState, memberId: string, name: string): GameState {
-  const clean = name.replace(/\s+/g, ' ').trim().slice(0, 40);
-  if (!clean) throw new Error('A name needs letters in it.');
-  if (isBlockedPerson(clean)) throw new Error('That one is taken, by someone real.');
+export function rename(state: GameState, memberId: string, name: string, realName?: string): GameState {
+  const tidy = (x: string) => x.replace(/\s+/g, ' ').trim().slice(0, 40);
+  const clean = tidy(name);
+  const real = realName === undefined ? undefined : tidy(realName);
+  if (!clean && !real) throw new Error('A name needs letters in it.');
+  if ((clean && isBlockedPerson(clean)) || (real && isBlockedPerson(real))) throw new Error('That one is taken, by someone real.');
   return mutate(state, (s) => {
     const m = s.members.find((x) => x.id === memberId);
     if (!m) throw new Error('No such member.');
     const was = m.name;
-    m.name = clean;
-    log(s, `${was} is now known as ${clean}.${clean.includes('"') ? '' : ' The old nickname is retired.'}`, 'neutral');
+    // Known as: blank means "just use the real name".
+    if (real !== undefined && real) m.realName = real;
+    m.name = clean || m.realName;
+    if (m.name !== was) log(s, `${was} is now known as ${m.name}.${m.name.includes('"') ? '' : ' The old nickname is retired.'}`, 'neutral');
+    else if (real) log(s, `${m.name}'s passport now says ${m.realName}. The band pretends it always did.`, 'neutral');
   });
 }
 
