@@ -400,6 +400,24 @@ export function renameSong(state: GameState, oldTitle: string, title: string): G
   });
 }
 
+/** Bin a song that never came out. The writer may mind. */
+export function dropSong(state: GameState, title: string): GameState {
+  const x = state.songs.find((y) => y.title === title);
+  if (!x) throw new Error('No such song.');
+  if (x.released || x.lifted) throw new Error('It is out. You cannot unrelease a record.');
+  if (state.pending) throw new Error('Deal with the situation first.');
+  return mutate(state, (s, rng) => {
+    s.songs = s.songs.filter((y) => y.title !== title);
+    const w = s.members.find((m) => m.id === x.writer);
+    if (w && !w.isPlayer && w.hidden.ego >= 55 && x.kind !== 'cover' && x.kind !== 'hired') {
+      adjust(w, 'mood', -4);
+      log(s, `"${title}" went in the bin. ${first(w)} took it ${rng.chance(0.5) ? 'personally, and said so' : 'quietly, which is worse'}.`, 'neutral');
+    } else {
+      log(s, `"${title}" went in the bin. ${rng.pick(['Nobody will miss it.', 'The chorus will turn up in something else.', 'The drummer kept the tape, for some reason.'])}`, 'neutral');
+    }
+  });
+}
+
 /** Change the band deal. Whoever loses by it remembers. */
 export function setSplit(state: GameState, split: Split): GameState {
   if (state.pending) throw new Error('Deal with the situation first.');

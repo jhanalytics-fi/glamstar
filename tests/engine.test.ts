@@ -695,6 +695,16 @@ describe('action choices', () => {
     expect(l.log.some((x) => x.text.includes('Arena tour'))).toBe(true);
   });
 
+  it('a weak unreleased song can be dropped; a released one cannot', async () => {
+    const { dropSong } = await import('../src/game/engine');
+    const s: GameState = newGame(input);
+    s.songs = [{ title: 'Weak', quality: 40, writer: s.members[1].id, kind: 'standard', genre: 'glam', released: false }, { title: 'Out', quality: 70, writer: 'p', kind: 'standard', genre: 'glam', released: true }];
+    const r = dropSong(s, 'Weak');
+    expect(r.songs.map((x) => x.title)).toEqual(['Out']);
+    expect(r.log.at(-1)!.text).toContain('bin');
+    expect(() => dropSong(s, 'Out')).toThrow();
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

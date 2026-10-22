@@ -1,7 +1,7 @@
 import { BACKGROUNDS, GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, estimate, overall, seenRange, traitDisplay } from '../game/characters';
 import { available, chemistry, chemistryLinks, getAffinity, missingForGig } from '../game/chemistry';
 import { CHART_NAME, entryUnits, hotGenres, playerPosition, type ChartId } from '../game/world';
-import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, renameRelease, renameSong, retire, canComeBack, comeBack, setSplit, upgradeSave } from '../game/engine';
+import { MAX_MEMBERS, finishTour, reach, splurge, upkeep, viceBill, act, dateLabel, dismissCandidates, fire, first, hire, newGame, rename, renameRelease, renameSong, dropSong, retire, canComeBack, comeBack, setSplit, upgradeSave } from '../game/engine';
 import { Rng } from '../game/rng';
 import { ACTION_LABEL, actionOptions } from '../game/actions';
 import { resolvePending, titleAlbum, viewPending } from '../game/events';
@@ -63,6 +63,7 @@ let armedRetire = false;
 let armedHanger: string | null = null;
 let armedSell: string | null = null;
 let armedComeback = false;
+let armedDrop: string | null = null;
 let renaming: string | null = null;
 let armedBuyout = false;
 let armedSack = false;
@@ -140,6 +141,7 @@ function onClick(e: Event, root: HTMLElement): void {
   if (what !== 'fire') armedFire = null;
   if (what !== 'retire') armedRetire = false;
   if (what !== 'comeBack') armedComeback = false;
+  if (what !== 'dropSong') armedDrop = null;
   if (what !== 'sackHanger') armedHanger = null;
   if (what !== 'buyOut') armedBuyout = false;
   if (what !== 'sackManager') armedSack = false;
@@ -257,6 +259,10 @@ function onClick(e: Event, root: HTMLElement): void {
         if (t !== null && t.trim() && t.trim() !== arg) state = renameSong(state!, arg!, t);
         break;
       }
+      case 'dropSong':
+        if (armedDrop === arg) { state = dropSong(state!, arg!); armedDrop = null; }
+        else armedDrop = arg!;
+        break;
       case 'fire':
         // Two-step button instead of a browser dialog.
         if (armedFire === arg) { state = fire(state!, arg!); armedFire = null; }

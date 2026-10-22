@@ -258,6 +258,8 @@ Song reactions (v0.49): reactions.ts replaces the one fixed grumble per writing 
 
 Compilations and live albums by the band (v0.50): the label's own compilation event needed a year without a studio album, which a band releasing one every four months never gave it; it now also fires in the Christmas run-up (weeks 40 to 46) ten weeks after the last album. The Release menu gains "Greatest hits" (from two studio albums and eight released songs, once in two years: catalogue quality of the best ten +3, appeal rising with the number of singles, a fifth of the budget on the tab) and "Live album" (within 30 weeks of a tour of 20+ dates, once in 18 months: catalogue x0.9 plus tightness and a legend bonus). Neither counts toward the albums owed; both are `comp` records.
 
+Binning songs (v0.50.1): an unreleased song can be dropped from the Songs table (`dropSong`); a writer with an ego minds. Released songs stay.
+
 ## Prototype status (v0.50)
 
 Playable in the browser. Implemented:
