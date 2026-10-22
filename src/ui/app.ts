@@ -13,6 +13,7 @@ import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../g
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
 import { showBackdrop } from './backdrop';
+import { bandWord } from '../game/pulse';
 import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
@@ -534,7 +535,8 @@ function bandPulse(s: GameState): string {
     <div class="pulse" aria-label="Band condition">
       <span class="pulse-label">Band</span>
       ${meters.map(meter).join('')}
-      ${flags.length ? `<button class="flags" data-do="tab" data-arg="band" title="Open the band tab">${flags.map((f) => `<span class="flag">${esc(f)}</span>`).join('')}</button>` : '<span class="flag ok">All fit to play</span>'}
+      ${flags.length ? `<button class="flags" data-do="tab" data-arg="band" title="Open the band tab">${flags.map((f) => `<span class="flag">${esc(f)}</span>`).join('')}</button>` : ''}
+      <p class="band-word">${esc(bandWord(s))}</p>
     </div>`;
 }
 

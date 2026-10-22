@@ -260,7 +260,9 @@ Compilations and live albums by the band (v0.50): the label's own compilation ev
 
 Binning songs (v0.50.1): an unreleased song can be dropped from the Songs table (`dropSong`); a writer with an ego minds. Released songs stay.
 
-## Prototype status (v0.50)
+The band in a sentence (v0.51): pulse.ts turns the numbers into one to three sentences under the band meters, deterministic (phrasing rotates with the week, no dice): what they are still talking about (a milestone from the last six weeks: the legendary night, the one, a death, a new face, a number one, a new record, the big show, a comeback, an award, a scandal; or the week on the road), how the room feels (energy under 30, then mood bands, with chemistry colouring the flat case) and who stands out (the quiet one under mood 40, the one rarely seen before noon at habit 60+, a pair at affinity -25 not speaking, or a pair at +70 finishing each other's riffs, and whoever is away). The hard flags (exhausted, out, might quit) stay as chips.
+
+## Prototype status (v0.51)
 
 Playable in the browser. Implemented:
 

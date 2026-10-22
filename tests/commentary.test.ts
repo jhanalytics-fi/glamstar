@@ -238,3 +238,22 @@ describe('song reactions', () => {
     expect(loved).toBeGreaterThan(10);
   });
 });
+
+describe('the band in a sentence', () => {
+  it('mentions the legendary night, the mood and the quiet one', async () => {
+    const { bandWord } = await import('../src/game/pulse');
+    const { newGame } = await import('../src/game/engine');
+    const s = newGame({ name: 'Jussi', instrument: 'guitar', bandName: 'X', background: 'artschool', style: 'glam', seed: 3 });
+    s.week = 30;
+    s.milestones.push({ week: 29, kind: 'career', text: 'The Rat Pit, Islington: the night they still talk about. 150 people, all of them witnesses.' });
+    for (const m of s.members) m.mood = 80;
+    s.members[2].mood = 20;
+    const w = bandWord(s);
+    expect(w).toMatch(/Rat Pit/);
+    expect(w).toMatch(/Decent mood|steady week|mood is fine/);
+    expect(w).toContain(s.members[2].name.split(' ')[0]);
+    const words = new Set<string>();
+    for (let wk = 30; wk < 40; wk++) words.add(bandWord({ ...s, week: wk }));
+    expect(words.size).toBeGreaterThan(2);
+  });
+});
