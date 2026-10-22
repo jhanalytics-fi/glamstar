@@ -1,6 +1,7 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
 import { mourningBoost } from './death';
+import { catalogueQuality, pressRecord } from './catalogue';
 import { reactToSong } from './reactions';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
@@ -11,7 +12,7 @@ import { weeklyOffers } from './offers';
 import { POLICY_HINT, POLICY_LABEL, abandonTour, playTourWeek, startTour, tierById, tierLocked, visibleTiers } from './tour';
 import { advertCommentary, gigCommentary, partyCommentary, rehearsalCommentary, releaseCommentary, restCommentary, writingCommentary } from './commentary';
 import type { TourPolicy } from './types';
-import { labelById, labelRelease, labelSales, tagRelease } from './labels';
+import { labelById, labelRelease, labelSales, tagRelease, royaltyPerCopy } from './labels';
 import { commission, feeBoost, nousSaving } from './managers';
 import { bigShowLocked, bigShowsFor } from './bigShows';
 import { bestHome, homeRest, owned, toySpec } from './toys';
@@ -63,6 +64,24 @@ interface GigSpec {
   fresh?: number;
   /** Merch per head, relative: nobody carries money on a beach. */
   merchMult?: number;
+}
+
+/** Records cut from what is already out: a greatest hits every couple of years, a live album after a big tour. */
+function catalogueOptions(s: GameState): ActionOption[] {
+  const out: ActionOption[] = [];
+  const albums = s.releases.filter((r) => r.kind === 'album' && !r.comp).length;
+  const released = s.songs.filter((x) => x.released).length;
+  if (albums >= 2 && released >= 8) {
+    const gap = s.flags.compilation !== undefined ? 104 - (s.week - s.flags.compilation) : 0;
+    out.push({ id: 'hits', label: s.contract ? `Greatest hits on ${labelById(s.contract.label).name}` : 'Self-released greatest hits', cost: s.contract ? 0 : selfCost(s, 900), hint: 'Every single, two B-sides, a new sleeve. Sells to the people who missed it the first time; does not count toward the albums owed.', locked: gap > 0 ? `Too soon after the last one: ${gap} weeks.` : undefined });
+  }
+  const lastTour = s.flags.lastTourWeek;
+  const bigTour = (s.tours ?? []).some((t) => t.gigs >= 20 && !t.abandoned && s.week - (t.start + t.weeks) <= 30);
+  if (lastTour !== undefined && s.week - lastTour <= 30 && bigTour && released >= 8) {
+    const gap = s.flags.liveAlbum !== undefined ? 78 - (s.week - s.flags.liveAlbum) : 0;
+    out.push({ id: 'live', label: s.contract ? `Live album on ${labelById(s.contract.label).name}` : 'Self-released live album', cost: s.contract ? 0 : selfCost(s, 1200), hint: 'The tour tapes, mixed in a week. Crowd noise, a drum solo nobody asked for, the hits played faster. Does not count toward the albums owed.', locked: gap > 0 ? `Too soon after the last one: ${gap} weeks.` : undefined });
+  }
+  return out;
 }
 
 /** Album tracks that could still be lifted as singles: from the latest album, under a year old, best first. */
@@ -284,6 +303,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
           ...(unreleased >= 10 ? [{ id: 'album12', label: `Twelve-track album on ${l.name}`, cost: 0, hint: `Twelve songs: the four weakest drag the rating, but there are more singles to lift and more to love. ${bill(1.25)}.`, locked: need(12) }] : []),
           ...(unreleased >= 14 && s.fans >= 5000 ? [{ id: 'double', label: `Double album on ${l.name}`, cost: 0, hint: `Sixteen songs, a gatefold, a statement. Dearer in the shops, sells slower, pays more per copy, and the papers call it a masterpiece or a mess. ${bill(1.8)}.`, locked: need(16) }] : []),
           ...liftOption(s, 0),
+          ...catalogueOptions(s),
         ];
       }
       return [
@@ -294,6 +314,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         ...(unreleased >= 10 ? [{ id: 'album12', label: 'Self-financed twelve-track album', cost: selfCost(s, 1900), hint: `Twelve songs: the weakest drag the rating, but more singles to lift.${studioNote(s)}`, locked: need(12) }] : []),
         ...(unreleased >= 14 && s.fans >= 5000 ? [{ id: 'double', label: 'Self-financed double album', cost: selfCost(s, 2800), hint: `Sixteen songs in a gatefold. Dearer, slower, more per copy, and a statement.${studioNote(s)}`, locked: need(16) }] : []),
         ...liftOption(s, 150),
+        ...catalogueOptions(s),
       ];
     }
     case 'party':
@@ -358,7 +379,7 @@ export function perform(s: GameState, rng: Rng, a: Action): void {
     case 'gig': return gig(s, rng, gigSpecs(s)[a.option]);
     case 'rehearse': return rehearse(s, rng, a.option);
     case 'write': return write(s, rng, a.option, a.genre);
-    case 'release': return a.option === 'lift' ? release(s, rng, 'single', true) : a.option === 'album12' ? release(s, rng, 'album', false, 12) : a.option === 'double' ? release(s, rng, 'album', false, 16) : release(s, rng, a.option as ReleaseKind);
+    case 'release': return a.option === 'hits' || a.option === 'live' ? cutCatalogue(s, rng, a.option) : a.option === 'lift' ? release(s, rng, 'single', true) : a.option === 'album12' ? release(s, rng, 'album', false, 12) : a.option === 'double' ? release(s, rng, 'album', false, 16) : release(s, rng, a.option as ReleaseKind);
     case 'party': return party(s, rng, a.option);
     case 'rest': return rest(s, rng, a.option, a.memberId);
     case 'advertise': return advertise(s, rng, a.role ?? 'guitar', a.option);
@@ -769,6 +790,33 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
 
 export const RELEASE_SONGS: Record<ReleaseKind, number> = { demo: 3, single: 2, ep: 4, album: 8 };
 const RELEASE_LABEL: Record<ReleaseKind, string> = { demo: 'demo tape', single: '7" single', ep: '12" EP', album: 'album' };
+
+/** A greatest hits or a live album: no new songs, no week in the studio to speak of, no album owed delivered. */
+function cutCatalogue(s: GameState, rng: Rng, what: 'hits' | 'live'): void {
+  const c = s.contract;
+  const label = c ? labelById(c.label) : null;
+  const royalty = c ? royaltyPerCopy(c.terms, 'album', s.flags.producerPoints ?? 0) : 0;
+  if (what === 'hits') {
+    s.flags.compilation = s.week;
+    const title = rng.pick([`The Best of ${s.bandName}`, `${s.bandName}: Greatest Hits`, `${s.bandName}: The Singles`, `${s.bandName}: Gold`]);
+    const rec = pressRecord(s, 'album', title, catalogueQuality(s, 10) + 3, 0.85 + Math.min(0.3, s.releases.filter((r) => r.kind === 'single').length * 0.02), { comp: 'hits', label: c?.label, royalty });
+    if (c) c.unrecouped += Math.round(c.terms.budget * 0.2);
+    addBuzz(s, 7);
+    milestone(s, 'release', `Released "${rec.title}", a compilation.`);
+    log(s, `"${rec.title}": every single, two B-sides, a sleeve with the band's faces from five haircuts. ${label ? `${label.name} are pleased: a record in the shops with no studio bill.` : 'Pressed on your own label, sold to everyone who was late.'}`, 'good');
+  } else {
+    s.flags.liveAlbum = s.week;
+    const tour = [...(s.tours ?? [])].reverse().find((t) => t.gigs >= 20 && !t.abandoned)!;
+    const title = rng.pick([`${s.bandName} Live`, `Live at ${rng.pick(['the Empire', 'the Odeum', 'the Dome', 'Kingsmeadow'])}`, `${s.bandName}: Alive and Loud`, `${s.bandName}: Live ${1982 + Math.floor(s.week / 52)}`]);
+    const live = catalogueQuality(s, 10) * 0.9 + s.tightness * 0.1 + (tour.legends ? 4 : 0);
+    const rec = pressRecord(s, 'album', title, live, 0.8, { comp: 'live', label: c?.label, royalty });
+    if (c) c.unrecouped += Math.round(c.terms.budget * 0.25);
+    addBuzz(s, 9);
+    for (const m of available(s)) adjust(m, 'mood', 4);
+    milestone(s, 'release', `Released "${rec.title}", recorded on ${tour.name}.`);
+    log(s, `"${rec.title}": the tapes from ${tour.name}, mixed in a week. Crowd noise from a different night, a drum solo nobody asked for, and the hits a shade faster than the records. ${label ? `${label.name} put a sticker on it.` : 'Pressed on your own label.'}`, 'good');
+  }
+}
 
 function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false, tracks = RELEASE_SONGS[kind]): void {
   releaseCommentary(s, kind, rng);

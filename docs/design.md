@@ -256,7 +256,9 @@ Backdrops (v0.48): seventeen pictures in public/bg (webp, about 50 KB each) behi
 
 Song reactions (v0.49): reactions.ts replaces the one fixed grumble per writing option. `reactToSong` looks at the song's rating and the band: a great song (72+) usually wins everyone over whatever it is (mood and affinity up, one of five lines); a cover is, 30 to 60% of the time, the record half the band grew up on (mood +3 to 7, affinity +3, four scenes); a chart chaser either converts a grumbler ("annoyingly good") or draws one of six sour lines; ballads, solo songs and flat jams have their own tables. `masterpieceScene` gives the one a birth story by kind (a ballad on the piano at two in the morning, a solo song on the night bus, a cover slowed down until it is yours) and one of eight aftermaths (somebody cries and denies it, the engineer asks for a copy).
 
-## Prototype status (v0.49)
+Compilations and live albums by the band (v0.50): the label's own compilation event needed a year without a studio album, which a band releasing one every four months never gave it; it now also fires in the Christmas run-up (weeks 40 to 46) ten weeks after the last album. The Release menu gains "Greatest hits" (from two studio albums and eight released songs, once in two years: catalogue quality of the best ten +3, appeal rising with the number of singles, a fifth of the budget on the tab) and "Live album" (within 30 weeks of a tour of 20+ dates, once in 18 months: catalogue x0.9 plus tightness and a legend bonus). Neither counts toward the albums owed; both are `comp` records.
+
+## Prototype status (v0.50)
 
 Playable in the browser. Implemented:
 

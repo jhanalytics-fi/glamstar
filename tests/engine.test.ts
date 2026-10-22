@@ -678,6 +678,23 @@ describe('action choices', () => {
     expect(appeals[2] / appeals[0]).toBeGreaterThan(liftFatigue(2) * 0.99);
   });
 
+  it('the band can cut its own greatest hits and a live album, which do not count as albums owed', () => {
+    const s: GameState = { ...newGame(input), fans: 20000, money: 100000, week: 120 };
+    s.songs = Array.from({ length: 16 }, (_, i) => ({ title: `S${i}`, quality: 70, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: true, album: i < 8 ? 'a1' : 'a2' }));
+    s.releases.push({ id: 'a1', kind: 'album', title: 'A', quality: 70, appeal: 1, week: 20, sold: 50000, lastWeek: 0 }, { id: 'a2', kind: 'album', title: 'B', quality: 70, appeal: 1, week: 80, sold: 50000, lastWeek: 0 });
+    s.tours = [{ name: 'Arena tour', tier: 'arenas', start: 100, weeks: 6, gigs: 24, people: 100000, fans: 5000, net: 50000, abandoned: false, legends: 1 }];
+    s.flags.lastTourWeek = 106;
+    const opts = actionOptions(s, 'release');
+    expect(opts.find((o) => o.id === 'hits')!.locked).toBeUndefined();
+    expect(opts.find((o) => o.id === 'live')!.locked).toBeUndefined();
+    const h = act(s, A('release', 'hits'));
+    expect(h.releases.at(-1)!.comp).toBe('hits');
+    expect(actionOptions(h, 'release').find((o) => o.id === 'hits')!.locked).toContain('Too soon');
+    const l = act(s, A('release', 'live'));
+    expect(l.releases.at(-1)!.comp).toBe('live');
+    expect(l.log.some((x) => x.text.includes('Arena tour'))).toBe(true);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);

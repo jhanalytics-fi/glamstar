@@ -18,8 +18,10 @@ export const CATALOGUE_EVENTS: EventDef[] = [
     where: 'home',
     when: (s, rng) => {
       if (s.fans < 3000 || !since(s, 'compilation', 104)) return null;
+      // A year since the last studio album, or the Christmas run-up and a label that wants something in the shops.
       const last = [...s.releases].reverse().find((r) => r.kind === 'album' && !r.comp);
-      if (!last || s.week - last.week < 52) return null;
+      const xmas = s.week % 52 >= 40 && s.week % 52 <= 46;
+      if (!last || (s.week - last.week < 52 && !(xmas && s.week - last.week >= 10))) return null;
       const labels = labelsWithAlbums(s);
       if (!labels.length) return null;
       const label = s.contract && labels.includes(s.contract.label) ? s.contract.label : rng.pick(labels);
