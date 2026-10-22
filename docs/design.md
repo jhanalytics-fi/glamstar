@@ -254,7 +254,9 @@ Historically a vinyl LP held about 45 minutes, so nine to twelve tracks was the 
 
 Backdrops (v0.48): seventeen pictures in public/bg (webp, about 50 KB each) behind the page under a velvet gradient. src/ui/backdrop.ts picks one from the scene kind and the band's size (a pub doorway at the start, a club or a theatre or a stadium for a gig, the bus or the stage on tour, the studio for a record, the writing table or the lounge, the hotel room or the pub for a party, gold discs at the end) and crossfades between two fixed layers when it changes. Reduced motion turns the fade off.
 
-## Prototype status (v0.48)
+Song reactions (v0.49): reactions.ts replaces the one fixed grumble per writing option. `reactToSong` looks at the song's rating and the band: a great song (72+) usually wins everyone over whatever it is (mood and affinity up, one of five lines); a cover is, 30 to 60% of the time, the record half the band grew up on (mood +3 to 7, affinity +3, four scenes); a chart chaser either converts a grumbler ("annoyingly good") or draws one of six sour lines; ballads, solo songs and flat jams have their own tables. `masterpieceScene` gives the one a birth story by kind (a ballad on the piano at two in the morning, a solo song on the night bus, a cover slowed down until it is yours) and one of eight aftermaths (somebody cries and denies it, the engineer asks for a copy).
+
+## Prototype status (v0.49)
 
 Playable in the browser. Implemented:
 

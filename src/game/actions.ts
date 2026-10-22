@@ -1,6 +1,7 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
 import { mourningBoost } from './death';
+import { reactToSong } from './reactions';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
 import { addAffinity, available, chemistry, forEachPair, getAffinity, missingForGig, performance } from './chemistry';
 import { PRESS, PRESS_BAD, PRESS_GOOD, VENUES, albumTitle, songTitle } from './names';
@@ -680,15 +681,8 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
       log(s, 'A week alone with a guitar and a notebook. Nothing worth keeping.', 'bad');
       return;
     }
-    newSong(s, rng, me.writing * 0.75 + chem * 0.1 + rng.int(-12, 18), me, 'solo', me.style);
-    for (const m of here) {
-      if (!m.isPlayer && m.hidden.ego >= 65 && m.writing >= 40) {
-        adjust(m, 'mood', wobble(rng, -5));
-        addAffinity(s, m.id, me.id, -4);
-        log(s, `${first(m)} asked why nobody wanted their ideas.`, 'bad');
-        revealLog(s, m, 'ego', 1);
-      }
-    }
+    const mine = newSong(s, rng, me.writing * 0.75 + chem * 0.1 + rng.int(-12, 18), me, 'solo', me.style);
+    reactToSong(s, rng, mine, 'solo', me);
     return;
   }
 
@@ -697,7 +691,7 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
     const song = newSong(s, rng, 48 + best.skill * 0.15 + s.tightness * 0.1 + rng.int(-6, 16), best, 'cover', me.style);
     song.outside = true;
     log(s, `"${song.title}" was a hit for ${old.name} before any of you could drive. Your version is louder. ${old.name}'s publisher gets a slice of every copy.`, 'neutral');
-    for (const m of here) if (!m.isPlayer && m.writing >= 45 && m.hidden.ego >= 60) { adjust(m, 'mood', wobble(rng, -5)); log(s, `${first(m)} wanted to know why the band is playing other people's songs.`, 'bad'); }
+    reactToSong(s, rng, song, 'cover', best);
     return;
   }
   if (option === 'publisher') {
@@ -753,7 +747,9 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
 
   if (option === 'jam') {
     const n = rng.chance(0.4) ? 2 : 1;
-    for (let i = 0; i < n; i++) newSong(s, rng, base + rng.int(-10, 15), best, 'standard', me.style);
+    let last: Song | null = null;
+    for (let i = 0; i < n; i++) last = newSong(s, rng, base + rng.int(-10, 15), best, 'standard', me.style);
+    if (last) reactToSong(s, rng, last, 'other', best);
     forEachPair(here, (a, b) => addAffinity(s, a.id, b.id, 2));
     if (best !== second && best.hidden.ego >= 65 && second.hidden.ego >= 65 && second.writing >= 40) {
       addAffinity(s, best.id, second.id, -10);
@@ -763,21 +759,11 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
     }
   } else if (option === 'trend') {
     const hot = hotGenres(s.week)[0];
-    newSong(s, rng, base - 5 + rng.int(-10, 12), best, 'trend', hot);
-    for (const m of here) {
-      if (m.style !== hot && !m.isPlayer && rng.chance(0.6)) {
-        adjust(m, 'mood', wobble(rng, -6));
-        log(s, `${first(m)} called the new song "a sell-out" and played it with their eyes shut.`, 'bad');
-      }
-    }
+    const t = newSong(s, rng, base - 5 + rng.int(-10, 12), best, 'trend', hot);
+    reactToSong(s, rng, t, 'trend', best);
   } else if (option === 'ballad') {
-    newSong(s, rng, base + rng.int(-18, 25), best, 'ballad', me.style);
-    for (const m of here) {
-      if (!m.isPlayer && (m.style === 'metal' || m.style === 'punk')) {
-        adjust(m, 'mood', wobble(rng, -5));
-        log(s, `${first(m)} is not happy about the key change.`, 'bad');
-      }
-    }
+    const b = newSong(s, rng, base + rng.int(-18, 25), best, 'ballad', me.style);
+    reactToSong(s, rng, b, 'ballad', best);
   }
 }
 

@@ -214,3 +214,27 @@ describe('placeholders', () => {
     }
   });
 });
+
+describe('song reactions', () => {
+  it('the band reacts to covers and chart chasers in more than one way, and sometimes loves them', async () => {
+    const { reactToSong } = await import('../src/game/reactions');
+    const { newGame } = await import('../src/game/engine');
+    const { Rng } = await import('../src/game/rng');
+    const base = newGame({ name: 'Jussi', instrument: 'guitar', bandName: 'X', background: 'artschool', style: 'glam', seed: 5 });
+    for (const m of base.members) { m.hidden.ego = 80; m.writing = 60; m.style = 'metal'; }
+    const seen = new Set<string>();
+    let loved = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      for (const how of ['cover', 'trend', 'ballad', 'solo'] as const) {
+        const s = structuredClone(base);
+        const rng = new Rng(seed);
+        const song = { title: 'T', quality: 40 + (seed % 5) * 12, writer: 'p', kind: how === 'solo' ? 'solo' as const : how === 'cover' ? 'cover' as const : how === 'trend' ? 'trend' as const : 'ballad' as const, genre: 'newwave' as const, released: false };
+        const n = s.log.length;
+        reactToSong(s, rng, song, how, s.members[0]);
+        for (const l of s.log.slice(n)) { seen.add(l.text.replace(/\w+ (called|played|asked|said|wrote|listened|learned|suggested|did|wondered|is|went)/, 'X $1')); if (l.tone === 'good') loved++; }
+      }
+    }
+    expect(seen.size).toBeGreaterThan(15);
+    expect(loved).toBeGreaterThan(10);
+  });
+});

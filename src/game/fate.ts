@@ -1,5 +1,6 @@
 // Lightning, both ways. Now and then a song comes out of nowhere, a gig becomes the one people still
 // talk about, or the night falls apart through no fault of your own.
+import { masterpieceScene } from './reactions';
 import { Rng, clamp } from './rng';
 import { chemistry } from './chemistry';
 import { addBuzz, adjust, beat, first, log, milestone, player, setVibe } from './helpers';
@@ -19,15 +20,8 @@ export function strikeMasterpiece(s: GameState, rng: Rng, song: Song, writer: Mu
   s.flags.masterpieces = (s.flags.masterpieces ?? 0) + 1;
   for (const m of s.members) adjust(m, 'mood', 10);
   addBuzz(s, 3);
-  const how = rng.pick([
-    'came out in one go, verse to coda, in twenty minutes, and nobody dared speak until it was done',
-    'arrived at four in the morning on the back of a chip-shop menu, and was still perfect by daylight',
-    'started as a joke about the landlord and turned, somewhere around the second chorus, into the best thing any of you have ever done',
-    'fell out of a wrong chord that nobody wanted to fix',
-    'was written alone in the flat with the curtains shut and the phone off the hook, on a guitar with five strings',
-    'came in the bath, was hummed into the answering machine, and was all there in the morning',
-  ]);
-  beat(s, undefined, `Then it happened. "${song.title}" ${how}. ${writer.isPlayer ? 'You' : first(writer)} played it back three times. The room went very quiet.`, 'reveal');
+  const { how, after } = masterpieceScene(rng, song, writer, s.members.filter((m) => m.outWeeks === 0));
+  beat(s, undefined, `Then it happened. "${song.title}" ${how}. ${after}`, 'reveal');
   log(s, `"${song.title}" is not a song. It is the song. Everyone in the room knows it.`, 'good');
   milestone(s, 'release', `Wrote "${song.title}" (${song.quality}). The one.`);
 }
