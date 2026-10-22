@@ -252,7 +252,9 @@ legendEvents.ts, lifted in shape from the rock biographies and bent to fiction: 
 
 Historically a vinyl LP held about 45 minutes, so nine to twelve tracks was the norm and eight was a short record; a double album was a prestige object, dearer in the shops, slower to sell and divisive. The game now offers three: the album (8 songs, as before), the twelve-track album (from 10 unreleased, needs 12: the weakest four drag the average rating, appeal x1.04, buzz +3, the label bill x1.25, and one more single can be lifted before fatigue sets in) and the double album (from 14 unreleased and 5,000 fans, needs 16: appeal x0.78, buzz +10, royalty and self-release margin x1.6 per copy, label bill x1.8, a milestone, two singles' slack, four sides on the album page). `Release.tracks` and `Release.double` record it. The Write and Release tiles now say how many unreleased songs there are and how many more an album needs.
 
-## Prototype status (v0.47)
+Backdrops (v0.48): seventeen pictures in public/bg (webp, about 50 KB each) behind the page under a velvet gradient. src/ui/backdrop.ts picks one from the scene kind and the band's size (a pub doorway at the start, a club or a theatre or a stadium for a gig, the bus or the stage on tour, the studio for a record, the writing table or the lounge, the hotel room or the pub for a party, gold discs at the end) and crossfades between two fixed layers when it changes. Reduced motion turns the fade off.
+
+## Prototype status (v0.48)
 
 Playable in the browser. Implemented:
 

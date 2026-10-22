@@ -41,7 +41,14 @@ button, input, select { font: inherit; color: inherit; }
 
 :focus-visible { outline: 2px solid var(--chrome); outline-offset: 2px; }
 
-#app { max-width: 1280px; margin: 0 auto; padding: 24px 16px 64px; }
+#app { max-width: 1280px; margin: 0 auto; padding: 24px 16px 64px; position: relative; z-index: 1; }
+
+/* The picture behind everything: two layers that crossfade, under a velvet wash so the text stays readable. */
+.backdrop { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.backdrop .bg { position: absolute; inset: 0; background-size: cover; background-position: center 30%; opacity: 0; transition: opacity 1.6s ease; transform: scale(1.03); }
+.backdrop .bg.on { opacity: 1; }
+.backdrop::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(34, 16, 46, 0.5) 0%, rgba(34, 16, 46, 0.72) 45%, rgba(34, 16, 46, 0.93) 100%); }
+@media (prefers-reduced-motion: reduce) { .backdrop .bg { transition: none; } }
 
 /* ---------------------------------------------------------------- title & creation */
 

@@ -12,6 +12,7 @@ import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, 
 import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
+import { showBackdrop } from './backdrop';
 import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
@@ -309,6 +310,7 @@ function render(root: HTMLElement): void {
   for (const t of timers) window.clearTimeout(t);
   timers = [];
   root.innerHTML = state ? renderGame(state) : renderCreate();
+  showBackdrop(state);
   playback(root);
 }
 
