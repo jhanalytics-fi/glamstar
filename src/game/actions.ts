@@ -737,7 +737,7 @@ function write(s: GameState, rng: Rng, option: string, genre?: Genre): void {
   }
   if (option === 'publisher') {
     const l = labelById(s.contract!.label);
-    const floor = l.tier === 'major' ? 68 : l.tier === 'indie' ? 52 : 58;
+    const floor = l.tier === 'global' ? 72 : l.tier === 'major' ? 68 : l.tier === 'mid' ? 60 : l.tier === 'indie' ? 52 : 58;
     if (rng.chance(0.25)) {
       log(s, `Six tapes from ${l.name}'s publishers. Five about a girl called Candy, one about a car. None of them any good.`, 'bad');
       return;

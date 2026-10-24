@@ -279,7 +279,9 @@ The post (v0.54): letters.ts brings a letter about one week in six (off tour, fr
 
 The press (v0.55): press.ts. Four papers with prejudices (Noise Weekly likes glam, new wave and punk; the Gramophone Gazette likes hard rock and hates pop and glam; Smash! likes pop and hates metal and punk; Kerrunch likes metal and hard rock and hates pop and new wave). Every non-demo record gets two reviews from 5,000 fans (one, 60% of the time, below): stars from quality ((q-30)/14) plus prejudice, a compilation or live penalty, a coin for a double, and a reviewer's mood; a quote per star count; and the average moves the record's appeal 8% a star (weighted by the paper's pull: Smash! 1.2, Gazette 0.6). Four stars and up lifts buzz and mood; two and under the reverse. Reviews sit on the album page and as stars in the discography. The `press_question` event (within two weeks of a release or after a legendary gig, at most every ten weeks): five questions, four answers each, in the football-manager style: the feud quote, the loyalty line, the sandwich, the cigarette.
 
-## Prototype status (v0.55)
+Label sizes (v0.56): five tiers instead of three, shown on every offer card. Small independent (Bad Penny, Wax Lyrical, Gutterpress; the sharks Goldtooth and Starlight wear the same badge), mid-size independent (Northern Lights, Velvet Grind: from 2,500 fans and buzz 30 or a chart entry; advances £1,500 to £3,000, two or three albums, promo 2.0 to 2.2, reach 0.6), major (Colossus, Imperial, Polyvox as before) and global major (Transatlantic Music Corporation, Meridian Worldwide: only for a band of 80,000 fans with a UK top ten; advances £40,000 to £90,000 plus heat, four to six albums, promo 3.5 to 3.8, reach 1.4, deductions +14%, the heaviest flop expectation at 15,000 and the biggest studio bonus). Tour support, hired-pen floors and the signing flavour scale with the tier.
+
+## Prototype status (v0.56)
 
 Playable in the browser. Implemented:
 

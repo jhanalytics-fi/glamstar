@@ -310,3 +310,22 @@ describe('around the band', () => {
     expect(r2.milestones.at(-1)!.text).toMatch(/shown the door/);
   });
 });
+
+describe('label sizes', () => {
+  it('mid-size labels talk from 2,500 fans, global majors only to a top-ten band, with the biggest cheques', async () => {
+    const { LABELS, interested, makeTerms, labelById } = await import('../src/game/labels');
+    const { newGame } = await import('../src/game/engine');
+    const { Rng } = await import('../src/game/rng');
+    const s = newGame({ name: 'Jussi', instrument: 'guitar', bandName: 'X', background: 'artschool', style: 'glam', seed: 1 });
+    const mid = labelById('northern'); const glob = labelById('transatlantic');
+    expect(interested({ ...s, fans: 3000, buzz: 40 }, mid)).toBe(true);
+    expect(interested({ ...s, fans: 3000, buzz: 40 }, glob)).toBe(false);
+    const big = { ...s, fans: 100000, buzz: 60, world: { ...s.world, peaks: { ...s.world.peaks, uk: 3 } } };
+    expect(interested(big, glob)).toBe(true);
+    const rng = new Rng(4);
+    const tg = makeTerms(big, glob, rng); const tm = makeTerms(big, labelById('colossus'), rng);
+    expect(tg.advance).toBeGreaterThan(tm.advance * 3);
+    expect(tg.albums).toBeGreaterThanOrEqual(4);
+    expect(new Set(LABELS.map((l) => l.tier)).size).toBe(5);
+  });
+});

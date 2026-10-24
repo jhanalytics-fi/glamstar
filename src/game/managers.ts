@@ -241,7 +241,7 @@ export function managerJob(state: GameState, job: ManagerJob): GameState {
 function labelName(id: string): string {
   return LABEL_NAMES[id] ?? id;
 }
-const LABEL_NAMES: Record<string, string> = { badpenny: 'Bad Penny Records', waxlyrical: 'Wax Lyrical', gutterpress: 'Gutterpress Recordings', goldtooth: 'Goldtooth Music', starlight: 'Starlight Entertainment Group', colossus: 'Colossus Phonographic', imperial: 'Imperial Gramophone', polyvox: 'Polyvox International' };
+const LABEL_NAMES: Record<string, string> = { badpenny: 'Bad Penny Records', waxlyrical: 'Wax Lyrical', gutterpress: 'Gutterpress Recordings', goldtooth: 'Goldtooth Music', starlight: 'Starlight Entertainment Group', colossus: 'Colossus Phonographic', imperial: 'Imperial Gramophone', polyvox: 'Polyvox International', northern: 'Northern Lights Records', velvetgrind: 'Velvet Grind', transatlantic: 'Transatlantic Music Corporation', meridian: 'Meridian Worldwide' };
 
 /** Managers come knocking when a band gets to a size: a following, a real following, and the big time. */
 export const KNOCKS = [300, 3000, 30000];

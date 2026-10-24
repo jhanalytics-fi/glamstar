@@ -5,7 +5,9 @@ import { addBuzz, adjust, earn, log, milestone, mutate } from './helpers';
 import { commission, managerHaggle, managerHeat } from './managers';
 import type { Contract, DealTerms, GameState, Offer, Release, ReleaseKind, SmallPrint } from './types';
 
-export type LabelTier = 'indie' | 'shark' | 'major';
+/** Small independent, a shark in a small suit, a mid-size independent with distribution, a UK major, a global conglomerate. */
+export type LabelTier = 'indie' | 'shark' | 'mid' | 'major' | 'global';
+export const TIER_LABEL: Record<LabelTier, string> = { indie: 'Small independent', shark: 'Small independent', mid: 'Mid-size independent', major: 'Major label', global: 'Global major' };
 
 export interface Label {
   id: string;
@@ -27,9 +29,13 @@ export const LABELS: Label[] = [
   { id: 'gutterpress', name: 'Gutterpress Recordings', tier: 'indie', honesty: 55, promo: 1.6, patience: 2, word: 'Gets records into shops. Nobody quite understands their accounts.' },
   { id: 'goldtooth', name: 'Goldtooth Music', tier: 'shark', honesty: 12, promo: 1.5, patience: 4, word: 'A Rolls-Royce outside, a cash box inside. Signs anyone with a pulse.' },
   { id: 'starlight', name: 'Starlight Entertainment Group', tier: 'shark', honesty: 22, promo: 1.35, patience: 4, word: 'A grand name, an office above a launderette in Hounslow.' },
+  { id: 'northern', name: 'Northern Lights Records', tier: 'mid', honesty: 70, promo: 2.0, patience: 3, word: 'Manchester money, a warehouse, proper distribution and a boss who still goes to gigs.' },
+  { id: 'velvetgrind', name: 'Velvet Grind', tier: 'mid', honesty: 50, promo: 2.2, patience: 2, word: 'Soho, a video budget, a European deal, and a lawyer called Nigel who smiles too much.' },
   { id: 'colossus', name: 'Colossus Phonographic', tier: 'major', honesty: 48, promo: 3.0, patience: 1, word: 'The biggest machine in the business. One flop and you are a tax write-off.' },
   { id: 'imperial', name: 'Imperial Gramophone', tier: 'major', honesty: 62, promo: 2.6, patience: 2, word: 'Old money, old offices, surprisingly patient with new bands.' },
   { id: 'polyvox', name: 'Polyvox International', tier: 'major', honesty: 38, promo: 2.8, patience: 1, word: 'Huge in Europe. Bills you for every lunch, every video, every taxi.' },
+  { id: 'transatlantic', name: 'Transatlantic Music Corporation', tier: 'global', honesty: 40, promo: 3.8, patience: 1, word: 'A tower in Los Angeles, offices in forty countries, a president who has never heard of you and a cheque that has.' },
+  { id: 'meridian', name: 'Meridian Worldwide', tier: 'global', honesty: 55, promo: 3.5, patience: 2, word: 'Tokyo, New York, London, Hamburg. They sell records in places you cannot spell and send a statement for each one.' },
 ];
 
 export const labelById = (id: string): Label => LABELS.find((l) => l.id === id)!;
@@ -39,7 +45,7 @@ const RETAIL: Record<ReleaseKind, number> = { demo: 0, single: 1.29, ep: 2.99, a
 /** Share of the album budget a release burns. */
 const BUDGET_SHARE: Record<ReleaseKind, number> = { demo: 0, single: 0.15, ep: 0.35, album: 1 };
 /** Album sales each kind of label quietly expects. */
-const EXPECTS: Record<LabelTier, number> = { indie: 1500, shark: 800, major: 6000 };
+const EXPECTS: Record<LabelTier, number> = { indie: 1500, shark: 800, mid: 3500, major: 6000, global: 15000 };
 export const LAWYER_FEE = 100;
 export const AUDIT_FEE = 300;
 const STATEMENT_WEEKS = 13;
@@ -54,16 +60,18 @@ export function heat(s: GameState): number {
 export function interested(s: GameState, l: Label): boolean {
   if (l.tier === 'shark') return s.fans >= 150 && s.releases.length > 0;
   if (l.tier === 'indie') return (s.fans >= 300 && s.buzz >= 20) || (s.flags.arInterest ?? 0) >= 1;
+  if (l.tier === 'mid') return s.fans >= 2500 && (s.buzz >= 30 || s.flags.chartedNational !== undefined);
+  if (l.tier === 'global') return s.fans >= 80000 && (s.world.peaks.uk !== undefined && s.world.peaks.uk <= 10);
   return s.flags.labelCalling !== undefined || s.flags.chartedNational !== undefined || (s.flags.arInterest ?? 0) >= 2;
 }
 
 function smallPrint(l: Label, rng: Rng): SmallPrint {
   const crook = (100 - l.honesty) / 100;
   return {
-    deductions: Math.round(clamp(crook * 0.45 + rng.next() * 0.08 + (l.tier === 'major' ? 0.1 : 0), 0, 0.5) * 100) / 100,
+    deductions: Math.round(clamp(crook * 0.45 + rng.next() * 0.08 + (l.tier === 'major' ? 0.1 : l.tier === 'global' ? 0.14 : 0), 0, 0.5) * 100) / 100,
     tourRecoup: l.honesty < 35 && rng.chance(0.8),
     ownsName: l.honesty < 30 && rng.chance(0.7),
-    promoRecoup: l.honesty < 55 && rng.chance(l.tier === 'major' ? 0.9 : 0.4),
+    promoRecoup: l.honesty < 55 && rng.chance(l.tier === 'major' || l.tier === 'global' ? 0.9 : 0.4),
   };
 }
 
@@ -77,6 +85,13 @@ export function makeTerms(s: GameState, l: Label, rng: Rng): DealTerms {
   if (l.tier === 'shark') {
     // Flash money up front, everything else is a trap.
     return { advance: round(r(900, 2200) + h * 0.5, 100), rate: Math.round(r(11, 14)) / 100, albums: rng.int(5, 6), budget: round(r(1200, 1800), 100), smallPrint: smallPrint(l, rng) };
+  }
+  if (l.tier === 'mid') {
+    return { advance: round(r(1500, 3000) + h * 0.8, 100), rate: Math.round(r(12, 15)) / 100, albums: rng.int(2, 3), budget: round(r(3500, 6000) + h * 0.8, 250), smallPrint: smallPrint(l, rng) };
+  }
+  if (l.tier === 'global') {
+    // The biggest cheque in the business, and the longest contract.
+    return { advance: round(r(40000, 90000) + h * 4, 1000), rate: Math.round(r(9, 13)) / 100, albums: rng.int(4, 6), budget: round(r(40000, 70000) + h * 3, 1000), smallPrint: smallPrint(l, rng) };
   }
   return { advance: round(r(3000, 6000) + h * 1.5, 250), rate: Math.round(r(8, 12)) / 100, albums: rng.int(3, 5), budget: round(r(7000, 12000) + h * 1.2, 500), smallPrint: smallPrint(l, rng) };
 }
@@ -106,7 +121,7 @@ export function labelWeek(s: GameState, rng: Rng): void {
     for (const l of rng.shuffle([...LABELS])) {
       if (s.offers.some((o) => o.label === l.id) || !interested(s, l) || (s.flags[`passed_${l.id}`] !== undefined && s.week - s.flags[`passed_${l.id}`] < 26)) continue;
       const boost = 1 + (s.manager ? s.manager.clout / 100 : 0);
-      if (!rng.chance((l.tier === 'shark' ? 0.06 : l.tier === 'indie' ? 0.07 : 0.08) * boost)) continue;
+      if (!rng.chance((l.tier === 'shark' ? 0.06 : l.tier === 'indie' ? 0.07 : l.tier === 'global' ? 0.05 : 0.08) * boost)) continue;
       const o: Offer = { id: `offer${s.nextId++}`, label: l.id, week: s.week, expires: s.week + 6, terms: makeTerms(s, l, rng), read: false, haggled: 0 };
       s.offers.push(o);
       log(s, `A letter from ${l.name}: they want to sign ${s.bandName}. £${o.terms.advance.toLocaleString('en-GB')} advance. Details in the Label tab.`, 'good');
@@ -207,7 +222,7 @@ export function labelRelease(s: GameState, kind: ReleaseKind, scale = 1): { stud
   c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind] * scale);
   if (c.terms.smallPrint.promoRecoup) c.unrecouped += Math.round(c.terms.budget * BUDGET_SHARE[kind] * scale * 0.4);
   if (kind === 'album') { c.albumsDelivered++; c.reviewWeek = s.week + REVIEW_AFTER; }
-  return { studio: l.tier === 'major' ? 9 : l.tier === 'indie' ? 5 : 3, promo: l.promo };
+  return { studio: l.tier === 'global' ? 11 : l.tier === 'major' ? 9 : l.tier === 'mid' ? 7 : l.tier === 'indie' ? 5 : 3, promo: l.promo };
 }
 
 export function tagRelease(s: GameState, r: Release): void {
@@ -232,7 +247,7 @@ export function tourSupport(s: GameState, loss: number): number {
   if (!c || loss >= 0) return 0;
   const l = labelById(c.label);
   if (l.tier === 'shark') return 0;
-  const pay = Math.round(-loss * (l.tier === 'major' ? 0.5 : 0.3));
+  const pay = Math.round(-loss * (l.tier === 'global' ? 0.6 : l.tier === 'major' ? 0.5 : l.tier === 'mid' ? 0.4 : 0.3));
   c.unrecouped += pay;
   s.money += pay;
   earn(s, 'other', pay);
@@ -329,13 +344,15 @@ export function signOffer(state: GameState, id: string): GameState {
     earn(s, 'advances', o.terms.advance);
     commission(s, o.terms.advance);
     s.offers = [];
-    addBuzz(s, l.tier === 'major' ? 12 : 6);
+    addBuzz(s, l.tier === 'global' ? 18 : l.tier === 'major' ? 12 : l.tier === 'mid' ? 8 : 6);
     for (const m of s.members) adjust(m, 'mood', 15);
     milestone(s, 'career', `Signed to ${l.name}: £${o.terms.advance.toLocaleString('en-GB')} advance, ${o.terms.albums} albums.`);
     const flavour: Record<LabelTier, string> = {
       indie: 'Signed on a pub table, sealed with a round. The advance arrived by cheque, and the cheque cleared.',
       shark: 'Signed in the back of a Rolls-Royce with a gold pen you were not allowed to keep. Champagne, cigars, a handshake that went on slightly too long.',
+      mid: 'Signed in a warehouse office with a view of the loading bay and a bottle of something decent. The boss came to the gig afterwards and stood at the back.',
       major: 'Signed in a glass office on the twelfth floor. Somebody from marketing called you "the product". Nobody laughed but you.',
+      global: 'Signed in Los Angeles, in a tower, by a man who flew in for it and flew out before the ink dried. The contract is in four languages and the band is in all of them.',
     };
     log(s, `${s.bandName} signed to ${l.name}. ${flavour[l.tier]} £${o.terms.advance.toLocaleString('en-GB')} in the bank, and every penny of it is a loan.`, 'good');
   });

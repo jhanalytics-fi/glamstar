@@ -453,7 +453,7 @@ export function fire(state: GameState, memberId: string): GameState {
  */
 export function reach(s: GameState): { us: number; europe: number; world: number } {
   const tier = s.contract ? labelById(s.contract.label).tier : null;
-  const dist = tier === 'major' ? 1 : tier === 'indie' ? 0.35 : tier === 'shark' ? 0.25 : 0.1;
+  const dist = tier === 'global' ? 1.4 : tier === 'major' ? 1 : tier === 'mid' ? 0.6 : tier === 'indie' ? 0.35 : tier === 'shark' ? 0.25 : 0.1;
   const toured = (r: string) => Math.min(1, (s.flags[`toured_${r}`] ?? 0) / 2);
   return {
     us: Math.min(1, dist * 0.4 + toured('northamerica') * 0.4 + toured('world') * 0.1 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),

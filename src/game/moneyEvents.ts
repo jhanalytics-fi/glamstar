@@ -39,7 +39,7 @@ export const MONEY_EVENTS: EventDef[] = [
     text: (s, p) => `${s.contract ? `${labelById(s.contract.label).name} want` : 'The pluggers want'} a video for "${p.title}". The American cable channel plays anything with hair and a wind machine. Directors have been sending in treatments. One of them involves a horse.`,
     options: (s, p) => {
       const rec = s.releases.find((r) => r.id === p.rec);
-      const big = s.contract && labelById(s.contract.label).tier === 'major' ? 25000 : 8000;
+      const big = s.contract && (labelById(s.contract.label).tier === 'major' || labelById(s.contract.label).tier === 'global') ? 25000 : 8000;
       return [
         {
           label: 'No video',

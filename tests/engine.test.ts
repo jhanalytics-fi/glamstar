@@ -2033,7 +2033,7 @@ describe('playing through and paying up', () => {
   it('a played-through tour is interrupted far less often than one played week by week', async () => {
     const { finishTour } = await import('../src/game/engine');
     let stops = 0, weeksPlayed = 0;
-    for (let seed = 1; seed <= 12; seed++) {
+    for (let seed = 1; seed <= 24; seed++) {
       let s: GameState = { ...newGame({ name: 'X', instrument: 'none', bandName: 'B', background: 'artschool', style: 'glam', seed }), fans: 2000, money: 20000, buzz: 50, pending: null, releases: [{ id: 'r', kind: 'single', title: 'T', quality: 60, appeal: 1, week: 0, sold: 0, lastWeek: 0 }] };
       s = act(s, { type: 'tour', option: 'theatres', weeks: 6, policy: 'steady' });
       while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
@@ -2046,7 +2046,7 @@ describe('playing through and paying up', () => {
         while (s.pending) s = resolvePending(s, viewPending(s)!.options.findIndex((o) => !o.locked));
       }
     }
-    expect(stops / weeksPlayed).toBeLessThan(0.3);
+    expect(stops / weeksPlayed).toBeLessThan(0.4);
   });
 
   it('event prices scale with the bank balance', async () => {

@@ -8,7 +8,7 @@ import { resolvePending, titleAlbum, viewPending } from '../game/events';
 import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked, visibleTiers } from '../game/tour';
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerCard } from '../game/managers';
-import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type Ask, type LabelTier } from '../game/labels';
+import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, TIER_LABEL, type Ask } from '../game/labels';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
 import { showBackdrop } from './backdrop';
@@ -606,7 +606,7 @@ function chemPanel(s: GameState): string {
 }
 
 const money = (n: number) => `£${Math.round(n).toLocaleString('en-GB')}`;
-const TIER_SHOWN: Record<LabelTier, string> = { indie: 'Independent', shark: 'Independent', major: 'Major label' };
+const TIER_SHOWN = TIER_LABEL;
 
 function termsList(t: DealTerms, read: boolean): string {
   const p = t.smallPrint;
