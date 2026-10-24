@@ -732,6 +732,31 @@ describe('action choices', () => {
     expect(canAct(e, A('rest', 'sleep'))).toBeNull();
   });
 
+  it('a hustler brings in specials and talks; the band plays one', async () => {
+    const { managerActs, managerSpecial, managerComment } = await import('../src/game/managerVoice');
+    const s: GameState = { ...newGame(input), fans: 2000, money: 5000, week: 50 };
+    s.manager = { name: 'Clive Sparrowhawk', kind: 'hustler', care: 20, nous: 30, honesty: 60, clout: 60, cut: 0.2, signed: 0, read: true, taken: 0 };
+    let specials = 0; let comments = 0;
+    for (let seed = 1; seed <= 40; seed++) {
+      const st = structuredClone(s);
+      const rng = new Rng(seed);
+      managerActs(st, rng);
+      if (st.flags.mgrSpecialWeek === st.week + 1) specials++;
+      const n = st.log.length;
+      managerComment(st, rng);
+      if (st.log.length > n && st.log.at(-1)!.text.startsWith('Clive:')) comments++;
+    }
+    expect(specials).toBeGreaterThan(8);
+    expect(comments).toBeGreaterThan(5);
+    const ready: GameState = { ...s, flags: { ...s.flags, mgrSpecialWeek: 50, mgrSpecial: 1 } };
+    const sp = managerSpecial(ready)!;
+    expect(sp.id).toBe('mgr_private');
+    const opt = actionOptions(ready, 'gig').find((o) => o.id === 'mgr_private')!;
+    expect(opt.special).toBe(true);
+    const r = act(ready, A('gig', 'mgr_private'));
+    expect(r.money).toBeGreaterThan(ready.money);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -947,6 +972,8 @@ describe('choice events', () => {
     fashion_turns: (s) => { s.fans = 40000; s.week = 480; s.members[0].style = 'newwave'; },
     one_hit_wonder: (s) => { s.week = 60; s.releases.push({ id: 'h1', kind: 'single', title: 'Big One', quality: 90, appeal: 1, week: 10, sold: 500000, lastWeek: 0 }, { id: 'h2', kind: 'single', title: 'B', quality: 60, appeal: 1, week: 20, sold: 20000, lastWeek: 0 }, { id: 'h3', kind: 'single', title: 'C', quality: 60, appeal: 1, week: 30, sold: 15000, lastWeek: 0 }); },
     taxman_calls: (s) => { s.fans = 150000; s.money = 500000; s.week = 160; },
+    manager_tv: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'visionary', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTv = s.week; s.fans = 3000; },
+    manager_tip: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'hustler', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTip = s.week; s.pending = { def: 'manager_tip', params: { m: s.members[1].id, rival: 'The Rivals' }, week: s.week }; },
     hitch_abroad: (s) => { s.fans = 200; s.money = 100; },
     big_abroad: (s) => { s.fans = 3000; s.releases.push({ id: 'x1', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 100, lastWeek: 0 }); },
     famous_friend_drives: (s) => { s.fans = 20000; s.members[1].habit = 40; s.flags.lastBigParty = s.week; },
@@ -1435,10 +1462,14 @@ describe('touring', () => {
 
   it('better wheels and better beds keep the band fresher, and cost more', () => {
     const run = (wheels: GameState['wheels'], lodging: 'floors' | 'bnb' | 'hotels' | 'suites') => {
-      let s = { ...ready(300), wheels };
-      s.members.forEach((m) => { m.energy = 80; m.hidden.stamina = 50; });
-      s = settle(act(s, A('tour', 'clubs', { weeks: 3, policy: 'steady', lodging })));
-      return { energy: s.members.reduce((a, m) => a + m.energy, 0) / s.members.length, money: s.money, lodging: s.tour!.lodging };
+      let energy = 0; let money = 0; let lodge = '';
+      for (let seed = 1; seed <= 5; seed++) {
+        let s = { ...ready(300), wheels, rng: seed };
+        s.members.forEach((m) => { m.energy = 80; m.hidden.stamina = 50; });
+        s = settle(act(s, A('tour', 'clubs', { weeks: 3, policy: 'steady', lodging })));
+        energy += s.members.reduce((a, m) => a + m.energy, 0) / s.members.length; money += s.money; lodge = s.tour!.lodging;
+      }
+      return { energy, money, lodging: lodge };
     };
     const rough = run('bus', 'floors');
     const plain = run('van', 'bnb');

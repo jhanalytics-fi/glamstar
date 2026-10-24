@@ -9,14 +9,13 @@ import { POLICY_HINT, POLICY_LABEL, TOUR_TIERS, strugglers, tierById, tierLocked
 import { bandName, bestVenue, stageName } from '../game/names';
 import { sackCost, sackManager, managerCard } from '../game/managers';
 import { ASK_HINT, ASK_LABEL, AUDIT_FEE, LAWYER_FEE, audit, buyOut, buyoutCost, declineOffer, haggle, labelById, readSmallPrint, royaltyPerCopy, signOffer, type Ask, type LabelTier } from '../game/labels';
-import { JOB_LABEL, jobHint, jobLocked, managerJob, type ManagerJob } from '../game/managers';
 import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
 import { showBackdrop } from './backdrop';
 import { bandWord } from '../game/pulse';
 import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
-import type { BandGender, Difficulty, Lineup, Lodging, Split, TourPolicy } from '../game/types';
+import type { BandGender, Difficulty, Lineup, Lodging, ManagerKind, Split, TourPolicy } from '../game/types';
 import { runningTime, sides } from '../game/catalogue';
 import { LODGING, LODGING_ORDER, WHEELS, defaultLodging, lodgingCost, tourWheels, wheelsOf } from '../game/wheels';
 import { clubIncome, clubMembers } from '../game/fanclub';
@@ -219,7 +218,6 @@ function onClick(e: Event, root: HTMLElement): void {
       case 'dismiss': state = dismissCandidates(state!); break;
       case 'offerSign': state = signOffer(state!, arg!); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'offerHaggle': state = haggle(state!, arg!, (arg2 as Ask) || 'advance'); labelNote = state.log.at(-1)?.text ?? ''; break;
-      case 'managerJob': state = managerJob(state!, arg as ManagerJob); labelNote = state.log.at(-1)?.text ?? ''; break;
       case 'setSplit': state = setSplit(state!, arg as Split); break;
       case 'sackHanger':
         if (armedHanger === arg) { state = sackHanger(state!, arg!); armedHanger = null; }
@@ -624,22 +622,33 @@ function termsList(t: DealTerms, read: boolean): string {
 }
 
 /** Record deals: offers on the table, or the contract you are stuck with. */
+/** A manager's face, in five flavours: the coat, the tie, the carrier bag, the big coat, the beret. */
+function portrait(kind: ManagerKind): string {
+  const base = (extra: string, hair: string) => `<svg class="portrait" viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="pg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff3d8b"/><stop offset="1" stop-color="#8fe3f0"/></linearGradient></defs><rect width="64" height="64" rx="12" fill="rgba(255,255,255,0.06)"/><circle cx="32" cy="26" r="11" fill="#e9d7f2"/>${hair}<path d="M12 60c2-14 10-20 20-20s18 6 20 20z" fill="url(#pg)"/>${extra}</svg>`;
+  switch (kind) {
+    case 'hustler': return base('<path d="M12 60c2-14 10-20 20-20s18 6 20 20z" fill="#c98a3c" opacity="0.85"/><rect x="26" y="40" width="12" height="20" fill="#e9d7f2"/><rect x="40" y="30" width="4" height="12" rx="1" fill="#222"/>', '<path d="M20 24c0-9 24-9 24 0c0-3-2-6-12-6s-12 3-12 6z" fill="#5a3b2e"/>');
+    case 'suit': return base('<path d="M12 60c2-14 10-20 20-20s18 6 20 20z" fill="#2b2f4a"/><path d="M30 40h4l-2 16z" fill="#ff3d8b"/><rect x="14" y="52" width="14" height="9" rx="1" fill="#3a2a1a"/>', '<path d="M22 22c2-8 18-8 20 0c-3-2-5-3-10-3s-7 1-10 3z" fill="#444"/><rect x="21" y="23" width="22" height="2" fill="#222" opacity="0.6"/>');
+    case 'nanny': return base('<path d="M12 60c2-14 10-20 20-20s18 6 20 20z" fill="#5a7d6b"/><rect x="42" y="46" width="10" height="12" rx="2" fill="#f5efe6"/><rect x="45" y="44" width="4" height="3" fill="#333"/>', '<path d="M19 26c0-12 26-12 26 0c0 4-3 6-4 4c-2-6-16-6-18 0c-1 2-4 0-4-4z" fill="#a0522d"/>');
+    case 'godfather': return base('<path d="M8 62c2-18 12-24 24-24s22 6 24 24z" fill="#1a1a1a"/><path d="M26 38h12v6l-6 4l-6-4z" fill="#f5efe6"/>', '<path d="M22 20c2-6 18-6 20 0c0 2-20 2-20 0z" fill="#111"/><rect x="21" y="22" width="22" height="4" rx="1" fill="#111"/>');
+    default: return base('<path d="M12 60c2-14 10-20 20-20s18 6 20 20z" fill="#3a1f4a"/><rect x="22" y="44" width="20" height="3" fill="#ffb36b"/>', '<ellipse cx="30" cy="16" rx="14" ry="5" fill="#8b1e5c"/><path d="M19 22c0-10 26-10 26 0z" fill="#8b1e5c"/>');
+  }
+}
+
 function managerBlock(s: GameState): string {
   const m = s.manager;
   if (!m) return `<h3 class="sub">Manager</h3><p class="hint">No manager. You book your own gigs and haggle with labels yourselves. Managers find you once you have a following.</p>`;
   const cost = sackCost(s);
   return `<h3 class="sub">Manager</h3>
     <article class="deal-card">
-      <h3>${esc(m.name)}</h3>
-      <p class="hint">${esc(managerCard(m).kind)} ${esc(managerCard(m).past)}</p>
+      <div class="mgr-head">${portrait(m.kind ?? 'hustler')}<div><h3>${esc(m.name)}</h3>
+      <p class="hint">${esc(managerCard(m).kind)} ${esc(managerCard(m).past)}</p></div></div>
       <div class="mgr-stats">${([['Clout', m.clout, managerCard(m).clout], ['Care', m.care ?? 30, managerCard(m).care], ['Nous', m.nous ?? 40, managerCard(m).nous]] as [string, number, string][]).map(([k, v, w]) => `<div class="mgr-stat"><span class="lbl">${k} <strong>${v}</strong></span><div class="bar"><i style="width:${v}%"></i></div><small class="lbl">${esc(w)}</small></div>`).join('')}</div>
       <dl class="deal">
         <div><dt>Commission</dt><dd>${Math.round(m.cut * 100)}% of everything</dd></div>
         <div><dt>Taken so far</dt><dd>${money(m.taken)}</dd></div>
         <div><dt>Contract</dt><dd>${m.read ? 'Read by a solicitor' : 'Nobody read it'}</dd></div>
       </dl>
-      <p class="hint">Clout: +${Math.round(m.clout / 1.5)}% on gig money, labels listen, haggling helps. Care: habits drift down, rows headed off, the dangerous one sent home. Nous: ${Math.round((m.nous ?? 40) / 4)}% off studio bills, sharper haggling.${m.kind === 'godfather' ? ' Leaving costs three times the usual.' : ''}${m.kind === 'visionary' ? ' Spends on the concept now and then.' : ''}</p>
-      <div class="choices">${(['tv', 'private', 'label', 'press'] as ManagerJob[]).map((j) => { const why = jobLocked(s, j); return `<button class="choice" data-do="managerJob" data-arg="${j}" ${why ? 'disabled' : ''}><span class="choice-head"><strong>${JOB_LABEL[j]}</strong><span class="cost free">${why ? '' : 'no week spent'}</span></span><span class="choice-hint">${esc(why ?? jobHint(s, j))}</span></button>`; }).join('')}</div>
+      <p class="hint">What they do, unasked: specials in the gig menu, the telly, a word about the weak link, the label leaned on, stories kept out of the papers, the dangerous one sent home. Clout: +${Math.round(m.clout / 1.5)}% on gig money, labels listen. Nous: ${Math.round((m.nous ?? 40) / 4)}% off studio bills.${m.kind === 'godfather' ? ' Leaving costs three times the usual.' : ''}${m.kind === 'visionary' ? ' Spends on the concept now and then.' : ''}</p>
       <div class="card-foot"><button class="btn ghost" data-do="sackManager" ${s.money < cost ? 'disabled' : ''}>${armedSack ? `Really pay ${money(cost)} to sack them?` : `Sack: ${money(cost)} pay-off`}</button></div>
     </article>`;
 }
@@ -949,7 +958,7 @@ function nextBlock(s: GameState): string {
     <div class="tiles">
       ${types.map((t) => `<button class="tile ${t === 'tour' && tourShut ? 'shut' : ''}" data-do="open" data-arg="${t}" aria-expanded="${open === t}"><strong>${ACTION_LABEL[t]}</strong><span>${esc(subs[t])}</span></button>`).join('')}
     </div>
-    ${open === 'tour' ? tourSetup(s, opts) : open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked)).join('')}</div>` : ''}
+    ${open === 'tour' ? tourSetup(s, opts) : open ? `<div class="choices">${roleSelect}${opts.map((o) => choiceBtn('choose', open, o.id, o.label, o.cost, o.hint, o.locked, o.special)).join('')}</div>` : ''}
     ${goalLine(s)}`;
 }
 
@@ -1109,9 +1118,9 @@ function chartsSection(s: GameState): string {
     </section>`;
 }
 
-function choiceBtn(what: string, arg: string, arg2: string, label: string, cost: number, hint: string, locked?: string): string {
-  return `<button class="choice" data-do="${what}" data-arg="${arg}" data-arg2="${arg2}" ${locked ? 'disabled' : ''}>
-    <span class="choice-head"><strong>${esc(label)}</strong><span class="cost ${cost ? '' : 'free'}">${cost ? `£${cost}` : 'Free'}</span></span>
+function choiceBtn(what: string, arg: string, arg2: string, label: string, cost: number, hint: string, locked?: string, special?: boolean): string {
+  return `<button class="choice ${special ? 'special' : ''}" data-do="${what}" data-arg="${arg}" data-arg2="${arg2}" ${locked ? 'disabled' : ''}>
+    <span class="choice-head"><strong>${esc(label)}</strong><span class="cost ${cost ? '' : 'free'}">${special ? 'This week only' : cost ? `£${cost}` : 'Free'}</span></span>
     <span class="choice-hint">${esc(locked ?? hint)}</span>
   </button>`;
 }

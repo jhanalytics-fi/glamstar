@@ -16,6 +16,7 @@ import type { TourPolicy } from './types';
 import { labelById, labelRelease, labelSales, tagRelease, royaltyPerCopy } from './labels';
 import { commission, feeBoost, nousSaving } from './managers';
 import { bigShowLocked, bigShowsFor } from './bigShows';
+import { afterSpecial, managerSpecial } from './managerVoice';
 import { bestHome, homeRest, owned, toySpec } from './toys';
 import { takeProducer } from './moneyEvents';
 import { WHEELS, wheelsOf } from './wheels';
@@ -33,6 +34,8 @@ export interface ActionOption {
   hint: string;
   /** Why it can't be picked right now. */
   locked?: string;
+  /** Brought in by the manager this week: shown with a badge. */
+  special?: boolean;
 }
 
 export const ACTION_LABEL: Record<ActionType, string> = {
@@ -157,6 +160,15 @@ function gigSpecs(s: GameState): Record<string, GigSpec> {
       crowd: (st, rng) => Math.round(sup.fans * 0.35 + st.fans * 0.3 + rng.int(-10, 10)),
     };
   }
+  const sp = managerSpecial(s);
+  if (sp) {
+    specs[sp.id] = {
+      venue: sp.venue, capacity: sp.capacity, fee: sp.fee, door: 0, cost: 0, fanMult: sp.fanMult, energyMult: sp.id === 'mgr_private' ? 0.9 : 1.1, buzzBonus: sp.buzz,
+      crowd: (_st, rng) => rng.int(sp.crowd[0], sp.crowd[1]),
+      fresh: sp.id === 'mgr_support' ? 0.5 : undefined,
+      after: (st, _rng, perf) => afterSpecial(st, sp.id, perf),
+    };
+  }
   for (const b of bigShowsFor(s)) {
     specs[`big_${b.id}`] = {
       venue: b.venue, capacity: b.capacity, fee: b.fee, door: b.door, cost: 0, fanMult: b.fanMult, energyMult: b.energyMult, buzzBonus: b.buzzBonus,
@@ -250,6 +262,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
         });
       }
       if (!big) opts.push({ id: 'paytoplay', label: 'Pay to play at The Velvet Cellar', cost: 60, hint: 'You keep nothing. A proper Soho stage looks good.' });
+      { const sp = managerSpecial(s); if (sp) opts.unshift({ id: sp.id, label: sp.label, cost: 0, hint: sp.hint, special: true }); }
       for (const b of bigShowsFor(s)) {
         const why = bigShowLocked(s, b);
         opts.push({ id: `big_${b.id}`, label: b.label, cost: b.cost, hint: `${b.hint}${b.fee ? ` £${b.fee.toLocaleString('en-GB')}${b.door ? ' plus a cut of the door' : ''}.` : ''}`, locked: why ?? undefined });

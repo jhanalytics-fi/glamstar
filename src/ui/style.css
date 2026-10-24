@@ -189,6 +189,9 @@ button, input, select { font: inherit; color: inherit; }
 .rename-two input { width: 100%; box-sizing: border-box; }
 .rename-btns { display: flex; gap: 8px; }
 .band-word { flex-basis: 100%; margin: 6px 0 0; font-family: var(--cond); font-size: 1.02rem; color: var(--muted); line-height: 1.35; }
+.choice.special { border-color: #ffb36b; background: linear-gradient(135deg, rgba(255, 61, 139, 0.12), rgba(255, 179, 107, 0.08)); }
+.mgr-head { display: flex; gap: 12px; align-items: flex-start; }
+.portrait { width: 64px; height: 64px; flex: none; }
 .toy-kind { margin: 14px 0 4px; font-family: var(--cond); text-transform: uppercase; letter-spacing: 0.06em; }
 .choice.owned { border-color: #ffb36b; }
 .owns { font-family: var(--cond); color: var(--muted); margin: 4px 0; }

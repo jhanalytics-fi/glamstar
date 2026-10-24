@@ -3,6 +3,7 @@
 import { Rng, clamp } from './rng';
 import { addBuzz, adjust, earn, log, milestone, mutate } from './helpers';
 import type { GameState, Manager, ManagerKind } from './types';
+import { managerActs, managerComment } from './managerVoice';
 
 const NAMES = [
   'Clive Sparrowhawk', 'Maurice "Mo" Lightfoot', 'Vera Pendleton-Shaw', 'Terry Glass', 'Dougie Fairbrass', 'Sandra "Sandy" Kettle',
@@ -122,6 +123,8 @@ export function sackManager(state: GameState): GameState {
 export function managerWeek(s: GameState, rng: Rng): void {
   const m = s.manager;
   if (!m) return;
+  managerActs(s, rng);
+  managerComment(s, rng);
   if (rng.chance(m.clout / 900)) {
     addBuzz(s, 2);
     log(s, `${m.name} got the band a mention on a breakfast radio show. You were described as "lively".`, 'good');

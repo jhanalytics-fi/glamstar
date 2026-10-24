@@ -271,7 +271,11 @@ Getting there was too easy and staying there was automatic. hardPart.ts adds fou
 - The one hit. `theHit` finds the best-selling single; if it has sold four times anything else, the band is a one-hit wonder: the hit sells at 1.6 for years, and every later record more than 12 points weaker sells at 0.6. The `one_hit_wonder` event offers milking it (a licence fee up to £400,000, mood down), refusing to play it (fans -12%, buzz +8) or writing Part Two.
 - The taxman. From 100,000 fans and £200,000 in the bank, once: pay 22% of the bank, fight it (odds 30% plus the manager's nous, win halves it, lose adds 15%), or tax exile (no home gigs or UK-starting tours for 26 weeks, fans -6%).
 
-## Prototype status (v0.52)
+## The manager acts (v0.53)
+
+The four job buttons are gone from the Business tab. The manager does things unasked (managerVoice.ts, `managerActs`, each week off tour): brings a special into the gig menu for next week (a private do at 1.5x the usual fee, a support slot in front of a bigger act's crowd with a fresh-crowd floor, or for the visionary a televised charity gala; hustlers 30% a week, the heavy 22%, the visionary 18%, others 8%, plus clout), gets the band on television (`manager_tv` event: mime, play live, or refuse), has a word in the car park about the weak link and brings a better player on Tuesday (`manager_tip`, once in 40 weeks when someone is 12+ below the band on skill and stage), leans on the label once a quarter if they are the accountant, keeps a story out of the papers if they are the minder or the heavy, and makes Big Tony's debt go away if they are the heavy. And they talk: `managerComment` gives a line 30% of weeks, in the voice of their kind, about the week's gig, a flop, the money, a member's habit or silence, idleness or the tour. Specials show in the gig menu with a badge and "This week only". The manager card has a portrait, five SVG faces by kind.
+
+## Prototype status (v0.53)
 
 Playable in the browser. Implemented:
 
