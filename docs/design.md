@@ -277,7 +277,9 @@ The four job buttons are gone from the Business tab. The manager does things una
 
 The post (v0.54): letters.ts brings a letter about one week in six (off tour, from 20 fans): a fan with a wallpapered bedroom or a launderette moment, Mum (twenty pounds in with it when you are broke, a word about the photograph when the habit shows, the Co-op when you are famous), the Revenue once there is £20,000 in the bank, a former member (bitter if fired, proud if they quit, wistful if poached), a lost member's mother, four kids in a garage who learned the album off a tape of a tape, the label's lawyers, the fan club, a hotel address with no name. Each nudges the player's mood a point or two, sometimes a few fans or a tenner; the log carries the first line and the History tab keeps the last twelve in the letterbox.
 
-## Prototype status (v0.54)
+The press (v0.55): press.ts. Four papers with prejudices (Noise Weekly likes glam, new wave and punk; the Gramophone Gazette likes hard rock and hates pop and glam; Smash! likes pop and hates metal and punk; Kerrunch likes metal and hard rock and hates pop and new wave). Every non-demo record gets two reviews from 5,000 fans (one, 60% of the time, below): stars from quality ((q-30)/14) plus prejudice, a compilation or live penalty, a coin for a double, and a reviewer's mood; a quote per star count; and the average moves the record's appeal 8% a star (weighted by the paper's pull: Smash! 1.2, Gazette 0.6). Four stars and up lifts buzz and mood; two and under the reverse. Reviews sit on the album page and as stars in the discography. The `press_question` event (within two weeks of a release or after a legendary gig, at most every ten weeks): five questions, four answers each, in the football-manager style: the feud quote, the loyalty line, the sandwich, the cigarette.
+
+## Prototype status (v0.55)
 
 Playable in the browser. Implemented:
 

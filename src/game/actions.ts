@@ -2,6 +2,7 @@
 import { Rng, clamp } from './rng';
 import { mourningBoost } from './death';
 import { judgement } from './hardPart';
+import { reviewRecord } from './press';
 import { catalogueQuality, pressRecord } from './catalogue';
 import { reactToSong } from './reactions';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
@@ -821,6 +822,7 @@ function cutCatalogue(s: GameState, rng: Rng, what: 'hits' | 'live'): void {
     const rec = pressRecord(s, 'album', title, catalogueQuality(s, 10) + 3, 0.85 + Math.min(0.3, s.releases.filter((r) => r.kind === 'single').length * 0.02), { comp: 'hits', label: c?.label, royalty });
     if (c) c.unrecouped += Math.round(c.terms.budget * 0.2);
     addBuzz(s, 7);
+    reviewRecord(s, rng, rec);
     milestone(s, 'release', `Released "${rec.title}", a compilation.`);
     log(s, `"${rec.title}": every single, two B-sides, a sleeve with the band's faces from five haircuts. ${label ? `${label.name} are pleased: a record in the shops with no studio bill.` : 'Pressed on your own label, sold to everyone who was late.'}`, 'good');
   } else {
@@ -832,6 +834,7 @@ function cutCatalogue(s: GameState, rng: Rng, what: 'hits' | 'live'): void {
     if (c) c.unrecouped += Math.round(c.terms.budget * 0.25);
     addBuzz(s, 9);
     for (const m of available(s)) adjust(m, 'mood', 4);
+    reviewRecord(s, rng, rec);
     milestone(s, 'release', `Released "${rec.title}", recorded on ${tour.name}.`);
     log(s, `"${rec.title}": the tapes from ${tour.name}, mixed in a week. Crowd noise from a different night, a drum solo nobody asked for, and the hits a shade faster than the records. ${label ? `${label.name} put a sticker on it.` : 'Pressed on your own label.'}`, 'good');
   }
@@ -879,7 +882,7 @@ function release(s: GameState, rng: Rng, kind: ReleaseKind, lift = false, tracks
   s.releases.push(rec);
   const labelName = rec.label ? labelById(rec.label).name : 'Kebab Shop Records';
   milestone(s, 'release', `Released "${title}", ${RELEASE_LABEL[kind]}${kind === 'demo' ? '' : ` on ${labelName}`}.`);
-  if (kind !== 'demo') masterpiecePress(s, rng, songs);
+  if (kind !== 'demo') { masterpiecePress(s, rng, songs); reviewRecord(s, rng, rec); }
   // An album needs a name. The band has ideas; so, probably, do you.
   if (kind === 'album' && !s.pending) {
     const who = available(s).filter((m) => !m.isPlayer);

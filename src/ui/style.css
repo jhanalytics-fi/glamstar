@@ -197,6 +197,9 @@ button, input, select { font: inherit; color: inherit; }
 .letter p { margin: 0; }
 .letter-from { color: #ffb36b; margin-bottom: 4px !important; }
 .letter-from .lbl { margin-right: 8px; }
+.review { font-family: var(--cond); font-size: 0.95rem; margin: 4px 0; }
+.review em { color: var(--ink, #eee); }
+.stars { color: #ffb36b; letter-spacing: 0.05em; }
 .toy-kind { margin: 14px 0 4px; font-family: var(--cond); text-transform: uppercase; letter-spacing: 0.06em; }
 .choice.owned { border-color: #ffb36b; }
 .owns { font-family: var(--cond); color: var(--muted); margin: 4px 0; }

@@ -1146,7 +1146,7 @@ function recordsSection(s: GameState): string {
   const songs = [...s.songs].sort((a, b) => b.quality - a.quality);
   const peak = (r: (typeof s.releases)[number], c: string) => (r.peaks?.[c] ? `#${r.peaks[c]}` : '');
   const rows = [...s.releases].reverse().map((r) => `<tr>
-      <td><strong>"${esc(r.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameRelease" data-arg="${r.id}" >Rename</button>`}${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
+      <td><strong>"${esc(r.title)}"</strong>${s.over ? '' : ` <button class="btn ghost tiny" data-do="renameRelease" data-arg="${r.id}" >Rename</button>`}${r.reviews?.length ? `<br><small class="stars" title="${esc(r.reviews.map((v) => `${v.paper}: ${v.stars}/5`).join(', '))}">${'★'.repeat(Math.round(r.reviews.reduce((a, v) => a + v.stars, 0) / r.reviews.length))}</small>` : ''}${r.cert ? `<br><small class="cert ${r.cert}">${CERT_LABEL[r.cert]}</small>` : ''}${r.outside ? '<br><small class="lbl">outside song</small>' : ''}</td>
       <td>${r.comp === 'hits' ? 'Compilation' : r.comp === 'live' ? 'Live' : r.comp === 'bootleg' ? 'Bootleg' : kind[r.kind]}</td>
       <td>${dateLabel(r.week)}</td>
       <td class="lbl">${esc(r.comp === 'bootleg' ? 'Bootleg' : r.label ? labelById(r.label).name : r.kind === 'demo' ? 'Merch table' : 'Kebab Shop Records')}</td>
@@ -1168,6 +1168,7 @@ function recordsSection(s: GameState): string {
       <div class="album-in">
         <h4>${esc(r.title)}${r.double ? ' <small class="lbl">double album</small>' : r.tracks && r.tracks > 8 ? ` <small class="lbl">${r.tracks} tracks</small>` : ''}</h4>
         <p class="lbl">${esc(lbl)}<br>${dateLabel(r.week)}${r.cert ? ` <span class="cert ${r.cert}">${CERT_LABEL[r.cert]}</span>` : ''}<br>${r.sold.toLocaleString('en-GB')} sold${r.peaks?.albums ? `, albums chart #${r.peaks.albums}` : ''}</p>
+        ${(r.reviews ?? []).map((v) => `<p class="review"><span class="stars">${'★'.repeat(v.stars)}${'☆'.repeat(5 - v.stars)}</span> <em>"${esc(v.quote)}"</em> <span class="lbl">${esc(v.paper)}</span></p>`).join('')}
         ${quarters ? quarters.map((q, i) => side(`Side ${'ABCD'[i]}`, q, quarters.slice(0, i).reduce((n, x) => n + x.length, 0))).join('') : a.length ? side('Side A', a, 0) + side('Side B', b, a.length) : '<p class="hint">The tape box says nothing about what is on it.</p>'}
       </div>
     </article>`;

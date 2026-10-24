@@ -101,6 +101,8 @@ export interface Release {
   peaks?: Partial<Record<string, number>>;
   /** Sales certification, as the trade body counts it. */
   cert?: Cert;
+  /** What the papers said. */
+  reviews?: Review[];
 }
 
 export type Cert = 'silver' | 'gold' | 'platinum' | 'multiplatinum';
@@ -128,6 +130,13 @@ export interface Alumnus {
   joined: number;
   left: number;
   how: 'fired' | 'quit' | 'poached' | 'died';
+}
+
+/** One paper's verdict on a record. */
+export interface Review {
+  paper: string;
+  stars: number;
+  quote: string;
 }
 
 /** A letter that came in the post. */

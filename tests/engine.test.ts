@@ -10,7 +10,7 @@ import { catalogueWeek, pressRecord } from '../src/game/catalogue';
 import { TOUR_EVENT_IDS } from '../src/game/tourEvents';
 import { START_TOTAL_HEADROOM, START_TOTAL_OVR, headroom, overall, reveal, rollPotential, seenRange, traitDisplay } from '../src/game/characters';
 import { bandName, isBlocked } from '../src/game/names';
-import type { Action, ActionType, GameState, NewGameInput } from '../src/game/types';
+import type { Action, ActionType, GameState, NewGameInput, Release } from '../src/game/types';
 
 const input: NewGameInput = { name: 'Jussi', instrument: 'guitar', bandName: 'Velvet Daggers', background: 'artschool', style: 'glam', seed: 42 };
 
@@ -757,6 +757,23 @@ describe('action choices', () => {
     expect(r.money).toBeGreaterThan(ready.money);
   });
 
+  it('the papers review every record: stars, a quote, and a nudge on sales', async () => {
+    const { reviewRecord } = await import('../src/game/press');
+    const s: GameState = { ...newGame(input), fans: 6000 };
+    const good: Release = { id: 'g', kind: 'album', title: 'G', quality: 90, appeal: 1, week: 1, sold: 0, lastWeek: 0 };
+    const bad: Release = { id: 'b', kind: 'album', title: 'B', quality: 35, appeal: 1, week: 1, sold: 0, lastWeek: 0 };
+    let up = 0; let down = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const a = structuredClone(s); const g = { ...good }; reviewRecord(a, new Rng(seed), g); if (g.appeal > 1) up++; expect(g.reviews!.length).toBe(2);
+      const c = structuredClone(s); const b = { ...bad }; reviewRecord(c, new Rng(seed), b); if (b.appeal < 1) down++;
+      expect(a.log.at(-1)!.text).toMatch(/★/);
+    }
+    expect(up).toBeGreaterThan(14);
+    expect(down).toBeGreaterThan(14);
+    const r = act({ ...s, money: 5000, songs: Array.from({ length: 8 }, (_, i) => ({ title: `S${i}`, quality: 75, writer: 'p', kind: 'standard' as const, genre: 'glam' as const, released: false })) }, A('release', 'album'));
+    expect(r.releases.find((x) => x.kind === 'album')!.reviews!.length).toBe(2);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -972,6 +989,7 @@ describe('choice events', () => {
     fashion_turns: (s) => { s.fans = 40000; s.week = 480; s.members[0].style = 'newwave'; },
     one_hit_wonder: (s) => { s.week = 60; s.releases.push({ id: 'h1', kind: 'single', title: 'Big One', quality: 90, appeal: 1, week: 10, sold: 500000, lastWeek: 0 }, { id: 'h2', kind: 'single', title: 'B', quality: 60, appeal: 1, week: 20, sold: 20000, lastWeek: 0 }, { id: 'h3', kind: 'single', title: 'C', quality: 60, appeal: 1, week: 30, sold: 15000, lastWeek: 0 }); },
     taxman_calls: (s) => { s.fans = 150000; s.money = 500000; s.week = 160; },
+    press_question: (s) => { s.fans = 500; s.releases.push({ id: 'pq', kind: 'single', title: 'S', quality: 60, appeal: 1, week: s.week, sold: 0, lastWeek: 0 }); },
     manager_tv: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'visionary', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTv = s.week; s.fans = 3000; },
     manager_tip: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'hustler', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTip = s.week; s.pending = { def: 'manager_tip', params: { m: s.members[1].id, rival: 'The Rivals' }, week: s.week }; },
     hitch_abroad: (s) => { s.fans = 200; s.money = 100; },
