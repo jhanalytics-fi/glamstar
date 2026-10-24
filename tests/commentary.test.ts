@@ -257,3 +257,24 @@ describe('the band in a sentence', () => {
     expect(words.size).toBeGreaterThan(2);
   });
 });
+
+describe('the post', () => {
+  it('letters arrive now and then, from more than one sender, with small effects', async () => {
+    const { postWeek } = await import('../src/game/letters');
+    const { newGame } = await import('../src/game/engine');
+    const { Rng } = await import('../src/game/rng');
+    const base = newGame({ name: 'Jussi', instrument: 'guitar', bandName: 'X', background: 'artschool', style: 'glam', seed: 8 });
+    base.fans = 3000; base.money = 50; base.week = 80;
+    base.alumni.push({ name: 'Dave Price', realName: 'Dave Price', role: 'bass', joined: 0, left: 40, how: 'quit' });
+    const senders = new Set<string>();
+    let got = 0;
+    for (let seed = 1; seed <= 150; seed++) {
+      const s = structuredClone(base);
+      postWeek(s, new Rng(seed));
+      if (s.letters?.length) { got++; senders.add(s.letters[0].from.split(',')[0]); expect(s.log.at(-1)!.text).toMatch(/^A letter from/); }
+    }
+    expect(got).toBeGreaterThan(10);
+    expect(got).toBeLessThan(50);
+    expect(senders.size).toBeGreaterThan(4);
+  });
+});

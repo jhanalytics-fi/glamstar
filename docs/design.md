@@ -275,7 +275,9 @@ Getting there was too easy and staying there was automatic. hardPart.ts adds fou
 
 The four job buttons are gone from the Business tab. The manager does things unasked (managerVoice.ts, `managerActs`, each week off tour): brings a special into the gig menu for next week (a private do at 1.5x the usual fee, a support slot in front of a bigger act's crowd with a fresh-crowd floor, or for the visionary a televised charity gala; hustlers 30% a week, the heavy 22%, the visionary 18%, others 8%, plus clout), gets the band on television (`manager_tv` event: mime, play live, or refuse), has a word in the car park about the weak link and brings a better player on Tuesday (`manager_tip`, once in 40 weeks when someone is 12+ below the band on skill and stage), leans on the label once a quarter if they are the accountant, keeps a story out of the papers if they are the minder or the heavy, and makes Big Tony's debt go away if they are the heavy. And they talk: `managerComment` gives a line 30% of weeks, in the voice of their kind, about the week's gig, a flop, the money, a member's habit or silence, idleness or the tour. Specials show in the gig menu with a badge and "This week only". The manager card has a portrait, five SVG faces by kind.
 
-## Prototype status (v0.53)
+The post (v0.54): letters.ts brings a letter about one week in six (off tour, from 20 fans): a fan with a wallpapered bedroom or a launderette moment, Mum (twenty pounds in with it when you are broke, a word about the photograph when the habit shows, the Co-op when you are famous), the Revenue once there is £20,000 in the bank, a former member (bitter if fired, proud if they quit, wistful if poached), a lost member's mother, four kids in a garage who learned the album off a tape of a tape, the label's lawyers, the fan club, a hotel address with no name. Each nudges the player's mood a point or two, sometimes a few fans or a tenner; the log carries the first line and the History tab keeps the last twelve in the letterbox.
+
+## Prototype status (v0.54)
 
 Playable in the browser. Implemented:
 

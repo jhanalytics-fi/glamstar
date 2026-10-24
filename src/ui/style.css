@@ -192,6 +192,11 @@ button, input, select { font: inherit; color: inherit; }
 .choice.special { border-color: #ffb36b; background: linear-gradient(135deg, rgba(255, 61, 139, 0.12), rgba(255, 179, 107, 0.08)); }
 .mgr-head { display: flex; gap: 12px; align-items: flex-start; }
 .portrait { width: 64px; height: 64px; flex: none; }
+.letters { display: grid; gap: 10px; margin: 6px 0 16px; }
+.letter { background: rgba(255, 245, 230, 0.06); border: 1px solid rgba(255, 220, 180, 0.18); border-radius: 4px; padding: 10px 14px; font-family: var(--cond); font-size: 1.02rem; line-height: 1.4; }
+.letter p { margin: 0; }
+.letter-from { color: #ffb36b; margin-bottom: 4px !important; }
+.letter-from .lbl { margin-right: 8px; }
 .toy-kind { margin: 14px 0 4px; font-family: var(--cond); text-transform: uppercase; letter-spacing: 0.06em; }
 .choice.owned { border-color: #ffb36b; }
 .owns { font-family: var(--cond); color: var(--muted); margin: 4px 0; }

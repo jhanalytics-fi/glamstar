@@ -130,6 +130,13 @@ export interface Alumnus {
   how: 'fired' | 'quit' | 'poached' | 'died';
 }
 
+/** A letter that came in the post. */
+export interface Letter {
+  week: number;
+  from: string;
+  text: string;
+}
+
 /** Something bought with the money: a house, a car, a horse. */
 export interface Toy {
   id: string;
@@ -335,6 +342,8 @@ export interface GameState {
   memorials?: Memorial[];
   /** The good life: what you own. */
   toys?: Toy[];
+  /** The letterbox: the post that came, newest last. */
+  letters?: Letter[];
   awards: Award[];
   /** A situation the player must respond to before the next week. */
   pending: PendingEvent | null;

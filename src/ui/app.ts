@@ -556,7 +556,7 @@ function panelBody(s: GameState): string {
       return recordsSection(s) || '<p class="hint">No songs yet. Write some.</p>';
     case 'history': {
       const views = `<div class="chips">${(['milestones', 'all'] as const).map((v) => `<button class="chip" data-do="historyView" data-arg="${v}" aria-pressed="${historyView === v}">${v === 'milestones' ? 'Milestones' : 'Everything'}</button>`).join('')}</div>`;
-      return views + (historyView === 'milestones' ? lineupBlock(s) + toursBlock(s) + awardsBlock(s) + milestoneList(s) : logList(s, () => true));
+      return views + (historyView === 'milestones' ? lineupBlock(s) + toursBlock(s) + awardsBlock(s) + letterbox(s) + milestoneList(s) : logList(s, () => true));
     }
   }
 }
@@ -1188,6 +1188,14 @@ function recordsSection(s: GameState): string {
       </table></div>
       <p class="hint">Sound right now: ${GENRE_LABEL[s.members[0].style]}. Change direction from the Write menu.</p>` : '<p class="hint">No songs yet. Write some.</p>'}
     </section>`;
+}
+
+/** The post, newest first. */
+function letterbox(s: GameState): string {
+  const letters = [...(s.letters ?? [])].reverse().slice(0, 12);
+  if (!letters.length) return '';
+  return `<h3 class="sub">The letterbox</h3>
+    <div class="letters">${letters.map((l) => `<article class="letter"><p class="letter-from"><span class="lbl">${dateLabel(l.week)}</span> ${esc(l.from)}</p><p>${esc(l.text)}</p></article>`).join('')}</div>`;
 }
 
 function lineupBlock(s: GameState): string {
