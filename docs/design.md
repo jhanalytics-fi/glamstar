@@ -281,7 +281,9 @@ The press (v0.55): press.ts. Four papers with prejudices (Noise Weekly likes gla
 
 Label sizes (v0.56): five tiers instead of three, shown on every offer card. Small independent (Bad Penny, Wax Lyrical, Gutterpress; the sharks Goldtooth and Starlight wear the same badge), mid-size independent (Northern Lights, Velvet Grind: from 2,500 fans and buzz 30 or a chart entry; advances £1,500 to £3,000, two or three albums, promo 2.0 to 2.2, reach 0.6), major (Colossus, Imperial, Polyvox as before) and global major (Transatlantic Music Corporation, Meridian Worldwide: only for a band of 80,000 fans with a UK top ten; advances £40,000 to £90,000 plus heat, four to six albums, promo 3.5 to 3.8, reach 1.4, deductions +14%, the heaviest flop expectation at 15,000 and the biggest studio bonus). Tour support, hired-pen floors and the signing flavour scale with the tier.
 
-## Prototype status (v0.56)
+Australasia and the Far East (v0.57): a tour tier between Japan and North America (from 20,000 fans, buzz 50, a national hit; 3 to 6 weeks, 4 shows a week, 2,000 to 12,000 seats, £6,500 a night, £23,000 a week): Sydney to Perth, Auckland and Wellington, Hong Kong, Singapore, Bangkok, Manila, Seoul, Taipei, Kuala Lumpur, Jakarta, in Entertainment Centres and Showgrounds, with its own road lines (the customs man, the barbecue sunburn in the shape of a vest, Hong Kong from the harbour). Merch 1.25, a fresh pool of 30, reach to the world chart +0.25 per tour. Once, on that tour with 30,000 fans, `tour_beijing`: a hall in Beijing and a ministry that said yes in writing; go and 30% the plug is pulled after six songs (front pages everywhere, fans +6%), otherwise eighteen thousand people on their seats, buzz +30, fans +12%, a permanent reach bonus, and a drummer who says "we're huge in Beijing" for the rest of his life.
+
+## Prototype status (v0.57)
 
 Playable in the browser. Implemented:
 

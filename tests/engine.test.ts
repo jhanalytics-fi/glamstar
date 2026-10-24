@@ -774,6 +774,25 @@ describe('action choices', () => {
     expect(r.releases.find((x) => x.kind === 'album')!.reviews!.length).toBe(2);
   });
 
+  it('Australasia sits between Japan and America, plays Sydney to Seoul, and Beijing calls once', async () => {
+    const { TOUR_TIERS, tierById, startTour } = await import('../src/game/tour');
+    const ids = TOUR_TIERS.map((t) => t.id);
+    expect(ids.indexOf('australasia')).toBe(ids.indexOf('japan') + 1);
+    const s: GameState = { ...newGame(input), fans: 40000, money: 500000, buzz: 60 };
+    s.world.peaks.uk = 5;
+    startTour(s, new Rng(2), 'australasia', 4, 'steady');
+    expect(s.tour!.tier).toBe('australasia');
+    const countries = new Set(s.tour!.route.map((d) => d.country));
+    expect(countries.size).toBeGreaterThan(2);
+    expect(tierById('australasia')!.fans).toBe(20000);
+    const f = forceEvent(s, 'tour_beijing');
+    const v = viewPending(f)!;
+    expect(v.title).toContain('Beijing');
+    const went = resolvePending(f, 0);
+    expect(went.flags.beijing).toBeDefined();
+    expect(went.log.some((l) => l.text.includes('huge in Beijing'))).toBe(true);
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -992,6 +1011,7 @@ describe('choice events', () => {
     press_question: (s) => { s.fans = 500; s.releases.push({ id: 'pq', kind: 'single', title: 'S', quality: 60, appeal: 1, week: s.week, sold: 0, lastWeek: 0 }); },
     manager_tv: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'visionary', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTv = s.week; s.fans = 3000; },
     manager_tip: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'hustler', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTip = s.week; s.pending = { def: 'manager_tip', params: { m: s.members[1].id, rival: 'The Rivals' }, week: s.week }; },
+    tour_beijing: (s) => { s.fans = 40000; },
     hitch_abroad: (s) => { s.fans = 200; s.money = 100; },
     big_abroad: (s) => { s.fans = 3000; s.releases.push({ id: 'x1', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 100, lastWeek: 0 }); },
     famous_friend_drives: (s) => { s.fans = 20000; s.members[1].habit = 40; s.flags.lastBigParty = s.week; },
@@ -1010,7 +1030,7 @@ describe('choice events', () => {
       for (let seed = 1; seed <= 10 && !tried; seed++) {
         const s = richState(seed);
         SETUP[id]?.(s);
-        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad', 'hotel_floor', 'hotel_raid'].includes(id)) { startTour(s, new Rng(seed), id === 'tour_japan_gifts' ? 'japan' : 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
+        if (TOUR_EVENT_IDS.includes(id) || ['bus_crash', 'crowd_riot', 'member_arrested_abroad', 'hotel_floor', 'hotel_raid'].includes(id)) { startTour(s, new Rng(seed), id === 'tour_japan_gifts' ? 'japan' : id === 'tour_beijing' ? 'australasia' : 'america', 6, 'steady'); s.tour!.week = 2; s.members.forEach((m, i) => { if (i === 1) m.mood = 20; m.outWeeks = 0; }); }
         let forced: GameState;
         try { forced = forceEvent(s, id); } catch { continue; }
         tried = true;

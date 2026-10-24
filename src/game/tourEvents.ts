@@ -1,7 +1,7 @@
 // Situations that only happen on the road.
 import { clamp } from './rng';
 import { addAffinity, available } from './chemistry';
-import { addBuzz, adjust, beat, first, log, player, revealLog, setVibe } from './helpers';
+import { addBuzz, adjust, beat, first, log, milestone, player, revealLog, setVibe } from './helpers';
 import { tierById } from './tour';
 import { ROAD_ROMANCE } from './romanceEvents';
 import type { EventDef } from './events';
@@ -12,12 +12,46 @@ const mates = (s: GameState) => s.members.filter((m) => !m.isPlayer && m.outWeek
 const tier = (s: GameState) => tierById(s.tour!.tier)!;
 const nextStop = (s: GameState) => s.tour!.route[Math.min(s.tour!.route.length - 1, s.tour!.week * s.tour!.gigsPerWeek)];
 const flying = (s: GameState) => ['america', 'stadiums'].includes(s.tour!.tier);
-const abroad = (s: GameState) => ['europe', 'arenas', 'japan', 'america', 'stadiums'].includes(s.tour!.tier);
+const abroad = (s: GameState) => ['europe', 'arenas', 'japan', 'australasia', 'america', 'stadiums'].includes(s.tour!.tier);
 /** Scales money in tour events with the size of the tour. */
 const scale = (s: GameState) => Math.max(1, Math.round(tier(s).weeklyCost / 400));
 const who = (m: Musician) => (m.isPlayer ? 'You' : first(m));
 
 export const TOUR_EVENTS: EventDef[] = [
+  {
+    // The first western rock band behind the wall. Or the second; the promoter is vague.
+    id: 'tour_beijing',
+    weight: 6,
+    where: 'tour',
+    big: true,
+    when: (s) => (s.tour?.tier === 'australasia' && s.flags.beijing === undefined && s.fans >= 30000 ? {} : null),
+    title: () => 'A date in Beijing',
+    text: (s) => `The promoter, over a beer in Hong Kong: a hall in Beijing, eighteen thousand seats, a ministry that has said yes in writing and may say no in person. No western rock band has done it, or one has, he is vague. The fee is small, the flight is tomorrow, and ${s.bandName} would be, for one night, the loudest thing in China.`,
+    options: () => [
+      {
+        label: 'Go. History, or a cell',
+        hint: 'Buzz like nothing else, the papers everywhere, fans in a country of a billion. Odds the plug is pulled mid-set: real.',
+        resolve: (st, rng) => {
+          st.flags.beijing = st.week;
+          const pulled = rng.chance(0.3);
+          for (const m of available(st)) adjust(m, 'energy', -14);
+          if (pulled) {
+            addBuzz(st, 20); st.fans += Math.round(st.fans * 0.06 + 3000);
+            for (const m of available(st)) adjust(m, 'mood', 4);
+            milestone(st, 'career', 'Beijing: the plug pulled after six songs. Front page everywhere.');
+            log(st, 'Six songs in, a man in a grey suit walked on stage and the power went. Eighteen thousand people sat in the dark and then, slowly, started clapping. The photograph of the band on a dark stage is on every front page in the world by Thursday. "We\'re huge in Beijing," says the drummer, and now you are.', 'good');
+          } else {
+            addBuzz(st, 30); st.fans += Math.round(st.fans * 0.12 + 8000);
+            st.flags.reachBonus = Math.round(((st.flags.reachBonus ?? 0) + 0.5) * 100) / 100;
+            for (const m of available(st)) { adjust(m, 'mood', 14); adjust(m, 'image', 3); }
+            milestone(st, 'career', 'Beijing: eighteen thousand people, the first western rock show anyone can remember.');
+            log(st, 'Eighteen thousand people who had never seen a rock band, sitting, then standing, then on the seats. The ministry man clapped. The encore was watched from the wings by half the Politburo\'s children. "We\'re huge in Beijing," says the drummer, every day, for the rest of his life.', 'good');
+          }
+        },
+      },
+      { label: 'No. The tour has dates and the band has limits', hint: 'The sensible answer. Somebody else does it next year and never shuts up about it.', resolve: (st) => { st.flags.beijing = st.week; for (const m of available(st)) adjust(m, 'mood', -3); log(st, 'You said no. A band from Birmingham said yes the following spring. They have a documentary.', 'neutral'); } },
+    ],
+  },
   {
     id: 'tour_japan_gifts',
     weight: 4,

@@ -60,7 +60,7 @@ export function wheelsOf(s: GameState): Wheels {
 /** What the band actually travels in on a given tour: arenas and above come with a hired bus if you have none. */
 export function tourWheels(s: GameState, tierId: string): { wheels: Wheels; hired: boolean } {
   const own = wheelsOf(s);
-  const bigTour = tierId === 'arenas' || tierId === 'japan' || tierId === 'america' || tierId === 'stadiums';
+  const bigTour = tierId === 'arenas' || tierId === 'japan' || tierId === 'australasia' || tierId === 'america' || tierId === 'stadiums';
   if (bigTour && WHEELS[own].rank < WHEELS.coach.rank) return { wheels: 'coach', hired: true };
   return { wheels: own, hired: false };
 }

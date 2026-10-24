@@ -458,7 +458,7 @@ export function reach(s: GameState): { us: number; europe: number; world: number
   return {
     us: Math.min(1, dist * 0.4 + toured('northamerica') * 0.4 + toured('world') * 0.1 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
     europe: Math.min(1, dist * 0.6 + toured('europe') * 0.25 + toured('ukeurope') * 0.25),
-    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + toured('japan') * 0.15 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
+    world: Math.min(1, dist * 0.5 + toured('northamerica') * 0.3 + toured('world') * 0.2 + toured('australasia') * 0.25 + toured('japan') * 0.15 + Math.min(0.3, (s.flags.bigVideos ?? 0) * 0.15)),
   };
 }
 
