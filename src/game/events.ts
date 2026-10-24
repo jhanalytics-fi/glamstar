@@ -21,6 +21,7 @@ import { SUB_EVENTS } from './subEvents';
 import { SPOTTED_EVENTS } from './spottedEvents';
 import { DEATH_EVENTS } from './death';
 import { LEGEND_EVENTS } from './legendEvents';
+import { HARD_EVENTS } from './hardPart';
 import { STUDIOS, nextStudio, type StudioId } from './studio';
 import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
@@ -2692,6 +2693,7 @@ const EVENTS: EventDef[] = [
   ...SPOTTED_EVENTS,
   ...DEATH_EVENTS,
   ...LEGEND_EVENTS,
+  ...HARD_EVENTS,
   WHEELS_EVENT,
   STUDIO_EVENT,
   ...TOUR_EVENTS,

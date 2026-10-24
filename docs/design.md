@@ -262,7 +262,16 @@ Binning songs (v0.50.1): an unreleased song can be dropped from the Songs table 
 
 The band in a sentence (v0.51): pulse.ts turns the numbers into one to three sentences under the band meters, deterministic (phrasing rotates with the week, no dice): what they are still talking about (a milestone from the last six weeks: the legendary night, the one, a death, a new face, a number one, a new record, the big show, a comeback, an award, a scandal; or the week on the road), how the room feels (energy under 30, then mood bands, with chemistry colouring the flat case) and who stands out (the quiet one under mood 40, the one rarely seen before noon at habit 60+, a pair at affinity -25 not speaking, or a pair at +70 finishing each other's riffs, and whoever is away). The hard flags (exhausted, out, might quit) stay as chips.
 
-## Prototype status (v0.51)
+## The hard part (v0.52)
+
+Getting there was too easy and staying there was automatic. hardPart.ts adds four things that can take a big band down without making a fast rise impossible:
+
+- Flops cost fans. `flopWatch` judges every studio album ten weeks out: under 45% of what the previous one had sold (and the previous one sold 20,000+) is a flop: fans -8%, buzz -8, mood -6, and the next release for 26 weeks sells at 0.8 (`judgement`). Outselling the flop by half lifts the mark.
+- Fashion turns. `fashionDrift`: a band of 30,000+ fans whose style's trend is under 0.5 loses fans every idle week in proportion to how far out of fashion it is (new wave in 1990 bleeds; glam in 1986 is safe). The `fashion_turns` event offers the choice once: change the sound (the next direction change costs no fans, tightness -20, 18% gone now), double down (40% of fans become core and never leave), or a year off (everyone out 26 weeks, 30% core).
+- The one hit. `theHit` finds the best-selling single; if it has sold four times anything else, the band is a one-hit wonder: the hit sells at 1.6 for years, and every later record more than 12 points weaker sells at 0.6. The `one_hit_wonder` event offers milking it (a licence fee up to £400,000, mood down), refusing to play it (fans -12%, buzz +8) or writing Part Two.
+- The taxman. From 100,000 fans and £200,000 in the bank, once: pay 22% of the bank, fight it (odds 30% plus the manager's nous, win halves it, lose adds 15%), or tax exile (no home gigs or UK-starting tours for 26 weeks, fans -6%).
+
+## Prototype status (v0.52)
 
 Playable in the browser. Implemented:
 

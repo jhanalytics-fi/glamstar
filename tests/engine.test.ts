@@ -705,6 +705,33 @@ describe('action choices', () => {
     expect(() => dropSong(s, 'Out')).toThrow();
   });
 
+  it('the hard part: a flop costs fans, fashion drifts them, the hit is judged against, exile stops home gigs', async () => {
+    const { judgement, theHit, flopWatch, fashionDrift } = await import('../src/game/hardPart');
+    const s: GameState = { ...newGame(input), fans: 100000, money: 100000, week: 200 };
+    s.releases.push({ id: 'a1', kind: 'album', title: 'Good', quality: 80, appeal: 1, week: 100, sold: 300000, lastWeek: 0 }, { id: 'a2', kind: 'album', title: 'Bad', quality: 50, appeal: 1, week: 190, sold: 40000, lastWeek: 0 });
+    const f = structuredClone(s);
+    flopWatch(f);
+    expect(f.flags.flop).toBe(200);
+    expect(f.fans).toBeLessThan(s.fans);
+    // the hit
+    const h: GameState = { ...newGame(input), fans: 50000, week: 60 };
+    h.releases.push({ id: 'h1', kind: 'single', title: 'Big One', quality: 90, appeal: 1, week: 10, sold: 500000, lastWeek: 0 }, { id: 'h2', kind: 'single', title: 'B', quality: 60, appeal: 1, week: 20, sold: 20000, lastWeek: 0 }, { id: 'h3', kind: 'single', title: 'C', quality: 60, appeal: 1, week: 30, sold: 15000, lastWeek: 0 });
+    expect(theHit(h)!.wonder).toBe(true);
+    expect(judgement(h, h.releases.find((r) => r.id === 'h1')!)).toBeGreaterThan(1.3);
+    expect(judgement(h, h.releases.find((r) => r.id === 'h3')!)).toBeLessThan(0.7);
+    // fashion drift: a new wave band in 1990 with 40,000 fans, idle
+    const d: GameState = { ...newGame(input), fans: 40000, week: 440 };
+    d.members[0].style = 'newwave';
+    fashionDrift(d);
+    expect(d.fans).toBeLessThan(40000);
+    // exile
+    const e: GameState = { ...newGame(input), fans: 500 };
+    e.flags.exileUntil = e.week + 10;
+    expect(canAct(e, A('gig', 'openmic'))).toContain('abroad');
+    expect(actionOptions(e, 'gig').every((o) => o.locked)).toBe(true);
+    expect(canAct(e, A('rest', 'sleep'))).toBeNull();
+  });
+
   it('the newsagent card brings two candidates, a poach brings one', () => {
     const s1 = act(newGame(input), A('advertise', 'newsagent', { role: 'keys' }));
     expect(s1.candidates).toHaveLength(2);
@@ -917,6 +944,9 @@ describe('choice events', () => {
     spotted: (s) => { s.candidates = []; },
     studio_offer: (s) => { s.fans = 1000; s.money = 10000; },
     the_comeback: (s) => { s.flags.reunionWeek = s.week; },
+    fashion_turns: (s) => { s.fans = 40000; s.week = 480; s.members[0].style = 'newwave'; },
+    one_hit_wonder: (s) => { s.week = 60; s.releases.push({ id: 'h1', kind: 'single', title: 'Big One', quality: 90, appeal: 1, week: 10, sold: 500000, lastWeek: 0 }, { id: 'h2', kind: 'single', title: 'B', quality: 60, appeal: 1, week: 20, sold: 20000, lastWeek: 0 }, { id: 'h3', kind: 'single', title: 'C', quality: 60, appeal: 1, week: 30, sold: 15000, lastWeek: 0 }); },
+    taxman_calls: (s) => { s.fans = 150000; s.money = 500000; s.week = 160; },
     hitch_abroad: (s) => { s.fans = 200; s.money = 100; },
     big_abroad: (s) => { s.fans = 3000; s.releases.push({ id: 'x1', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 100, lastWeek: 0 }); },
     famous_friend_drives: (s) => { s.fans = 20000; s.members[1].habit = 40; s.flags.lastBigParty = s.week; },

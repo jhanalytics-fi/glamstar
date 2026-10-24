@@ -173,6 +173,8 @@ export function tierLocked(s: GameState, t: TourTier): string | null {
   if (s.buzz < t.buzz) miss.push(`buzz ${t.buzz}`);
   if (!meetsNeed(s, t.need)) miss.push(NEED_TEXT[t.need]);
   if (s.flags.noVan && (t.id === 'pubs' || t.id === 'clubs')) miss.push('a van');
+  // Tax exile: nothing that starts at home until the spring.
+  if (s.flags.exileUntil !== undefined && s.week < s.flags.exileUntil && t.region !== 'japan' && t.region !== 'northamerica' && t.region !== 'europe' && t.region !== 'world') return `Resident abroad for tax purposes: ${s.flags.exileUntil - s.week} weeks before the band can play at home.`;
   return miss.length ? `Promoters want ${miss.join(', ')}.` : null;
 }
 

@@ -1,6 +1,7 @@
 // The weekly actions and the choices inside each one.
 import { Rng, clamp } from './rng';
 import { mourningBoost } from './death';
+import { judgement } from './hardPart';
 import { catalogueQuality, pressRecord } from './catalogue';
 import { reactToSong } from './reactions';
 import { GENRES, GENRE_LABEL, HIDDEN_TRAITS, ROLE_LABEL, generateMusician, getToKnow, overall, reveal, type Tier } from './characters';
@@ -255,6 +256,7 @@ function rawOptions(s: GameState, type: ActionType): ActionOption[] {
       }
       const miss = missingForGig(s);
       if (miss.length) for (const o of opts) o.locked = `You need ${miss.join(' and ')} to gig.`;
+      { const ex = exiled(s); if (ex) for (const o of opts) o.locked = ex; }
       return opts;
     }
     case 'rehearse':
@@ -365,6 +367,9 @@ export function optionLocked(s: GameState, a: Action): string | null {
   if (!o) return 'That option is not available.';
   return o.locked ?? null;
 }
+
+/** Tax exile: no gigs at home until the spring. */
+export const exiled = (s: GameState) => (s.flags.exileUntil !== undefined && s.week < s.flags.exileUntil ? `Resident abroad for tax purposes: ${s.flags.exileUntil - s.week} weeks before the band can play at home.` : null);
 
 // ---------------------------------------------------------------- performing
 
@@ -657,7 +662,8 @@ function changeDirection(s: GameState, rng: Rng, genre: Genre): void {
   s.flags.directions = (s.flags.directions ?? 0) + 1;
   const core = s.flags.coreFans ?? 0;
   const casual = Math.max(0, s.fans - core);
-  const lost = Math.round(casual * (0.12 + Math.min(0.1, (s.flags.directions - 1) * 0.04)));
+  const lost = s.flags.directionFree ? 0 : Math.round(casual * (0.12 + Math.min(0.1, (s.flags.directions - 1) * 0.04)));
+  delete s.flags.directionFree;
   s.fans -= lost;
   addBuzz(s, 8);
   for (const m of available(s)) {
@@ -1138,7 +1144,7 @@ export function sellRecords(s: GameState, rng: Rng, heat: (age: number) => numbe
     const age = s.week - r.week;
     // Sales grow with the fan base, but a hit needs more than a loyal following and the market has a ceiling.
     const following = (s.fans * 0.25) / (1 + s.fans / 150000);
-    const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind] * mourningBoost(s);
+    const demand = (following + s.buzz + 10) * heat(age) * (r.quality / 55) * r.appeal * KIND_DEMAND[r.kind] * mourningBoost(s) * judgement(s, r);
     const raw = Math.max(0, Math.round(demand * (0.85 + rng.next() * 0.3)));
     // Label records sell harder, but the money goes to the label's ledger first.
     const { units, cash } = r.comp === 'bootleg' ? { units: raw, cash: 0 } : labelSales(s, r, raw);
