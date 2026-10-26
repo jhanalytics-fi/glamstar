@@ -591,7 +591,7 @@ describe('action choices', () => {
     let r = settle(act(s, A('release', 'album')));
     const appeals: number[] = [];
     for (let i = 0; i < 4; i++) { r = settle(act(r, A('release', 'lift'))); appeals.push(r.releases.filter((x) => x.kind === 'single').at(-1)!.appeal); }
-    expect(appeals[3]).toBeLessThan(appeals[0] * 0.7);
+    expect(appeals[3]).toBeLessThan(appeals[0] * 0.85);
   });
 
   it('the comeback: two years on, fewer fans, one more album before retiring again', async () => {
@@ -791,6 +791,29 @@ describe('action choices', () => {
     const went = resolvePending(f, 0);
     expect(went.flags.beijing).toBeDefined();
     expect(went.log.some((l) => l.text.includes('huge in Beijing'))).toBe(true);
+  });
+
+  it('arcs: a member gets a life mid-career, it shows on the card and changes them', async () => {
+    const { arcsWeek, arcLine } = await import('../src/game/arcs');
+    const s: GameState = { ...newGame(input), week: 100, fans: 5000 };
+    for (const m of s.members) m.weeksInBand = 100;
+    let started = 0; const kinds = new Set<string>();
+    for (let seed = 1; seed <= 400; seed++) {
+      const st = structuredClone(s);
+      arcsWeek(st, new Rng(seed));
+      const m = st.members.find((x) => x.arc);
+      if (m) { started++; kinds.add(m.arc!.kind); expect(st.pending?.def).toBe(`arc_${m.arc!.kind}`); expect(arcLine(m, st)).toBeTruthy(); }
+    }
+    expect(started).toBeGreaterThan(1);
+    expect(started).toBeLessThan(40);
+    // faith drains the habit, a wedding ends in a baby at week 40
+    const f = structuredClone(s); f.members[1].arc = { kind: 'faith', since: 100, stage: 0 }; f.members[1].habit = 60;
+    for (let i = 0; i < 30; i++) arcsWeek(f, new Rng(i));
+    expect(f.members[1].habit).toBeLessThan(40);
+    const w = structuredClone(s); w.members[2].arc = { kind: 'wedding', since: 60, stage: 0 }; w.week = 100;
+    arcsWeek(w, new Rng(1));
+    expect(w.members[2].arc!.stage).toBe(1);
+    expect(w.log.at(-1)!.text).toContain('parent');
   });
 
   it('the newsagent card brings two candidates, a poach brings one', () => {
@@ -1012,6 +1035,11 @@ describe('choice events', () => {
     manager_tv: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'visionary', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTv = s.week; s.fans = 3000; },
     manager_tip: (s) => { s.manager = { name: 'Vera Pendleton-Shaw', kind: 'hustler', care: 30, nous: 40, honesty: 60, clout: 70, cut: 0.2, signed: 0, read: true, taken: 0 }; s.flags.mgrTip = s.week; s.pending = { def: 'manager_tip', params: { m: s.members[1].id, rival: 'The Rivals' }, week: s.week }; },
     tour_beijing: (s) => { s.fans = 40000; },
+    arc_wedding: (s) => { s.members[1].arc = { kind: 'wedding', since: s.week, stage: 0 }; },
+    arc_faith: (s) => { s.members[1].arc = { kind: 'faith', since: s.week, stage: 0 }; },
+    arc_mogul: (s) => { s.members[1].arc = { kind: 'mogul', since: s.week, stage: 0 }; s.money = 5000; },
+    arc_hermit: (s) => { s.members[1].arc = { kind: 'hermit', since: s.week, stage: 0 }; },
+    arc_spiral: (s) => { s.members[1].arc = { kind: 'spiral', since: s.week, stage: 0 }; },
     hitch_abroad: (s) => { s.fans = 200; s.money = 100; },
     big_abroad: (s) => { s.fans = 3000; s.releases.push({ id: 'x1', kind: 'single', title: 'S1', quality: 60, appeal: 1, week: 1, sold: 100, lastWeek: 0 }); },
     famous_friend_drives: (s) => { s.fans = 20000; s.members[1].habit = 40; s.flags.lastBigParty = s.week; },

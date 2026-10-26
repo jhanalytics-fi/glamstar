@@ -13,6 +13,7 @@ import { SPLIT_LABEL, SPLIT_WORD, shares, writerShares } from '../game/split';
 import { entourage, sackHanger } from '../game/entourage';
 import { showBackdrop } from './backdrop';
 import { bandWord } from '../game/pulse';
+import { arcLine } from '../game/arcs';
 import { TOY_KIND, buyToy, sellToy, shopWindow, toyLine, toyLocked, toyUpkeep, type ToyKind } from '../game/toys';
 import { STUDIOS } from '../game/studio';
 import type { BandGender, Difficulty, Lineup, Lodging, ManagerKind, Split, TourPolicy } from '../game/types';
@@ -1294,6 +1295,7 @@ function card(s: GameState, m: Musician, candidate = false): string {
         ${out ? `<p class="status">Out for ${m.outWeeks} more week${m.outWeeks === 1 ? '' : 's'}</p>` : ''}
         ${candidate ? '' : relLine(s, m)}
         ${m.isPlayer && toyLine(s) ? `<p class="owns"><span class="lbl">Owns</span> ${esc(toyLine(s))}</p>` : ''}
+        ${!candidate && arcLine(m, s) ? `<p class="owns arc"><span class="lbl">Life</span> ${esc(arcLine(m, s)!)}</p>` : ''}
         <p class="blurb">${esc(m.blurb)}</p>
         ${foot ? `<div class="card-foot">${foot}</div>` : ''}
       </div>

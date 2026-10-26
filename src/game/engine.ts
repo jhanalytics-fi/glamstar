@@ -12,6 +12,7 @@ import { deathWeek, remembranceWeek } from './death';
 import { toyUpkeep, toyWeek } from './toys';
 import { fashionDrift, flopWatch } from './hardPart';
 import { postWeek } from './letters';
+import { arcsWeek } from './arcs';
 import { certify } from './certs';
 import { ACTION_LABEL, actionOptions, optionLocked, perform, sellRecords } from './actions';
 import { rollEvents } from './events';
@@ -542,6 +543,7 @@ function endOfWeek(s: GameState, rng: Rng): void {
   if (ruin) { s.flags.ruined = 1; s.flags.ruinReason = 1; }
   managerWeek(s, rng);
   remembranceWeek(s);
+  arcsWeek(s, rng);
   postWeek(s, rng);
   flopWatch(s);
   fashionDrift(s);

@@ -43,6 +43,8 @@ export interface Musician {
   earned?: number;
   /** The week they joined, for the line-up history. */
   joined?: number;
+  /** A life outside the band: married, saved, in business, behind the curtains, on the slide. */
+  arc?: Arc;
   /** Solo records made on leave from the band. Each one loosens the knot a little. */
   solos?: number;
   /** Set while they are away making a solo record; resolved the week they come back. */
@@ -130,6 +132,13 @@ export interface Alumnus {
   joined: number;
   left: number;
   how: 'fired' | 'quit' | 'poached' | 'died';
+}
+
+/** A member's story arc: what is happening in their life, since when, and how far along. */
+export interface Arc {
+  kind: 'wedding' | 'faith' | 'mogul' | 'hermit' | 'spiral';
+  since: number;
+  stage: number;
 }
 
 /** One paper's verdict on a record. */

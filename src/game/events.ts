@@ -24,6 +24,7 @@ import { LEGEND_EVENTS } from './legendEvents';
 import { HARD_EVENTS } from './hardPart';
 import { MANAGER_EVENTS } from './managerEvents';
 import { PRESS_EVENTS } from './press';
+import { ARC_EVENTS } from './arcs';
 import { STUDIOS, nextStudio, type StudioId } from './studio';
 import { WHEELS, bestWheels, setWheels, wheelsOf } from './wheels';
 
@@ -2698,6 +2699,7 @@ const EVENTS: EventDef[] = [
   ...HARD_EVENTS,
   ...MANAGER_EVENTS,
   ...PRESS_EVENTS,
+  ...ARC_EVENTS,
   WHEELS_EVENT,
   STUDIO_EVENT,
   ...TOUR_EVENTS,
